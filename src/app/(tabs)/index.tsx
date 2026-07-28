@@ -8,8 +8,8 @@ import { Icon } from '@/components/ui/Icon';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
+import { EventComposer } from '@/features/calendar/EventComposer';
 import { MonthView } from '@/features/calendar/MonthView';
-import { QuickAddEventModal } from '@/features/calendar/QuickAddEventModal';
 import { indexHolidays, loadHolidays, type Holiday } from '@/features/calendar/holidays';
 import {
   getEventIconName,
@@ -41,11 +41,21 @@ export default function CalendarScreen() {
   const profile = useAuthStore((s) => s.profile);
   const partner = useAuthStore((s) => s.partner);
   const calendarId = useAuthStore((s) => s.calendarId);
-  const { load, eventsInRange, addEvent } = useCalendarStore();
+  const {
+    load,
+    eventsInRange,
+    addEvent,
+    updateEvent,
+    deleteOccurrence,
+    deleteFutureOccurrences,
+    deleteSeries,
+  } = useCalendarStore();
 
   const [monthAnchor, setMonthAnchor] = useState(() => startOfLocalMonth(new Date()));
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [composerOpen, setComposerOpen] = useState(false);
+  /** null = creating; a CalendarEvent = editing that occurrence. */
+  const [editing, setEditing] = useState<CalendarEvent | null>(null);
   const [holidays, setHolidays] = useState<Map<string, Holiday>>(new Map());
 
   useEffect(() => {
@@ -180,6 +190,10 @@ export default function CalendarScreen() {
                   partnerId={partner?.id}
                   myName={profile?.name}
                   partnerName={partner?.name}
+                  onPress={() => {
+                    setEditing(event);
+                    setComposerOpen(true);
+                  }}
                 />
               ))}
             </View>
@@ -187,15 +201,33 @@ export default function CalendarScreen() {
         </View>
       </ScrollView>
 
-      <FAB onPress={() => setComposerOpen(true)} />
+      <FAB
+        onPress={() => {
+          setEditing(null);
+          setComposerOpen(true);
+        }}
+      />
 
-      <QuickAddEventModal
+      <EventComposer
         visible={composerOpen}
         initialDate={selectedDate}
-        onClose={() => setComposerOpen(false)}
-        onSubmit={async (input) => {
+        event={editing}
+        onClose={() => {
+          setComposerOpen(false);
+          setEditing(null);
+        }}
+        onCreate={async (input) => {
           if (!profile?.id || !calendarId) return;
           await addEvent({ ...input, createdBy: profile.id, calendarId });
+        }}
+        onUpdate={async (event, input, scope) => {
+          if (!profile?.id || !calendarId) return;
+          await updateEvent(event, { ...input, createdBy: profile.id, calendarId }, scope);
+        }}
+        onDelete={async (event, scope) => {
+          if (scope === 'occurrence') await deleteOccurrence(event);
+          else if (scope === 'future') await deleteFutureOccurrences(event);
+          else await deleteSeries(event.id);
         }}
       />
     </Screen>
@@ -228,9 +260,10 @@ interface EventRowProps {
   partnerId: string | undefined;
   myName: string | null | undefined;
   partnerName: string | null | undefined;
+  onPress: () => void;
 }
 
-function EventRow({ event, viewerId, partnerId, myName, partnerName }: EventRowProps) {
+function EventRow({ event, viewerId, partnerId, myName, partnerName, onPress }: EventRowProps) {
   const theme = useTheme();
   const role = getEventRole(event, viewerId, partnerId);
   const colors = theme.event[role];
@@ -245,6 +278,7 @@ function EventRow({ event, viewerId, partnerId, myName, partnerName }: EventRowP
 
   return (
     <PressableScale
+      onPress={onPress}
       activeScale={0.985}
       dim
       style={{
