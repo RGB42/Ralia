@@ -1,14 +1,21 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useState } from 'react';
-import { Modal, Platform, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Modal, Platform, ScrollView, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/Button';
-import { formatLocalDate } from '@/lib/local-date';
+import { Chip } from '@/components/ui/Chip';
+import { Field } from '@/components/ui/Field';
+import { Icon } from '@/components/ui/Icon';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
+import { Text } from '@/components/ui/Text';
+import { addLocalDays, formatLocalDate, minutesToTime, timeToMinutes } from '@/lib/local-date';
 import { getFeatureLimit, hasProAccess } from '@/lib/premium';
 import { useAuthStore } from '@/store/auth-store';
-import { useUpgradeModalStore } from '@/store/upgrade-modal-store';
 import type { NewEventInput } from '@/store/calendar-store';
+import { useUpgradeModalStore } from '@/store/upgrade-modal-store';
+import { useTheme } from '@/theme/ThemeProvider';
 import type { BelongsTo, RecurrenceType } from '@/types/database';
 
 interface Props {
@@ -26,64 +33,106 @@ const RECURRENCE_OPTIONS: { value: RecurrenceType; label: string }[] = [
   { value: 'yearly', label: 'Jährlich' },
 ];
 
-function combineDateAndTime(date: Date, time: Date): Date {
-  const d = new Date(date);
-  d.setHours(time.getHours(), time.getMinutes(), 0, 0);
+const INTERVAL_UNIT: Record<Exclude<RecurrenceType, null>, string> = {
+  daily: 'Tage',
+  weekly: 'Wochen',
+  monthly: 'Monate',
+  yearly: 'Jahre',
+};
+
+function timeFromDate(date: Date): string {
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+function dateWithTime(base: Date, hhmm: string): Date {
+  const [h, m] = hhmm.split(':').map(Number);
+  const d = new Date(base);
+  d.setHours(h ?? 0, m ?? 0, 0, 0);
   return d;
 }
 
-function formatTime(date: Date): string {
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:00`;
-}
-
 export function QuickAddEventModal({ visible, initialDate, onClose, onSubmit }: Props) {
+  const theme = useTheme();
   const profile = useAuthStore((s) => s.profile);
   const partner = useAuthStore((s) => s.partner);
   const isPro = hasProAccess(profile);
+  const maxInterval = getFeatureLimit('maxRecurrenceInterval', profile);
 
   const [name, setName] = useState('');
   const [location, setLocation] = useState('');
-  const [isAllDay, setIsAllDay] = useState(false);
+  const [notes, setNotes] = useState('');
+  const [allDay, setAllDay] = useState(false);
+  const [isBirthday, setIsBirthday] = useState(false);
   const [startDate, setStartDate] = useState(initialDate);
-  const [startTime, setStartTime] = useState(() => {
-    const d = new Date(initialDate);
-    d.setHours(9, 0, 0, 0);
-    return d;
-  });
+  const [endDate, setEndDate] = useState(initialDate);
+  const [startTime, setStartTime] = useState('09:00');
+  const [endTime, setEndTime] = useState('10:00');
   const [belongsTo, setBelongsTo] = useState<BelongsTo>('both');
   const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>(null);
-  const [recurrenceInterval, setRecurrenceInterval] = useState('1');
+  const [interval, setInterval] = useState('1');
+  const [recurrenceEnd, setRecurrenceEnd] = useState<Date | null>(null);
   const [saving, setSaving] = useState(false);
+  const [picker, setPicker] = useState<'start' | 'end' | 'startTime' | 'endTime' | 'until' | null>(null);
 
-  const maxInterval = getFeatureLimit('maxRecurrenceInterval', profile);
+  // Re-seed the dates whenever the sheet is opened on a different day.
+  useEffect(() => {
+    if (!visible) return;
+    setStartDate(initialDate);
+    setEndDate(initialDate);
+  }, [visible, initialDate]);
 
   const reset = () => {
     setName('');
     setLocation('');
-    setIsAllDay(false);
+    setNotes('');
+    setAllDay(false);
+    setIsBirthday(false);
+    setStartTime('09:00');
+    setEndTime('10:00');
     setBelongsTo('both');
     setRecurrenceType(null);
-    setRecurrenceInterval('1');
+    setInterval('1');
+    setRecurrenceEnd(null);
+    setPicker(null);
+  };
+
+  /** Keep end >= start, and preserve the event's duration when start moves. */
+  const handleStartDateChange = (next: Date) => {
+    const shift = Math.round((next.getTime() - startDate.getTime()) / 86_400_000);
+    setStartDate(next);
+    if (shift !== 0) setEndDate((prev) => addLocalDays(prev, shift));
+    else if (endDate < next) setEndDate(next);
+  };
+
+  /** Moving the start time drags the end time along, keeping the duration. */
+  const handleStartTimeChange = (next: string) => {
+    const duration = Math.max(15, timeToMinutes(endTime) - timeToMinutes(startTime));
+    setStartTime(next);
+    setEndTime(minutesToTime(timeToMinutes(next) + duration));
   };
 
   const handleSave = async () => {
     if (!name.trim()) return;
     setSaving(true);
     try {
-      const interval = Math.min(Math.max(1, parseInt(recurrenceInterval, 10) || 1), maxInterval);
+      const parsed = Math.max(1, parseInt(interval, 10) || 1);
+      const clamped = Math.min(parsed, maxInterval);
       await onSubmit({
         name: name.trim(),
         location: location.trim() || null,
-        notes: null,
+        notes: notes.trim() || null,
         startDate: formatLocalDate(startDate),
-        endDate: formatLocalDate(startDate),
-        startTime: formatTime(startTime),
-        endTime: formatTime(combineDateAndTime(startDate, new Date(startTime.getTime() + 60 * 60 * 1000))),
-        isAllDay,
+        endDate: formatLocalDate(endDate < startDate ? startDate : endDate),
+        startTime: `${startTime}:00`,
+        endTime: `${endTime}:00`,
+        isAllDay: allDay,
         belongsTo,
-        recurrenceType,
-        recurrenceInterval: recurrenceType ? interval : 1,
-        recurrenceEndDate: null,
+        // A birthday is inherently a yearly series, so force the recurrence
+        // rather than making the user set both.
+        recurrenceType: isBirthday ? 'yearly' : recurrenceType,
+        recurrenceInterval: isBirthday ? 1 : recurrenceType ? clamped : 1,
+        recurrenceEndDate: recurrenceEnd ? formatLocalDate(recurrenceEnd) : null,
+        isBirthday,
       });
       reset();
       onClose();
@@ -92,118 +141,436 @@ export function QuickAddEventModal({ visible, initialDate, onClose, onSubmit }: 
     }
   };
 
+  const canSave = name.trim().length > 0 && !saving;
+
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView className="flex-1 bg-white">
-        <View className="flex-row items-center justify-between border-b border-gray-100 px-5 py-4">
-          <Pressable onPress={onClose}>
-            <Text className="text-base text-gray-500">Abbrechen</Text>
-          </Pressable>
-          <Text className="text-base font-semibold text-gray-800">Neuer Termin</Text>
-          <Pressable onPress={handleSave} disabled={!name.trim() || saving}>
-            <Text className={`text-base font-semibold ${name.trim() ? 'text-purple-600' : 'text-gray-300'}`}>Fertig</Text>
-          </Pressable>
-        </View>
-
-        <ScrollView className="flex-1 px-5 pt-5" keyboardShouldPersistTaps="handled">
-          <TextInput
-            autoFocus
-            value={name}
-            onChangeText={setName}
-            placeholder="Titel — z.B. Abendessen bei Mama"
-            placeholderTextColor="#9ca3af"
-            className="mb-4 rounded-xl border border-gray-200 px-4 py-3.5 text-base"
-          />
-          <TextInput
-            value={location}
-            onChangeText={setLocation}
-            placeholder="Ort (optional)"
-            placeholderTextColor="#9ca3af"
-            className="mb-5 rounded-xl border border-gray-200 px-4 py-3.5 text-base"
-          />
-
-          <View className="mb-5 flex-row items-center justify-between rounded-xl bg-gray-50 px-4 py-3.5">
-            <Text className="text-base text-gray-700">Ganztägig</Text>
-            <Switch value={isAllDay} onValueChange={setIsAllDay} trackColor={{ true: '#a855f7' }} />
-          </View>
-
-          <Text className="mb-2 text-sm font-medium text-gray-600">Datum</Text>
-          <DateTimePicker
-            value={startDate}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'compact' : 'default'}
-            onChange={(_, date) => date && setStartDate(date)}
-            style={{ alignSelf: 'flex-start', marginBottom: 16 }}
-          />
-
-          {!isAllDay && (
-            <>
-              <Text className="mb-2 text-sm font-medium text-gray-600">Uhrzeit</Text>
-              <DateTimePicker
-                value={startTime}
-                mode="time"
-                display={Platform.OS === 'ios' ? 'compact' : 'default'}
-                onChange={(_, time) => time && setStartTime(time)}
-                style={{ alignSelf: 'flex-start', marginBottom: 16 }}
-              />
-            </>
-          )}
-
-          <Text className="mb-2 text-sm font-medium text-gray-600">Wer?</Text>
-          <View className="mb-5 flex-row rounded-xl bg-gray-100 p-1">
-            {(
-              [
-                { value: 'both', label: 'Beide 💕' },
-                { value: 'user1', label: 'Ich' },
-                { value: 'user2', label: partner?.name ?? 'Partner' },
-              ] as { value: BelongsTo; label: string }[]
-            ).map((opt) => (
-              <Pressable
-                key={opt.value}
-                onPress={() => setBelongsTo(opt.value)}
-                className={`flex-1 items-center rounded-lg py-2 ${belongsTo === opt.value ? 'bg-white shadow-sm' : ''}`}>
-                <Text className={`text-sm font-medium ${belongsTo === opt.value ? 'text-purple-600' : 'text-gray-500'}`}>{opt.label}</Text>
-              </Pressable>
-            ))}
-          </View>
-
-          <Text className="mb-2 text-sm font-medium text-gray-600">Wiederholung</Text>
-          <View className="mb-2 flex-row flex-wrap gap-2">
-            {RECURRENCE_OPTIONS.map((opt) => (
-              <Pressable
-                key={opt.label}
-                onPress={() => setRecurrenceType(opt.value)}
-                className={`rounded-full border px-3.5 py-2 ${recurrenceType === opt.value ? 'border-purple-400 bg-purple-50' : 'border-gray-200'}`}>
-                <Text className={`text-sm ${recurrenceType === opt.value ? 'text-purple-600' : 'text-gray-500'}`}>{opt.label}</Text>
-              </Pressable>
-            ))}
-          </View>
-
-          {recurrenceType && (
-            <View className="mb-4 flex-row items-center gap-2">
-              <Text className="text-sm text-gray-500">Alle</Text>
-              <TextInput
-                value={recurrenceInterval}
-                onChangeText={setRecurrenceInterval}
-                keyboardType="number-pad"
-                className="w-16 rounded-lg border border-gray-200 px-3 py-2 text-center text-sm"
-              />
-              <Text className="text-sm text-gray-500">
-                {recurrenceType === 'daily' ? 'Tag(e)' : recurrenceType === 'weekly' ? 'Woche(n)' : recurrenceType === 'monthly' ? 'Monat(e)' : 'Jahr(e)'}
+      <View style={{ flex: 1, backgroundColor: theme.color.grouped }}>
+        <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+          {/* Header */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingHorizontal: theme.space.xl,
+              paddingVertical: theme.space.md,
+              borderBottomWidth: 1,
+              borderBottomColor: theme.color.separator,
+            }}>
+            <PressableScale onPress={onClose} hitSlop={8} haptic="none">
+              <Text variant="body" tone="secondary">
+                Abbrechen
               </Text>
-              {!isPro && (
-                <Pressable onPress={() => useUpgradeModalStore.getState().open('maxRecurrenceInterval')} className="ml-1">
-                  <Text className="text-xs text-purple-600">Pro: bis 24 ✨</Text>
-                </Pressable>
-              )}
-            </View>
-          )}
-        </ScrollView>
+            </PressableScale>
+            <Text variant="headline">Neuer Termin</Text>
+            <PressableScale onPress={handleSave} disabled={!canSave} hitSlop={8}>
+              <Text variant="body" weight="600" color={canSave ? theme.color.brand : theme.color.labelQuaternary}>
+                Fertig
+              </Text>
+            </PressableScale>
+          </View>
 
-        <View className="px-5 pb-4">
-          <Button label="Termin speichern" onPress={handleSave} loading={saving} disabled={!name.trim()} fullWidth />
-        </View>
-      </SafeAreaView>
+          <ScrollView
+            contentContainerStyle={{ padding: theme.space.xl, paddingBottom: theme.space['4xl'] }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}>
+            <Field
+              autoFocus
+              value={name}
+              onChangeText={setName}
+              placeholder="Titel — z. B. Abendessen bei Mama"
+              returnKeyType="next"
+            />
+            <Field
+              icon="location"
+              value={location}
+              onChangeText={setLocation}
+              placeholder="Ort (optional)"
+              returnKeyType="next"
+            />
+
+            <Section title="Wer?">
+              <SegmentedControl
+                value={belongsTo}
+                onChange={setBelongsTo}
+                options={[
+                  { value: 'both', label: 'Beide', icon: 'people' },
+                  { value: 'user1', label: profile?.name || 'Ich', icon: 'person' },
+                  { value: 'user2', label: partner?.name || 'Partner', icon: 'person' },
+                ]}
+              />
+            </Section>
+
+            <Section title="Zeit">
+              <ToggleRow
+                label="Ganztägig"
+                icon="allDay"
+                value={allDay}
+                onValueChange={setAllDay}
+                first
+              />
+              <PickerRow
+                label="Beginn"
+                icon="calendar"
+                value={startDate.toLocaleDateString('de-DE', {
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                })}
+                onPress={() => setPicker(picker === 'start' ? null : 'start')}
+                active={picker === 'start'}
+              />
+              {picker === 'start' ? (
+                <InlinePicker
+                  value={startDate}
+                  mode="date"
+                  onChange={(d) => {
+                    handleStartDateChange(d);
+                    if (Platform.OS !== 'ios') setPicker(null);
+                  }}
+                />
+              ) : null}
+
+              <PickerRow
+                label="Ende"
+                icon="calendar"
+                value={endDate.toLocaleDateString('de-DE', {
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                })}
+                onPress={() => setPicker(picker === 'end' ? null : 'end')}
+                active={picker === 'end'}
+              />
+              {picker === 'end' ? (
+                <InlinePicker
+                  value={endDate}
+                  mode="date"
+                  minimumDate={startDate}
+                  onChange={(d) => {
+                    setEndDate(d);
+                    if (Platform.OS !== 'ios') setPicker(null);
+                  }}
+                />
+              ) : null}
+
+              {!allDay ? (
+                <>
+                  <PickerRow
+                    label="Von"
+                    icon="clock"
+                    value={startTime}
+                    onPress={() => setPicker(picker === 'startTime' ? null : 'startTime')}
+                    active={picker === 'startTime'}
+                  />
+                  {picker === 'startTime' ? (
+                    <InlinePicker
+                      value={dateWithTime(startDate, startTime)}
+                      mode="time"
+                      onChange={(d) => {
+                        handleStartTimeChange(timeFromDate(d));
+                        if (Platform.OS !== 'ios') setPicker(null);
+                      }}
+                    />
+                  ) : null}
+
+                  <PickerRow
+                    label="Bis"
+                    icon="clock"
+                    value={endTime}
+                    onPress={() => setPicker(picker === 'endTime' ? null : 'endTime')}
+                    active={picker === 'endTime'}
+                    last
+                  />
+                  {picker === 'endTime' ? (
+                    <InlinePicker
+                      value={dateWithTime(endDate, endTime)}
+                      mode="time"
+                      onChange={(d) => {
+                        setEndTime(timeFromDate(d));
+                        if (Platform.OS !== 'ios') setPicker(null);
+                      }}
+                    />
+                  ) : null}
+                </>
+              ) : null}
+            </Section>
+
+            <Section title="Wiederholung">
+              <ToggleRow
+                label="Geburtstag"
+                icon="birthday"
+                detail="Wiederholt sich automatisch jedes Jahr"
+                value={isBirthday}
+                onValueChange={(v) => {
+                  setIsBirthday(v);
+                  if (v) setRecurrenceType(null);
+                }}
+                first
+                last
+              />
+
+              {!isBirthday ? (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: theme.space.md }}>
+                  {RECURRENCE_OPTIONS.map((opt) => (
+                    <Chip
+                      key={opt.label}
+                      label={opt.label}
+                      selected={recurrenceType === opt.value}
+                      onPress={() => setRecurrenceType(opt.value)}
+                    />
+                  ))}
+                </View>
+              ) : null}
+
+              {!isBirthday && recurrenceType ? (
+                <View style={{ marginTop: theme.space.lg }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space.sm }}>
+                    <Text variant="subheadline" tone="secondary">
+                      Alle
+                    </Text>
+                    <Field
+                      value={interval}
+                      onChangeText={setInterval}
+                      keyboardType="number-pad"
+                      containerStyle={{ marginBottom: 0, width: 72 }}
+                      textAlign="center"
+                    />
+                    <Text variant="subheadline" tone="secondary">
+                      {INTERVAL_UNIT[recurrenceType]}
+                    </Text>
+                  </View>
+
+                  {!isPro ? (
+                    <PressableScale
+                      onPress={() => useUpgradeModalStore.getState().open('maxRecurrenceInterval')}
+                      activeScale={0.97}
+                      style={{ marginTop: theme.space.sm }}>
+                      <Chip label="Pro: Intervalle bis 24" icon="pro" color={theme.color.orange} />
+                    </PressableScale>
+                  ) : null}
+
+                  <PickerRow
+                    label="Endet am"
+                    icon="repeat"
+                    value={
+                      recurrenceEnd
+                        ? recurrenceEnd.toLocaleDateString('de-DE', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          })
+                        : 'Nie'
+                    }
+                    onPress={() => setPicker(picker === 'until' ? null : 'until')}
+                    active={picker === 'until'}
+                    first
+                    last
+                    style={{ marginTop: theme.space.md }}
+                  />
+                  {picker === 'until' ? (
+                    <>
+                      <InlinePicker
+                        value={recurrenceEnd ?? addLocalDays(startDate, 30)}
+                        mode="date"
+                        minimumDate={startDate}
+                        onChange={(d) => {
+                          setRecurrenceEnd(d);
+                          if (Platform.OS !== 'ios') setPicker(null);
+                        }}
+                      />
+                      {recurrenceEnd ? (
+                        <Button
+                          label="Kein Enddatum"
+                          variant="plain"
+                          size="sm"
+                          onPress={() => {
+                            setRecurrenceEnd(null);
+                            setPicker(null);
+                          }}
+                          style={{ alignSelf: 'center' }}
+                        />
+                      ) : null}
+                    </>
+                  ) : null}
+                </View>
+              ) : null}
+            </Section>
+
+            <Section title="Notiz">
+              <Field
+                value={notes}
+                onChangeText={setNotes}
+                placeholder="Details, Links, Einkaufsliste …"
+                multiline
+                numberOfLines={4}
+                containerStyle={{ marginBottom: 0 }}
+                inputStyle={{ minHeight: 88, textAlignVertical: 'top' }}
+              />
+            </Section>
+
+            <Button
+              label="Termin speichern"
+              onPress={handleSave}
+              loading={saving}
+              disabled={!name.trim()}
+              fullWidth
+              style={{ marginTop: theme.space.lg }}
+            />
+          </ScrollView>
+        </SafeAreaView>
+      </View>
     </Modal>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  const theme = useTheme();
+  return (
+    <View style={{ marginTop: theme.space.lg, marginBottom: theme.space.lg }}>
+      <Text
+        variant="footnote"
+        tone="secondary"
+        weight="500"
+        style={{
+          marginBottom: theme.space.sm,
+          marginLeft: theme.space.xs,
+          textTransform: 'uppercase',
+          letterSpacing: 0.6,
+        }}>
+        {title}
+      </Text>
+      {children}
+    </View>
+  );
+}
+
+function rowStyle(theme: ReturnType<typeof useTheme>, first?: boolean, last?: boolean) {
+  return {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.space.md,
+    backgroundColor: theme.color.groupedElevated,
+    paddingHorizontal: theme.space.lg,
+    paddingVertical: theme.space.md,
+    minHeight: 48,
+    borderTopLeftRadius: first ? theme.radius.md : 0,
+    borderTopRightRadius: first ? theme.radius.md : 0,
+    borderBottomLeftRadius: last ? theme.radius.md : 0,
+    borderBottomRightRadius: last ? theme.radius.md : 0,
+    borderTopWidth: first ? 0 : 1,
+    borderTopColor: theme.color.separator,
+  };
+}
+
+function ToggleRow({
+  label,
+  detail,
+  icon,
+  value,
+  onValueChange,
+  first,
+  last,
+}: {
+  label: string;
+  detail?: string;
+  icon: 'allDay' | 'birthday';
+  value: boolean;
+  onValueChange: (v: boolean) => void;
+  first?: boolean;
+  last?: boolean;
+}) {
+  const theme = useTheme();
+  return (
+    <View style={rowStyle(theme, first, last)}>
+      <Icon name={icon} size={18} color={theme.color.labelSecondary} />
+      <View style={{ flex: 1 }}>
+        <Text variant="body">{label}</Text>
+        {detail ? (
+          <Text variant="caption" tone="tertiary">
+            {detail}
+          </Text>
+        ) : null}
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        trackColor={{ true: theme.color.brand, false: theme.color.fill }}
+        thumbColor="#FFFFFF"
+      />
+    </View>
+  );
+}
+
+function PickerRow({
+  label,
+  value,
+  icon,
+  onPress,
+  active,
+  first,
+  last,
+  style,
+}: {
+  label: string;
+  value: string;
+  icon: 'calendar' | 'clock' | 'repeat';
+  onPress: () => void;
+  active?: boolean;
+  first?: boolean;
+  last?: boolean;
+  style?: object;
+}) {
+  const theme = useTheme();
+  return (
+    <PressableScale onPress={onPress} activeScale={0.995} haptic="none" style={[rowStyle(theme, first, last), style]}>
+      <Icon name={icon} size={18} color={theme.color.labelSecondary} />
+      <Text variant="body" style={{ flex: 1 }}>
+        {label}
+      </Text>
+      <Text variant="body" color={active ? theme.color.brand : theme.color.labelSecondary}>
+        {value}
+      </Text>
+    </PressableScale>
+  );
+}
+
+/**
+ * On iOS the spinner stays open until dismissed, so it's rendered inline under
+ * the row it belongs to. On Android the platform dialog closes itself, which is
+ * why callers clear `picker` there.
+ */
+function InlinePicker({
+  value,
+  mode,
+  minimumDate,
+  onChange,
+}: {
+  value: Date;
+  mode: 'date' | 'time';
+  minimumDate?: Date;
+  onChange: (d: Date) => void;
+}) {
+  const theme = useTheme();
+  return (
+    <View
+      style={{
+        backgroundColor: theme.color.groupedElevated,
+        borderTopWidth: 1,
+        borderTopColor: theme.color.separator,
+        alignItems: 'center',
+      }}>
+      <DateTimePicker
+        value={value}
+        mode={mode}
+        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+        minimumDate={minimumDate}
+        is24Hour
+        onChange={(_, d) => d && onChange(d)}
+      />
+    </View>
   );
 }

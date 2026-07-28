@@ -1,166 +1,303 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
+import { Chip } from '@/components/ui/Chip';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { FAB } from '@/components/ui/FAB';
+import { Icon } from '@/components/ui/Icon';
+import { PressableScale } from '@/components/ui/PressableScale';
 import { Screen } from '@/components/ui/Screen';
+import { Text } from '@/components/ui/Text';
+import { MonthView } from '@/features/calendar/MonthView';
 import { QuickAddEventModal } from '@/features/calendar/QuickAddEventModal';
-import { getEventColor, getEventIcon } from '@/features/calendar/ownership';
-import { formatLocalDate, isSameLocalDay, parseLocalDate, startOfLocalMonth } from '@/lib/local-date';
+import { indexHolidays, loadHolidays, type Holiday } from '@/features/calendar/holidays';
+import {
+  getEventIconName,
+  getEventRole,
+  getOwnerLabel,
+  isProfileManagedEvent,
+} from '@/features/calendar/ownership';
+import {
+  addLocalDays,
+  formatLocalDate,
+  isAllDay,
+  isSameLocalDay,
+  normalizeTime,
+  startOfLocalMonth,
+} from '@/lib/local-date';
 import { useAuthStore } from '@/store/auth-store';
 import { useCalendarStore } from '@/store/calendar-store';
+import { SCROLL_BOTTOM_PADDING } from '@/theme/layout';
+import { useTheme } from '@/theme/ThemeProvider';
 import type { CalendarEvent } from '@/types/calendar';
 
-const WEEKDAY_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-const MONTH_LABELS = [
-  'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember',
+const MONTHS = [
+  'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+  'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember',
 ];
 
-function buildMonthGrid(monthStart: Date): Date[] {
-  // Monday-first grid, always 42 cells (6 weeks) so the layout never jumps.
-  const firstWeekday = (monthStart.getDay() + 6) % 7; // 0=Mon
-  const gridStart = new Date(monthStart);
-  gridStart.setDate(gridStart.getDate() - firstWeekday);
-  return Array.from({ length: 42 }, (_, i) => {
-    const d = new Date(gridStart);
-    d.setDate(d.getDate() + i);
-    return d;
-  });
-}
-
 export default function CalendarScreen() {
+  const theme = useTheme();
   const profile = useAuthStore((s) => s.profile);
   const partner = useAuthStore((s) => s.partner);
   const calendarId = useAuthStore((s) => s.calendarId);
-  const { load, eventsInRange, deleteOccurrence, deleteSeries, addEvent } = useCalendarStore();
+  const { load, eventsInRange, addEvent } = useCalendarStore();
 
   const [monthAnchor, setMonthAnchor] = useState(() => startOfLocalMonth(new Date()));
   const [selectedDate, setSelectedDate] = useState(() => new Date());
-  const [modalVisible, setModalVisible] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [holidays, setHolidays] = useState<Map<string, Holiday>>(new Map());
 
   useEffect(() => {
     if (calendarId) load(calendarId);
   }, [calendarId, load]);
 
-  const grid = useMemo(() => buildMonthGrid(monthAnchor), [monthAnchor]);
-  const rangeStart = grid[0];
-  const rangeEnd = grid[grid.length - 1];
-  const events = eventsInRange(rangeStart, rangeEnd);
+  useEffect(() => {
+    // Non-blocking: the grid renders without holidays and fills them in.
+    loadHolidays('DE')
+      .then((list) => setHolidays(indexHolidays(list)))
+      .catch(() => {});
+  }, []);
 
-  const eventsByDay = useMemo(() => {
-    const map = new Map<string, CalendarEvent[]>();
-    for (const ev of events) {
-      const key = ev.occurrenceDate;
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(ev);
-    }
-    return map;
-  }, [events]);
+  // Expand a generous window so multi-day and recurring events that start
+  // outside the visible month still produce segments inside it.
+  const events = useMemo(() => {
+    const from = addLocalDays(startOfLocalMonth(monthAnchor), -45);
+    const to = addLocalDays(startOfLocalMonth(monthAnchor), 90);
+    return eventsInRange(from, to);
+  }, [monthAnchor, eventsInRange]);
 
-  const selectedDayEvents = (eventsByDay.get(formatLocalDate(selectedDate)) ?? []).sort((a, b) => a.start_time.localeCompare(b.start_time));
+  const selectedKey = formatLocalDate(selectedDate);
 
-  const handleDeleteEvent = (event: CalendarEvent) => {
-    const options: Parameters<typeof Alert.alert>[2] = [
-      { text: event.isRecurrenceInstance ? 'Diesen Termin löschen' : 'Löschen', style: 'destructive', onPress: () => deleteOccurrence(event) },
-    ];
-    if (event.isRecurrenceInstance) {
-      options.push({ text: 'Ganze Serie löschen', style: 'destructive', onPress: () => deleteSeries(event.id) });
-    }
-    options.push({ text: 'Abbrechen', style: 'cancel' });
-    Alert.alert(event.name, undefined, options);
+  const dayEvents = useMemo(
+    () =>
+      events
+        .filter((e) => e.start_date <= selectedKey && e.end_date >= selectedKey)
+        .sort((a, b) => {
+          // All-day first, then by start time.
+          const aAll = isAllDay(a);
+          const bAll = isAllDay(b);
+          if (aAll !== bAll) return aAll ? -1 : 1;
+          return normalizeTime(a.start_time).localeCompare(normalizeTime(b.start_time));
+        }),
+    [events, selectedKey]
+  );
+
+  const selectedHoliday = holidays.get(selectedKey);
+  const isToday = isSameLocalDay(selectedDate, new Date());
+
+  const shiftMonth = (delta: number) => {
+    setMonthAnchor((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
+  };
+
+  const goToToday = () => {
+    const today = new Date();
+    setMonthAnchor(startOfLocalMonth(today));
+    setSelectedDate(today);
   };
 
   return (
     <Screen>
-      <View className="flex-1">
-        <View className="flex-row items-center justify-between px-5 pt-4">
-          <Text className="text-2xl font-semibold text-gray-800">
-            {MONTH_LABELS[monthAnchor.getMonth()]} {monthAnchor.getFullYear()}
-          </Text>
-          <View className="flex-row gap-4">
-            <Pressable onPress={() => setMonthAnchor(new Date(monthAnchor.getFullYear(), monthAnchor.getMonth() - 1, 1))}>
-              <Text className="text-xl text-purple-500">‹</Text>
-            </Pressable>
-            <Pressable onPress={() => setMonthAnchor(new Date(monthAnchor.getFullYear(), monthAnchor.getMonth() + 1, 1))}>
-              <Text className="text-xl text-purple-500">›</Text>
-            </Pressable>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: SCROLL_BOTTOM_PADDING }}
+        showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: theme.space.xl,
+            paddingTop: theme.space.sm,
+            paddingBottom: theme.space.lg,
+          }}>
+          <View style={{ flex: 1 }}>
+            <Text variant="title1">{MONTHS[monthAnchor.getMonth()]}</Text>
+            <Text variant="subheadline" tone="secondary">
+              {monthAnchor.getFullYear()}
+            </Text>
+          </View>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space.xs }}>
+            <RoundButton icon="today" onPress={goToToday} />
+            <RoundButton icon="chevronLeft" onPress={() => shiftMonth(-1)} />
+            <RoundButton icon="chevronRight" onPress={() => shiftMonth(1)} />
           </View>
         </View>
 
-        <View className="flex-row px-5 pt-4">
-          {WEEKDAY_LABELS.map((label) => (
-            <Text key={label} className="flex-1 text-center text-xs font-medium text-gray-400">{label}</Text>
-          ))}
-        </View>
+        <MonthView
+          monthAnchor={monthAnchor}
+          events={events}
+          selectedKey={selectedKey}
+          onSelectDay={setSelectedDate}
+          viewerId={profile?.id}
+          partnerId={partner?.id}
+          holidays={holidays}
+        />
 
-        <View className="flex-row flex-wrap px-3 pt-1">
-          {grid.map((day) => {
-            const inMonth = day.getMonth() === monthAnchor.getMonth();
-            const isToday = isSameLocalDay(day, new Date());
-            const isSelected = isSameLocalDay(day, selectedDate);
-            const dayEvents = eventsByDay.get(formatLocalDate(day)) ?? [];
-            return (
-              <Pressable key={day.toISOString()} onPress={() => setSelectedDate(day)} className="w-[14.28%] items-center py-1.5">
-                <View
-                  className={`h-9 w-9 items-center justify-center rounded-full ${
-                    isSelected ? 'bg-purple-500' : isToday ? 'border-2 border-purple-400' : ''
-                  }`}>
-                  <Text className={`text-sm ${isSelected ? 'text-white' : inMonth ? 'text-gray-700' : 'text-gray-300'}`}>{day.getDate()}</Text>
-                </View>
-                <View className="mt-1 flex-row gap-0.5">
-                  {dayEvents.slice(0, 3).map((ev) => (
-                    <View key={ev.renderKey} className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: getEventColor(ev, profile?.id, partner?.id) }} />
-                  ))}
-                </View>
-              </Pressable>
-            );
-          })}
-        </View>
+        {/* Selected day */}
+        <View style={{ paddingHorizontal: theme.space.xl, paddingTop: theme.space['2xl'] }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space.sm }}>
+            <Text variant="headline">
+              {isToday
+                ? 'Heute'
+                : selectedDate.toLocaleDateString('de-DE', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                  })}
+            </Text>
+            {dayEvents.length > 0 ? (
+              <Text variant="footnote" tone="tertiary">
+                {dayEvents.length}
+              </Text>
+            ) : null}
+          </View>
 
-        <View className="mt-3 h-px bg-gray-100" />
+          {selectedHoliday ? (
+            <View style={{ marginTop: theme.space.md }}>
+              <Chip
+                label={selectedHoliday.localName || selectedHoliday.name}
+                icon="holiday"
+                color={theme.event.holiday.solid}
+              />
+            </View>
+          ) : null}
 
-        <ScrollView className="flex-1 px-5 pt-4">
-          <Text className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-400">
-            {isSameLocalDay(selectedDate, new Date()) ? 'Heute' : selectedDate.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}
-          </Text>
-          {selectedDayEvents.length === 0 ? (
-            <Text className="text-sm text-gray-400">Keine Termine an diesem Tag.</Text>
+          {dayEvents.length === 0 ? (
+            <EmptyState
+              icon="calendar"
+              title="Keine Termine"
+              message="An diesem Tag ist noch nichts geplant."
+              compact
+            />
           ) : (
-            selectedDayEvents.map((ev) => (
-              <Pressable
-                key={ev.renderKey}
-                onLongPress={() => handleDeleteEvent(ev)}
-                delayLongPress={420}
-                className="mb-2.5 flex-row items-center rounded-2xl border border-gray-100 bg-white p-3.5">
-                <View className="mr-3 h-2.5 w-2.5 rounded-full" style={{ backgroundColor: getEventColor(ev, profile?.id, partner?.id) }} />
-                <View className="flex-1">
-                  <Text className="text-base font-medium text-gray-800">
-                    {getEventIcon(ev)} {ev.name}
-                  </Text>
-                  <Text className="text-xs text-gray-500">
-                    {ev.start_time === '00:00:00' && ev.end_time === '23:59:00' ? 'Ganztägig' : ev.start_time.slice(0, 5)}
-                    {ev.location ? ` · ${ev.location}` : ''}
-                  </Text>
-                </View>
-              </Pressable>
-            ))
+            <View style={{ marginTop: theme.space.md, gap: theme.space.sm }}>
+              {dayEvents.map((event) => (
+                <EventRow
+                  key={event.renderKey}
+                  event={event}
+                  viewerId={profile?.id}
+                  partnerId={partner?.id}
+                  myName={profile?.name}
+                  partnerName={partner?.name}
+                />
+              ))}
+            </View>
           )}
-        </ScrollView>
-      </View>
+        </View>
+      </ScrollView>
 
-      <Pressable
-        onPress={() => setModalVisible(true)}
-        className="absolute bottom-6 right-6 h-16 w-16 items-center justify-center rounded-full bg-purple-500 shadow-lg shadow-purple-900/30">
-        <Text className="text-3xl text-white">＋</Text>
-      </Pressable>
+      <FAB onPress={() => setComposerOpen(true)} />
 
       <QuickAddEventModal
-        visible={modalVisible}
+        visible={composerOpen}
         initialDate={selectedDate}
-        onClose={() => setModalVisible(false)}
+        onClose={() => setComposerOpen(false)}
         onSubmit={async (input) => {
           if (!profile?.id || !calendarId) return;
           await addEvent({ ...input, createdBy: profile.id, calendarId });
         }}
       />
     </Screen>
+  );
+}
+
+function RoundButton({ icon, onPress }: { icon: 'today' | 'chevronLeft' | 'chevronRight'; onPress: () => void }) {
+  const theme = useTheme();
+  return (
+    <PressableScale
+      onPress={onPress}
+      activeScale={0.88}
+      hitSlop={6}
+      style={{
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: theme.color.fillTertiary,
+      }}>
+      <Icon name={icon} size={18} color={theme.color.label} />
+    </PressableScale>
+  );
+}
+
+interface EventRowProps {
+  event: CalendarEvent;
+  viewerId: string | undefined;
+  partnerId: string | undefined;
+  myName: string | null | undefined;
+  partnerName: string | null | undefined;
+}
+
+function EventRow({ event, viewerId, partnerId, myName, partnerName }: EventRowProps) {
+  const theme = useTheme();
+  const role = getEventRole(event, viewerId, partnerId);
+  const colors = theme.event[role];
+  const iconName = getEventIconName(event);
+  const allDay = isAllDay(event);
+  const multiDay = event.start_date !== event.end_date;
+  const managed = isProfileManagedEvent(event);
+
+  const timeLabel = allDay
+    ? 'Ganztägig'
+    : `${normalizeTime(event.start_time)} – ${normalizeTime(event.end_time)}`;
+
+  return (
+    <PressableScale
+      activeScale={0.985}
+      dim
+      style={{
+        flexDirection: 'row',
+        backgroundColor: theme.color.groupedElevated,
+        borderRadius: theme.radius.lg,
+        borderCurve: 'continuous',
+        overflow: 'hidden',
+      }}>
+      {/* Role color spine */}
+      <View style={{ width: 4, backgroundColor: colors.solid }} />
+
+      <View style={{ flex: 1, padding: theme.space.md, gap: 5 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+          {iconName ? <Icon name={iconName} size={14} color={colors.solid} /> : null}
+          <Text variant="callout" weight="600" numberOfLines={1} style={{ flex: 1 }}>
+            {event.name}
+          </Text>
+          {managed ? <Icon name="lock" size={12} color={theme.color.labelTertiary} /> : null}
+        </View>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+          <Icon name={allDay ? 'allDay' : 'clock'} size={12} color={theme.color.labelTertiary} />
+          <Text variant="footnote" tone="secondary">
+            {timeLabel}
+          </Text>
+          {event.isRecurrenceInstance ? (
+            <Icon name="repeat" size={12} color={theme.color.labelTertiary} />
+          ) : null}
+          {event.reminder_enabled ? (
+            <Icon name="bell" size={12} color={theme.color.labelTertiary} />
+          ) : null}
+        </View>
+
+        {event.location ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            <Icon name="location" size={12} color={theme.color.labelTertiary} />
+            <Text variant="footnote" tone="secondary" numberOfLines={1} style={{ flex: 1 }}>
+              {event.location}
+            </Text>
+          </View>
+        ) : null}
+
+        <View style={{ flexDirection: 'row', gap: 5, marginTop: 1 }}>
+          <Chip
+            label={getOwnerLabel(event, viewerId, partnerId, myName, partnerName)}
+            icon={role === 'both' ? 'people' : 'person'}
+            color={colors.solid}
+            size="sm"
+          />
+          {multiDay ? <Chip label="Mehrtägig" icon="calendar" size="sm" /> : null}
+        </View>
+      </View>
+    </PressableScale>
   );
 }

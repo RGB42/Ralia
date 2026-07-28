@@ -1,16 +1,18 @@
 import { Link } from 'expo-router';
 import { useState } from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
-import { signInWithGoogle, signInWithPassword } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
+import { Field } from '@/components/ui/Field';
 import { Logo } from '@/components/ui/Logo';
 import { Screen } from '@/components/ui/Screen';
-import { TextField } from '@/components/ui/TextField';
+import { Text } from '@/components/ui/Text';
+import { signInWithGoogle, signInWithPassword } from '@/lib/auth';
 import { toast } from '@/store/toast-store';
+import { useTheme } from '@/theme/ThemeProvider';
 
 export default function LoginScreen() {
+  const theme = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -44,57 +46,98 @@ export default function LoginScreen() {
   };
 
   return (
-    <Screen centered className="px-6">
-      <Logo subtitle="Teile Deine Tage gemeinsam" />
-      <Card>
-        <TextField
-          label="E-Mail"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          autoComplete="email"
-          placeholder="du@beispiel.de"
-        />
-        <TextField
-          label="Passwort"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoCapitalize="none"
-          placeholder="••••••••"
-        />
-        <Button label="Anmelden" onPress={handleLogin} loading={loading} fullWidth className="mt-2" />
+    <Screen edges={['top', 'bottom']}>
+      <ScrollView
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: 'center',
+          paddingHorizontal: theme.space['2xl'],
+          paddingVertical: theme.space['3xl'],
+        }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
+        <Logo subtitle="Teile Deine Tage gemeinsam" />
 
-        <Link href="/(auth)/forgot-password" asChild>
-          <TouchableOpacity className="mt-4">
-            <Text className="text-center text-sm text-purple-600">Passwort vergessen?</Text>
-          </TouchableOpacity>
-        </Link>
+        <View style={{ marginTop: theme.space['3xl'] }}>
+          <Field
+            label="E-Mail"
+            icon="mail"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            autoComplete="email"
+            placeholder="du@beispiel.de"
+            returnKeyType="next"
+          />
+          <Field
+            label="Passwort"
+            icon="lock"
+            value={password}
+            onChangeText={setPassword}
+            secureToggle
+            autoCapitalize="none"
+            autoComplete="current-password"
+            placeholder="••••••••"
+            returnKeyType="go"
+            onSubmitEditing={handleLogin}
+          />
 
-        <View className="my-5 flex-row items-center gap-3">
-          <View className="h-px flex-1 bg-gray-200" />
-          <Text className="text-xs text-gray-400">oder weiter mit</Text>
-          <View className="h-px flex-1 bg-gray-200" />
-        </View>
+          <Button label="Anmelden" onPress={handleLogin} loading={loading} fullWidth />
 
-        <Button
-          label="Mit Google anmelden"
-          onPress={handleGoogle}
-          variant="secondary"
-          loading={googleLoading}
-          fullWidth
-        />
-
-        <View className="mt-6 flex-row justify-center gap-1">
-          <Text className="text-sm text-gray-500">Noch kein Konto?</Text>
-          <Link href="/(auth)/signup" asChild>
-            <TouchableOpacity>
-              <Text className="text-sm font-semibold text-purple-600">Registrieren</Text>
-            </TouchableOpacity>
+          <Link href="/(auth)/forgot-password" asChild>
+            <Text
+              variant="subheadline"
+              tone="brand"
+              weight="500"
+              align="center"
+              style={{ marginTop: theme.space.lg }}>
+              Passwort vergessen?
+            </Text>
           </Link>
+
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: theme.space.md,
+              marginVertical: theme.space['2xl'],
+            }}>
+            <View style={{ height: 1, flex: 1, backgroundColor: theme.color.separator }} />
+            <Text variant="caption" tone="tertiary">
+              oder weiter mit
+            </Text>
+            <View style={{ height: 1, flex: 1, backgroundColor: theme.color.separator }} />
+          </View>
+
+          <Button
+            label="Mit Google anmelden"
+            icon="google"
+            onPress={handleGoogle}
+            variant="secondary"
+            loading={googleLoading}
+            fullWidth
+          />
+
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'center',
+              gap: 5,
+              marginTop: theme.space['2xl'],
+            }}>
+            <Text variant="subheadline" tone="secondary">
+              Noch kein Konto?
+            </Text>
+            <Link href="/(auth)/signup" asChild>
+              <Text variant="subheadline" tone="brand" weight="600">
+                Registrieren
+              </Text>
+            </Link>
+          </View>
         </View>
-      </Card>
+      </ScrollView>
     </Screen>
   );
 }

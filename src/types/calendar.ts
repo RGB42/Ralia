@@ -10,9 +10,23 @@ export interface CalendarEvent extends EventRow {
   renderKey: string;
   /** The occurrence's actual date — equals start_date for non-recurring events. */
   occurrenceDate: string;
+  /**
+   * The date the recurrence rule produced, *before* any exception override moved
+   * it. This — not `occurrenceDate` — is the key into
+   * `recurring_event_exceptions.original_occurrence_date`.
+   */
+  originalOccurrenceDate: string;
   isRecurrenceInstance: boolean;
+  /** True when an exception's `override_event_data` was merged into this occurrence. */
+  isExceptionOverride: boolean;
+  exceptionId: string | null;
 }
 
-export function makeRenderKey(eventId: string, occurrenceDate: string): string {
-  return `${eventId}:${occurrenceDate}`;
+/**
+ * The legacy web app builds this key as `${masterId}::${originalOccurrenceDate}`.
+ * Keep the separator identical — it's used as a cross-app stable identity for an
+ * occurrence (e.g. reminder dedup tokens).
+ */
+export function makeRenderKey(eventId: string, originalOccurrenceDate: string): string {
+  return `${eventId}::${originalOccurrenceDate}`;
 }

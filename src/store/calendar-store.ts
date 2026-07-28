@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 import { expandAllEvents } from '@/features/calendar/recurrence';
-import { formatLocalDate } from '@/lib/local-date';
+import { ALL_DAY_END, ALL_DAY_START, formatLocalDate } from '@/lib/local-date';
 import { enqueue, flushQueue } from '@/lib/mutation-queue';
 import { makeLocalId, readLocalJson, writeLocalJson } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
@@ -28,6 +28,8 @@ export interface NewEventInput {
   recurrenceType: RecurrenceType;
   recurrenceInterval: number;
   recurrenceEndDate: string | null;
+  /** Sets `event_type = 'birthday'`, which drives the icon and color role. */
+  isBirthday?: boolean;
   createdBy: string;
   calendarId: string;
 }
@@ -92,9 +94,12 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
       name: input.name,
       location: input.location,
       start_date: input.startDate,
-      start_time: input.isAllDay ? '00:00:00' : input.startTime,
+      // Both ends at midnight — the legacy web app is still live on this same
+      // database and detects all-day that way, so an end of 23:59 would make
+      // our rows read as timed events over there.
+      start_time: input.isAllDay ? ALL_DAY_START : input.startTime,
       end_date: input.endDate,
-      end_time: input.isAllDay ? '23:59:00' : input.endTime,
+      end_time: input.isAllDay ? ALL_DAY_END : input.endTime,
       notes: input.notes,
       belongs_to: input.belongsTo,
       created_by: input.createdBy,
@@ -108,7 +113,10 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
       reminder_enabled: false,
       reminder_offset_minutes: 1440,
       reminder_offsets: null,
-      event_type: 'default',
+      event_type: input.isBirthday ? 'birthday' : 'default',
+      // 'anniversary' is reserved for the profile-managed row that
+      // syncAutomaticSpecialEvents owns, so it's never set from a user form —
+      // matching the legacy app, which also forces these two on every save.
       is_special_auto: false,
       special_key: null,
       subtitle: null,
@@ -143,7 +151,9 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
       id: makeLocalId('exception'),
       calendar_id: calendarId,
       master_event_id: occurrence.id,
-      original_occurrence_date: occurrence.occurrenceDate,
+      // Keyed on the date the RULE produced, not where an override may have moved
+      // the occurrence to — that's the unique key the exceptions table enforces.
+      original_occurrence_date: occurrence.originalOccurrenceDate,
       created_by: occurrence.created_by ?? '',
       is_deleted: true,
       override_event_data: null,
