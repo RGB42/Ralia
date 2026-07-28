@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import { Text } from 'react-native';
+import { View } from 'react-native';
 
+import { Button } from '@/components/ui/Button';
+import { Field } from '@/components/ui/Field';
+import { Screen } from '@/components/ui/Screen';
+import { Text } from '@/components/ui/Text';
 import { updatePassword } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
-import { Screen } from '@/components/ui/Screen';
-import { TextField } from '@/components/ui/TextField';
 import { useAuthStore } from '@/store/auth-store';
 import { toast } from '@/store/toast-store';
+import { useTheme } from '@/theme/ThemeProvider';
 
 /**
  * Reached only via the password-recovery deep link (Supabase sets a session
@@ -19,10 +20,13 @@ import { toast } from '@/store/toast-store';
  * into the app on a recovery session.
  */
 export default function ResetPasswordScreen() {
+  const theme = useTheme();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
   const clearPasswordRecovery = useAuthStore((s) => s.clearPasswordRecovery);
+
+  const mismatch = confirm.length > 0 && password !== confirm;
 
   const handleSubmit = async () => {
     if (password.length < 6) {
@@ -47,28 +51,46 @@ export default function ResetPasswordScreen() {
   };
 
   return (
-    <Screen centered className="px-6">
-      <Card>
-        <Text className="mb-1 text-xl font-semibold text-gray-800">Neues Passwort</Text>
-        <Text className="mb-5 text-sm text-gray-500">Lege ein neues Passwort für dein Konto fest.</Text>
-        <TextField
+    <Screen centered edges={['top', 'bottom']}>
+      <View style={{ paddingHorizontal: theme.space['2xl'] }}>
+        <Text variant="title2">Neues Passwort</Text>
+        <Text variant="subheadline" tone="secondary" style={{ marginTop: 6, marginBottom: theme.space['2xl'] }}>
+          Lege ein neues Passwort für dein Konto fest.
+        </Text>
+
+        <Field
           label="Neues Passwort"
+          icon="lock"
           value={password}
           onChangeText={setPassword}
-          secureTextEntry
+          secureToggle
           autoCapitalize="none"
+          autoComplete="new-password"
           placeholder="mind. 6 Zeichen"
+          returnKeyType="next"
         />
-        <TextField
+        <Field
           label="Passwort bestätigen"
+          icon="lock"
           value={confirm}
           onChangeText={setConfirm}
-          secureTextEntry
+          secureToggle
           autoCapitalize="none"
+          autoComplete="new-password"
           placeholder="••••••••"
+          error={mismatch ? 'Die Passwörter stimmen nicht überein.' : null}
+          returnKeyType="go"
+          onSubmitEditing={handleSubmit}
         />
-        <Button label="Passwort aktualisieren" onPress={handleSubmit} loading={loading} fullWidth />
-      </Card>
+
+        <Button
+          label="Passwort aktualisieren"
+          onPress={handleSubmit}
+          loading={loading}
+          disabled={password.length < 6 || mismatch}
+          fullWidth
+        />
+      </View>
     </Screen>
   );
 }

@@ -1,22 +1,37 @@
 import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAvoidingView, Platform, View, type StyleProp, type ViewStyle } from 'react-native';
+import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
+
+import { useTheme } from '@/theme/ThemeProvider';
 
 interface ScreenProps {
   children: ReactNode;
-  className?: string;
-  /** Center content vertically — used for auth screens, empty states. */
+  /** Center content vertically — auth screens, empty states. */
   centered?: boolean;
+  /** Which safe-area edges to inset. Tab screens skip `bottom` (the tab bar handles it). */
+  edges?: readonly Edge[];
+  /** `plain` uses the flat background — for screens whose content supplies its own cards. */
+  variant?: 'grouped' | 'plain';
+  style?: StyleProp<ViewStyle>;
 }
 
-/** Base screen wrapper: safe-area + soft brand-tinted background, matching the web app's `gradient-bg`. */
-export function Screen({ children, className, centered }: ScreenProps) {
+/** Base screen wrapper: themed background, safe area, keyboard avoidance. */
+export function Screen({
+  children,
+  centered,
+  edges = ['top'],
+  variant = 'grouped',
+  style,
+}: ScreenProps) {
+  const theme = useTheme();
+  const background = variant === 'grouped' ? theme.color.grouped : theme.color.background;
+
   return (
-    <View className="flex-1 bg-purple-50">
-      <SafeAreaView className={`flex-1 ${className ?? ''}`}>
+    <View style={{ flex: 1, backgroundColor: background }}>
+      <SafeAreaView style={{ flex: 1 }} edges={edges}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          className={`flex-1 ${centered ? 'justify-center' : ''}`}>
+          style={[{ flex: 1 }, centered && { justifyContent: 'center' }, style]}>
           {children}
         </KeyboardAvoidingView>
       </SafeAreaView>

@@ -7,6 +7,7 @@ import { Poppins_600SemiBold } from '@expo-google-fonts/poppins/600SemiBold';
 import { Poppins_700Bold } from '@expo-google-fonts/poppins/700Bold';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import * as Linking from 'expo-linking';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -15,6 +16,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ToastHost } from '@/components/ui/ToastHost';
 import { createSessionFromUrl } from '@/lib/auth';
 import { useAuthStore } from '@/store/auth-store';
+import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
 
 /**
  * Password-recovery links opened from outside the app (the user's email
@@ -67,9 +69,31 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <Stack screenOptions={{ headerShown: false }} />
-        <ToastHost />
+        <ThemeProvider>
+          <ThemedShell />
+        </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
+  );
+}
+
+/**
+ * Split out so it sits *inside* ThemeProvider and can read the resolved
+ * appearance — the navigator background and status bar have to match the theme
+ * or you get a white flash between screens in dark mode.
+ */
+function ThemedShell() {
+  const theme = useTheme();
+  return (
+    <>
+      <StatusBar style={theme.isDark ? 'light' : 'dark'} />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: theme.color.grouped },
+        }}
+      />
+      <ToastHost />
+    </>
   );
 }

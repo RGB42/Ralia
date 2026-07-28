@@ -1,0 +1,51 @@
+{
+  "cli": {
+    "version": ">= 21.2.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://nyvripddydrzvfuateea.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55dnJpcGRkeWRyenZmdWF0ZWVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMzgwOTksImV4cCI6MjA5MDYxNDA5OX0.oSogfwag7v8d4Tt-5HtflWadnnNSEpjuk-cMu7ql70s"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://nyvripddydrzvfuateea.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55dnJpcGRkeWRyenZmdWF0ZWVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMzgwOTksImV4cCI6MjA5MDYxNDA5OX0.oSogfwag7v8d4Tt-5HtflWadnnNSEpjuk-cMu7ql70s"
+      }
+    },
+    "production": {
+      "distribution": "store",
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle",
+        "resourceClass": "medium"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://nyvripddydrzvfuateea.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55dnJpcGRkeWRyenZmdWF0ZWVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMzgwOTksImV4cCI6MjA5MDYxNDA5OX0.oSogfwag7v8d4Tt-5HtflWadnnNSEpjuk-cMu7ql70s"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "android": {
+        "serviceAccountKeyPath": "./google-play-service-account.json",
+        "track": "internal",
+        "releaseStatus": "draft",
+        "changesNotSentForReview": false
+      }
+    }
+  }
+}

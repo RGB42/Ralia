@@ -1,16 +1,19 @@
 import { Link } from 'expo-router';
 import { useState } from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
-import { signUpWithPassword } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Field } from '@/components/ui/Field';
 import { Logo } from '@/components/ui/Logo';
 import { Screen } from '@/components/ui/Screen';
-import { TextField } from '@/components/ui/TextField';
+import { Text } from '@/components/ui/Text';
+import { signUpWithPassword } from '@/lib/auth';
 import { toast } from '@/store/toast-store';
+import { useTheme } from '@/theme/ThemeProvider';
 
 export default function SignupScreen() {
+  const theme = useTheme();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -43,59 +46,90 @@ export default function SignupScreen() {
 
   if (verificationEmail) {
     return (
-      <Screen centered className="px-6">
-        <Card className="items-center">
-          <Text className="text-5xl">💌</Text>
-          <Text className="mt-4 text-center text-lg font-semibold text-gray-800">
-            Bestätige deine E-Mail
+      <Screen centered edges={['top', 'bottom']}>
+        <EmptyState
+          icon="mail"
+          title="Bestätige deine E-Mail"
+          message={`Wir haben einen Bestätigungslink an ${verificationEmail} gesendet. Bitte öffne ihn, dann kannst du dich anmelden.`}
+        />
+        <Link href="/(auth)/login" asChild>
+          <Text variant="subheadline" tone="brand" weight="600" align="center">
+            Zurück zum Login
           </Text>
-          <Text className="mt-2 text-center text-gray-500">
-            Wir haben einen Bestätigungslink an {verificationEmail} gesendet. Bitte öffne ihn, dann kannst du
-            dich anmelden.
-          </Text>
-          <Link href="/(auth)/login" asChild>
-            <TouchableOpacity className="mt-6">
-              <Text className="text-sm font-semibold text-purple-600">Zurück zum Login</Text>
-            </TouchableOpacity>
-          </Link>
-        </Card>
+        </Link>
       </Screen>
     );
   }
 
   return (
-    <Screen centered className="px-6">
-      <Logo subtitle="Teile Deine Tage gemeinsam" />
-      <Card>
-        <TextField label="Dein Name" value={name} onChangeText={setName} placeholder="Alex" />
-        <TextField
-          label="E-Mail"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          autoComplete="email"
-          placeholder="du@beispiel.de"
-        />
-        <TextField
-          label="Passwort"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoCapitalize="none"
-          placeholder="mind. 6 Zeichen"
-        />
-        <Button label="Konto erstellen" onPress={handleSignup} loading={loading} fullWidth className="mt-2" />
+    <Screen edges={['top', 'bottom']}>
+      <ScrollView
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: 'center',
+          paddingHorizontal: theme.space['2xl'],
+          paddingVertical: theme.space['3xl'],
+        }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
+        <Logo subtitle="Teile Deine Tage gemeinsam" />
 
-        <View className="mt-6 flex-row justify-center gap-1">
-          <Text className="text-sm text-gray-500">Schon ein Konto?</Text>
-          <Link href="/(auth)/login" asChild>
-            <TouchableOpacity>
-              <Text className="text-sm font-semibold text-purple-600">Anmelden</Text>
-            </TouchableOpacity>
-          </Link>
+        <View style={{ marginTop: theme.space['3xl'] }}>
+          <Field
+            label="Dein Name"
+            icon="person"
+            value={name}
+            onChangeText={setName}
+            placeholder="Alex"
+            autoComplete="name"
+            returnKeyType="next"
+          />
+          <Field
+            label="E-Mail"
+            icon="mail"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            autoComplete="email"
+            placeholder="du@beispiel.de"
+            returnKeyType="next"
+          />
+          <Field
+            label="Passwort"
+            icon="lock"
+            value={password}
+            onChangeText={setPassword}
+            secureToggle
+            autoCapitalize="none"
+            autoComplete="new-password"
+            placeholder="mind. 6 Zeichen"
+            hint="Mindestens 6 Zeichen"
+            returnKeyType="go"
+            onSubmitEditing={handleSignup}
+          />
+
+          <Button label="Konto erstellen" onPress={handleSignup} loading={loading} fullWidth />
+
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'center',
+              gap: 5,
+              marginTop: theme.space['2xl'],
+            }}>
+            <Text variant="subheadline" tone="secondary">
+              Schon ein Konto?
+            </Text>
+            <Link href="/(auth)/login" asChild>
+              <Text variant="subheadline" tone="brand" weight="600">
+                Anmelden
+              </Text>
+            </Link>
+          </View>
         </View>
-      </Card>
+      </ScrollView>
     </Screen>
   );
 }
