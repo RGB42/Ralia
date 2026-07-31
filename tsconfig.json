@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom"],
+    "paths": {
+      "@ralia/core": ["packages/core/src/index.ts"],
+      "@ralia/core/*": ["packages/core/src/*"],
+      "@ralia/data": ["packages/data/src/index.ts"],
+      "@ralia/data/*": ["packages/data/src/*"],
+      "@ralia/ui": ["packages/ui/src/index.ts"],
+      "@ralia/ui/*": ["packages/ui/src/*"]
+    }
+  },
+  "include": [
+    "packages/*/src/**/*.ts",
+    "packages/*/src/**/*.tsx",
+    "apps/*/src/**/*.ts",
+    "apps/*/src/**/*.tsx",
+    "types/**/*.d.ts",
+    "vitest.config.ts",
+    "eslint.config.js"
+  ]
+}

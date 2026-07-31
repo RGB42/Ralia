@@ -1,0 +1,14 @@
+{
+  "name": "@ralia/core",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Framework-free domain logic for Ralia. No DOM, no React, no Supabase.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "dependencies": {
+    "idb": "^8.0.3"
+  }
+}

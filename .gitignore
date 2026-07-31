@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+build/
+*.tsbuildinfo
+
+# Test output
+coverage/
+playwright-report/
+test-results/
+.vitest/
+
+# Environment — never commit secrets
+.env
+.env.*
+!.env.example
+
+# Native build artefacts (Capacitor, SP7)
+apps/mobile/android/app/build/
+apps/mobile/android/build/
+apps/mobile/android/.gradle/
+apps/mobile/android/local.properties
+apps/mobile/ios/App/build/
+apps/mobile/ios/App/Pods/
+apps/mobile/ios/DerivedData/
+*.keystore
+*.jks
+*.mobileprovision
+*.p8
+*.p12
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Claude worktrees
+.claude/worktrees/
+
+# Logs
+*.log
+npm-debug.log*

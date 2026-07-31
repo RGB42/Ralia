@@ -1,0 +1,15 @@
+{
+  "name": "@ralia/data",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Supabase client, generated-equivalent DB types and the app-api edge function gateway.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "dependencies": {
+    "@ralia/core": "*",
+    "@supabase/supabase-js": "^2.58.0"
+  }
+}
