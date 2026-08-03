@@ -41,7 +41,9 @@ Hosting: Render **Static Site**, Publish-Dir `public`, kein Build-Step.
 
 ### Design-Vorlage
 
-`C:\Users\Ralph\Downloads\Paar-Kalender und Organizer App\Ralia Organizer.dc.html` — Design-Companion-Prototyp, 1.841 Zeilen, deklarativ (`sc-if`/`sc-for`/`{{ }}`), Styling ausschließlich über Inline-Styles auf CSS-Custom-Properties.
+[`docs/design-reference/Ralia-Organizer.dc.html`](../../design-reference/Ralia-Organizer.dc.html) — Design-Companion-Prototyp, 1.841 Zeilen, deklarativ (`sc-if`/`sc-for`/`{{ }}`), Styling ausschließlich über Inline-Styles auf CSS-Custom-Properties.
+
+Quelle: Claude-Design-Projekt „Paar-Kalender und Organizer App", `5f629a7f-cfd8-49a9-8249-1e8a4e2d6239`. Ursprünglich lag die Datei nur außerhalb des Repos (`C:\Users\Ralph\Downloads\…`) und war am 2026-08-03 dort nicht mehr vorhanden. Seither ist sie **versionierter Repo-Inhalt** — nicht Umgebungsvoraussetzung. Der Token-Paritätstest aus SP0 liest sie und schlägt fehl, wenn sie fehlt.
 
 Enthält: vollständiges Token-System (Light + Dark), Screens Kalender (Monat/Woche), Wochenplaner, Todos (Übersicht + Detail), Geld, Einstellungen, Sync; 8 Bottom Sheets (`day`, `event`, `item`, `plan`, `todo`, `expense`, `profile`, `new`); Desktop-Sidebar; mobile Bottom-Nav (5 Punkte); FAB.
 
