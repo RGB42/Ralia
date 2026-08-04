@@ -27,7 +27,9 @@ describe('Routing', () => {
     renderAt('/');
     // Die Platzhalter dieser Task rendern nur ihren Namen; einen <h1> gibt es
     // erst ab Task 16, wenn die Screens den AppHeader mitbringen.
-    expect(await screen.findByText('Kalender', { selector: 'p' })).toBeInTheDocument();
+    // Der Kalender-Screen bringt seinen eigenen AppHeader mit; sein <h1>
+    // traegt den Monatstitel des fiktiven Heute.
+    expect(await screen.findByRole('heading', { name: 'Juli 2026' })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Kalender' })[0]).toHaveAttribute(
       'aria-current',
       'page',
@@ -68,7 +70,9 @@ describe('Routing', () => {
 
   it('zeigt bei unbekanntem Pfad den Kalender', async () => {
     renderAt('/gibtsnicht');
-    expect(await screen.findByText('Kalender', { selector: 'p' })).toBeInTheDocument();
+    // Der Kalender-Screen bringt seinen eigenen AppHeader mit; sein <h1>
+    // traegt den Monatstitel des fiktiven Heute.
+    expect(await screen.findByRole('heading', { name: 'Juli 2026' })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Kalender' })[0]).toHaveAttribute(
       'aria-current',
       'page',

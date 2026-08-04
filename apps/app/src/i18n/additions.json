@@ -11,7 +11,21 @@
     "navMoney": "Geld",
     "navMoneyShort": "Geld",
     "navSettings": "Einstellungen",
-    "navProfileShort": "Profil"
+    "navProfileShort": "Profil",
+
+    "calKicker": "Gemeinsamer Kalender",
+    "calWeekKicker": "Kalenderwoche",
+    "calViewLabel": "Kalenderansicht",
+    "calLegendBoth": "Beide",
+    "calEventOne": "Termin",
+    "calEventMany": "Termine",
+    "calPrevMonth": "Vorheriger Monat",
+    "calNextMonth": "Nächster Monat",
+    "calPrevWeek": "Vorherige Woche",
+    "calNextWeek": "Nächste Woche",
+    "calAddEvent": "Termin hinzufügen",
+    "calNightExpand": "Nacht 00:00 – 06:00 anzeigen",
+    "calNightCollapse": "Nacht 00:00 – 06:00 einklappen"
   },
   "en": {
     "bootFailed": "The app could not start.",
@@ -25,6 +39,20 @@
     "navMoney": "Money",
     "navMoneyShort": "Money",
     "navSettings": "Settings",
-    "navProfileShort": "Profile"
+    "navProfileShort": "Profile",
+
+    "calKicker": "Shared calendar",
+    "calWeekKicker": "Calendar week",
+    "calViewLabel": "Calendar view",
+    "calLegendBoth": "Both",
+    "calEventOne": "event",
+    "calEventMany": "events",
+    "calPrevMonth": "Previous month",
+    "calNextMonth": "Next month",
+    "calPrevWeek": "Previous week",
+    "calNextWeek": "Next week",
+    "calAddEvent": "Add event",
+    "calNightExpand": "Show night 00:00 – 06:00",
+    "calNightCollapse": "Collapse night 00:00 – 06:00"
   }
 }

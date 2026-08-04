@@ -1,7 +1,8 @@
 import { Navigate, type RouteObject } from 'react-router';
+import { CalendarScreen } from '../screens/calendar/CalendarScreen.js';
 import { AppFrame } from './AppFrame.js';
 
-/** Platzhalter fuer SP0; die Screens kommen in Task 15 bis 22. */
+/** Platzhalter fuer die noch offenen Screens. */
 function Placeholder({ name }: { name: string }): React.JSX.Element {
   return <p>{name}</p>;
 }
@@ -12,7 +13,7 @@ export const routes: RouteObject[] = [
     element: <AppFrame />,
     children: [
       { index: true, element: <Navigate to="/kalender" replace /> },
-      { path: 'kalender', element: <Placeholder name="Kalender" /> },
+      { path: 'kalender', element: <CalendarScreen /> },
       { path: 'planer', element: <Placeholder name="Planer" /> },
       { path: 'todos', element: <Placeholder name="Todos" /> },
       { path: 'todos/:listId', element: <Placeholder name="Liste" /> },
