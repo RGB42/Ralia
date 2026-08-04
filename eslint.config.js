@@ -61,7 +61,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['**/*.test.{ts,tsx}', 'scripts/**/*.mjs', 'vitest.setup.ts'],
+    files: ['**/*.test.{ts,tsx}', 'e2e/**/*.ts', 'scripts/**/*.mjs', 'vitest.setup.ts'],
     rules: {
       'no-console': 'off',
       '@typescript-eslint/no-explicit-any': 'off',

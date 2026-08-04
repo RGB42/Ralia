@@ -2,14 +2,31 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "baseUrl": ".",
-    "types": ["node", "vite/client", "vitest/globals", "@testing-library/jest-dom"],
+    "types": [
+      "node",
+      "vite/client",
+      "vitest/globals",
+      "@testing-library/jest-dom"
+    ],
     "paths": {
-      "@ralia/core": ["packages/core/src/index.ts"],
-      "@ralia/core/*": ["packages/core/src/*"],
-      "@ralia/data": ["packages/data/src/index.ts"],
-      "@ralia/data/*": ["packages/data/src/*"],
-      "@ralia/ui": ["packages/ui/src/index.ts"],
-      "@ralia/ui/*": ["packages/ui/src/*"]
+      "@ralia/core": [
+        "packages/core/src/index.ts"
+      ],
+      "@ralia/core/*": [
+        "packages/core/src/*"
+      ],
+      "@ralia/data": [
+        "packages/data/src/index.ts"
+      ],
+      "@ralia/data/*": [
+        "packages/data/src/*"
+      ],
+      "@ralia/ui": [
+        "packages/ui/src/index.ts"
+      ],
+      "@ralia/ui/*": [
+        "packages/ui/src/*"
+      ]
     }
   },
   "include": [
@@ -19,6 +36,8 @@
     "apps/*/src/**/*.tsx",
     "types/**/*.d.ts",
     "vitest.config.ts",
-    "eslint.config.js"
+    "eslint.config.js",
+    "e2e/**/*.ts",
+    "playwright.config.ts"
   ]
 }
