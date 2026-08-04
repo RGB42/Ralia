@@ -1,0 +1,116 @@
+/**
+ * Design-Tokens aus der Ralia-Vorlage (docs/design-reference/Ralia-Organizer.dc.html).
+ * Wertgenau uebernommen und mechanisch abgesichert durch tokens.parity.test.ts.
+ *
+ * Achtung fuer kuenftige Aenderungen: tokens.parity.test.ts zerlegt jeden Block an
+ * ';' und verwirft jedes Segment, dessen Name nicht mit '--' beginnt. Ein Kommentar
+ * *innerhalb* eines Blocks, direkt vor einer Deklaration (ohne trennendes ';'),
+ * verschmilzt mit deren Namen und laesst die Deklaration damit aus der Karte fallen.
+ * Deshalb stehen alle Kommentare hier ausserhalb der '{ }'-Koerper; Gruppen innerhalb
+ * eines Blocks sind nur durch Leerzeilen getrennt.
+ *
+ * Jeder Block enthaelt zwei Gruppen:
+ *   1. Sichtbare Custom Properties aus dem <style>-Block der Vorlage (Z. 16-35).
+ *   2. Werte, die die Vorlage nur in JS-Logik hartcodiert - colors() (Z. 1172-1181),
+ *      track() (Z. 1243), Heute-Rand (Z. 1282) und Heute-Spaltenhintergrund (Z. 1317) -
+ *      hier erstmals als echte Custom Properties.
+ */
+
+:root {
+  --brand: #7c3aed;
+  --brand-fill: #7c3aed;
+  --brand-600: #6d28d9;
+  --brand-500: #8b5cf6;
+  --brand-soft: #f5f3ff;
+  --brand-line: #ede9fe;
+  --accent: #ec4899;
+  --u1: #3b82f6;
+  --u2: #ec4899;
+  --both: #8b5cf6;
+  --bday: #f97316;
+  --ink-900: #0f172a;
+  --ink-700: #334155;
+  --ink-500: #64748b;
+  --ink-400: #94a3b8;
+  --line: #e2e8f0;
+  --line-soft: #f1f5f9;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --bg-app: #f4f2fa;
+  --chrome: #efecf6;
+  --ok: #059669;
+  --danger: #dc2626;
+  --warn-soft: #fffbeb;
+  --warn-line: #fde68a;
+  --warn-fg: #b45309;
+  --shadow-sm: 0 2px 8px rgba(15,23,42,.07);
+  --shadow-md: 0 8px 24px rgba(15,23,42,.10);
+  --shadow-lg: 0 16px 40px rgba(15,23,42,.16);
+  --hov-tint: rgba(124,58,237,.06);
+  --hov-ring: rgba(124,58,237,.42);
+  --hov-surf: #f3f0fc;
+  --hov-shadow: 0 6px 18px rgba(15,23,42,.14);
+  --hov-danger: rgba(220,38,38,.08);
+
+  --u1-bg: #eff6ff;
+  --u1-fg: #1d4ed8;
+  --u2-bg: #fdf2f8;
+  --u2-fg: #be185d;
+  --both-bg: #f5f3ff;
+  --both-fg: #6d28d9;
+  --bday-bg: #fff7ed;
+  --bday-fg: #c2410c;
+
+  --track-off: #cbd5e1;
+
+  --today-line: #ddd0fb;
+  --today-col: rgba(124,58,237,.035);
+}
+
+/*
+ * Dark-Theme. u1/u2/both/bday (die Balkenfarben) werden hier bewusst NICHT
+ * wiederholt: die Vorlage ueberschreibt sie im Dark-Theme nicht, siehe colors()
+ * (Z. 1172-1181) - nur bg/fg unterscheiden sich pro Theme.
+ */
+:root[data-ralia-theme="dark"] {
+  --brand: #a78bfa;
+  --brand-600: #c4b5fd;
+  --brand-500: #8b5cf6;
+  --brand-soft: #241f33;
+  --brand-line: #332c47;
+  --ink-900: #f1f5f9;
+  --ink-700: #cbd5e1;
+  --ink-500: #94a3b8;
+  --ink-400: #7c8798;
+  --line: #2f2a3d;
+  --line-soft: #262133;
+  --surface: #1a1725;
+  --surface-2: #211d2e;
+  --bg-app: #100e17;
+  --chrome: #171422;
+  --warn-soft: rgba(217,119,6,.14);
+  --warn-line: rgba(251,191,36,.3);
+  --warn-fg: #fbbf24;
+  --shadow-sm: 0 2px 8px rgba(0,0,0,.4);
+  --shadow-md: 0 10px 28px rgba(0,0,0,.45);
+  --shadow-lg: 0 18px 44px rgba(0,0,0,.55);
+  --hov-tint: rgba(167,139,250,.11);
+  --hov-ring: rgba(167,139,250,.5);
+  --hov-surf: #2a2438;
+  --hov-shadow: 0 6px 20px rgba(0,0,0,.5);
+  --hov-danger: rgba(248,113,113,.14);
+
+  --u1-bg: rgba(59,130,246,.17);
+  --u1-fg: #93c5fd;
+  --u2-bg: rgba(236,72,153,.17);
+  --u2-fg: #f9a8d4;
+  --both-bg: rgba(139,92,246,.19);
+  --both-fg: #c4b5fd;
+  --bday-bg: rgba(249,115,22,.17);
+  --bday-fg: #fdba74;
+
+  --track-off: #3a3450;
+
+  --today-line: #3d3555;
+  --today-col: rgba(167,139,250,.06);
+}

@@ -20,7 +20,11 @@ export default defineConfig({
           name: 'node',
           environment: 'node',
           globals: true,
-          include: ['packages/core/src/**/*.test.ts', 'packages/data/src/**/*.test.ts'],
+          include: [
+            'packages/core/src/**/*.test.ts',
+            'packages/data/src/**/*.test.ts',
+            'packages/ui/src/**/*.test.ts',
+          ],
         },
       },
       {

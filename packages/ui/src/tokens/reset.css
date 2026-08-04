@@ -1,0 +1,107 @@
+/**
+ * Reset aus der Ralia-Vorlage (docs/design-reference/Ralia-Organizer.dc.html, Z. 36-47).
+ * Wertgenau uebernommen, plus zwei bewusste Abweichungen (siehe unten) - beide vom
+ * Task-3-Spec gefordert, keine freie Gestaltung. Setzt tokens.css voraus (--bg-app,
+ * --ink-700, --brand, --brand-600, --hov-ring).
+ */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-app);
+  font-family: 'Poppins', system-ui, sans-serif;
+  color: var(--ink-700);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--brand);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--brand-600);
+}
+
+button {
+  font-family: inherit;
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+}
+
+* {
+  scrollbar-color: rgba(124,58,237,.35) transparent;
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  background: transparent;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(124,58,237,.28);
+  border-radius: 8px;
+}
+
+@keyframes ral-up {
+  from {
+    transform: translateY(14px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes ral-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/*
+ * Abweichung 1: Fokus-Zustand. Die Vorlage hat keinen - dort gibt es keine
+ * Tastaturnavigation zu bedienen. Nur bei Tastaturnutzung sichtbar (:focus-visible),
+ * damit Mausklicks keinen Ring auslösen.
+ */
+:where(button, a, input, textarea, select, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--hov-ring);
+}
+
+/*
+ * Abweichung 2: Mobil randlos statt Telefon-Attrappe. Die Vorlage simuliert ein
+ * Telefon-Gehäuse fester Größe für die Desktop-Vorschau; in der echten App (Browser-
+ * Tab wie Capacitor-WebView) füllt die Seite die tatsächliche sichtbare Höhe.
+ */
+html,
+body {
+  height: 100%;
+}
+
+body {
+  min-height: 100dvh;
+}
+
+@supports not (min-height: 100dvh) {
+  body {
+    min-height: 100vh;
+  }
+}

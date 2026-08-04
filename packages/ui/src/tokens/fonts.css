@@ -1,0 +1,12 @@
+/**
+ * Poppins selbst gehostet ueber @fontsource/poppins (installiert: 5.3.0).
+ *
+ * Die Vorlage laedt die Schrift per <link> von Google Fonts (Z. 12-14). Das
+ * funktioniert offline und in der Capacitor-WebView nicht - deshalb hosten wir
+ * die vier verwendeten Gewichte (400/500/600/700, siehe Google-Fonts-URL der
+ * Vorlage: wght@400;500;600;700) selbst.
+ */
+@import '@fontsource/poppins/400.css';
+@import '@fontsource/poppins/500.css';
+@import '@fontsource/poppins/600.css';
+@import '@fontsource/poppins/700.css';
