@@ -11,6 +11,9 @@ export default tseslint.config(
       '**/coverage/**',
       'apps/mobile/android/**',
       'apps/mobile/ios/**',
+      // Referenzcode, nicht Teil des Builds: React-Native-Quellen des
+      // vorherigen Anlaufs. Sie kompilieren hier nicht und sollen es nicht.
+      'docs/native-rebuild-reference/**',
     ],
   },
   js.configs.recommended,
