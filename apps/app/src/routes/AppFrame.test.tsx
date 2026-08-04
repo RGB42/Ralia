@@ -1,0 +1,63 @@
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { RouterProvider, createMemoryRouter } from 'react-router';
+import { describe, expect, it } from 'vitest';
+import { routes } from './router.js';
+
+function renderAt(path: string) {
+  return render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
+}
+
+describe('Routing', () => {
+  it('leitet / auf /kalender', async () => {
+    renderAt('/');
+    // Die Platzhalter dieser Task rendern nur ihren Namen; einen <h1> gibt es
+    // erst ab Task 16, wenn die Screens den AppHeader mitbringen.
+    expect(await screen.findByText('Kalender', { selector: 'p' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Kalender' })[0]).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  });
+
+  it.each([
+    ['/planer', 'Planer'],
+    ['/todos', 'Todos'],
+    ['/geld', 'Geld'],
+    ['/profil', 'Profil'],
+  ])('markiert bei %s den Tab %s', async (path, label) => {
+    renderAt(path);
+    const active = (await screen.findAllByRole('button', { name: label })).filter(
+      (b) => b.getAttribute('aria-current') === 'page',
+    );
+    expect(active.length).toBeGreaterThan(0);
+  });
+
+  it('navigiert per Klick auf einen Tab', async () => {
+    renderAt('/kalender');
+    const [geld] = await screen.findAllByRole('button', { name: 'Geld' });
+    expect(geld).toBeDefined();
+    await userEvent.click(geld as HTMLElement);
+    const active = screen
+      .getAllByRole('button', { name: 'Geld' })
+      .filter((b) => b.getAttribute('aria-current') === 'page');
+    expect(active.length).toBeGreaterThan(0);
+  });
+
+  it('haelt /profil/sync auf dem Profil-Tab', async () => {
+    renderAt('/profil/sync');
+    const active = (await screen.findAllByRole('button', { name: 'Profil' })).filter(
+      (b) => b.getAttribute('aria-current') === 'page',
+    );
+    expect(active.length).toBeGreaterThan(0);
+  });
+
+  it('zeigt bei unbekanntem Pfad den Kalender', async () => {
+    renderAt('/gibtsnicht');
+    expect(await screen.findByText('Kalender', { selector: 'p' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Kalender' })[0]).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  });
+});

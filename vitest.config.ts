@@ -4,11 +4,17 @@ import { defineConfig } from 'vitest/config';
 
 const resolvePath = (relative: string) => fileURLToPath(new URL(relative, import.meta.url));
 
-const alias = {
-  '@ralia/core': resolvePath('./packages/core/src/index.ts'),
-  '@ralia/data': resolvePath('./packages/data/src/index.ts'),
-  '@ralia/ui': resolvePath('./packages/ui/src/index.ts'),
-};
+// Array form with regexes, not the object form: a string alias also replaces the
+// prefix of subpath imports, turning '@ralia/ui/tokens/tokens.css' into
+// 'packages/ui/src/index.ts/tokens/tokens.css'.
+const alias = [
+  { find: /^@ralia\/core\/(.*)$/, replacement: resolvePath('./packages/core/src/$1') },
+  { find: /^@ralia\/core$/, replacement: resolvePath('./packages/core/src/index.ts') },
+  { find: /^@ralia\/data\/(.*)$/, replacement: resolvePath('./packages/data/src/$1') },
+  { find: /^@ralia\/data$/, replacement: resolvePath('./packages/data/src/index.ts') },
+  { find: /^@ralia\/ui\/(.*)$/, replacement: resolvePath('./packages/ui/src/$1') },
+  { find: /^@ralia\/ui$/, replacement: resolvePath('./packages/ui/src/index.ts') },
+];
 
 export default defineConfig({
   test: {
