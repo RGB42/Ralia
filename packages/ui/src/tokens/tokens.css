@@ -2,21 +2,18 @@
  * Design-Tokens aus der Ralia-Vorlage (docs/design-reference/Ralia-Organizer.dc.html).
  * Wertgenau uebernommen und mechanisch abgesichert durch tokens.parity.test.ts.
  *
- * Achtung fuer kuenftige Aenderungen: tokens.parity.test.ts zerlegt jeden Block an
- * ';' und verwirft jedes Segment, dessen Name nicht mit '--' beginnt. Ein Kommentar
- * *innerhalb* eines Blocks, direkt vor einer Deklaration (ohne trennendes ';'),
- * verschmilzt mit deren Namen und laesst die Deklaration damit aus der Karte fallen.
- * Deshalb stehen alle Kommentare hier ausserhalb der '{ }'-Koerper; Gruppen innerhalb
- * eines Blocks sind nur durch Leerzeilen getrennt.
- *
- * Jeder Block enthaelt zwei Gruppen:
+ * Jeder Block enthaelt zwei Gruppen, unten mit je einem Kommentar markiert:
  *   1. Sichtbare Custom Properties aus dem <style>-Block der Vorlage (Z. 16-35).
  *   2. Werte, die die Vorlage nur in JS-Logik hartcodiert - colors() (Z. 1172-1181),
  *      track() (Z. 1243), Heute-Rand (Z. 1282) und Heute-Spaltenhintergrund (Z. 1317) -
  *      hier erstmals als echte Custom Properties.
+ *
+ * tokens.parity.test.ts entfernt Kommentare aus jedem Block, bevor er an ';'
+ * trennt - Kommentare hier drin sind also sicher und veraendern keinen Wert.
  */
 
 :root {
+  /* Sichtbar in der Vorlage (Z. 16-26) */
   --brand: #7c3aed;
   --brand-fill: #7c3aed;
   --brand-600: #6d28d9;
@@ -52,6 +49,7 @@
   --hov-shadow: 0 6px 18px rgba(15,23,42,.14);
   --hov-danger: rgba(220,38,38,.08);
 
+  /* Verdeckt: colors() (Z. 1172-1181) - bg/fg je Personen-Slot, Light-Werte */
   --u1-bg: #eff6ff;
   --u1-fg: #1d4ed8;
   --u2-bg: #fdf2f8;
@@ -61,8 +59,10 @@
   --bday-bg: #fff7ed;
   --bday-fg: #c2410c;
 
+  /* Verdeckt: track() (Z. 1243) - Toggle-Bahn im ausgeschalteten Zustand */
   --track-off: #cbd5e1;
 
+  /* Verdeckt: Heute-Rand (Z. 1282) und Heute-Spaltenhintergrund (Z. 1317) */
   --today-line: #ddd0fb;
   --today-col: rgba(124,58,237,.035);
 }
@@ -73,6 +73,7 @@
  * (Z. 1172-1181) - nur bg/fg unterscheiden sich pro Theme.
  */
 :root[data-ralia-theme="dark"] {
+  /* Sichtbar in der Vorlage (Z. 27-34) */
   --brand: #a78bfa;
   --brand-600: #c4b5fd;
   --brand-500: #8b5cf6;
@@ -100,6 +101,7 @@
   --hov-shadow: 0 6px 20px rgba(0,0,0,.5);
   --hov-danger: rgba(248,113,113,.14);
 
+  /* Verdeckt: colors() (Z. 1172-1181) - bg/fg je Personen-Slot, Dark-Werte */
   --u1-bg: rgba(59,130,246,.17);
   --u1-fg: #93c5fd;
   --u2-bg: rgba(236,72,153,.17);
@@ -109,8 +111,10 @@
   --bday-bg: rgba(249,115,22,.17);
   --bday-fg: #fdba74;
 
+  /* Verdeckt: track() (Z. 1243) - Toggle-Bahn im ausgeschalteten Zustand */
   --track-off: #3a3450;
 
+  /* Verdeckt: Heute-Rand (Z. 1282) und Heute-Spaltenhintergrund (Z. 1317) */
   --today-line: #3d3555;
   --today-col: rgba(167,139,250,.06);
 }

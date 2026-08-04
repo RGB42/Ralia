@@ -14,7 +14,13 @@ function customProps(css: string, selector: string): Map<string, string> {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const match = new RegExp(`${escaped}\\s*\\{([^}]*)\\}`).exec(css);
   if (!match) throw new Error(`Block nicht gefunden: ${selector}`);
-  const body = match[1] ?? '';
+  let body = match[1] ?? '';
+  // Kommentare zuerst entfernen: ohne das verschluckt ein /* ... */ die
+  // nachfolgende Deklaration, weil sie beim Trennen am ';' mit dem
+  // Kommentar zu einem Namen verschmilzt, der nicht mit '--' beginnt.
+  // Das betrifft beide Seiten des Vergleichs — auch die synchronisierte
+  // Vorlage, wo es zu Falsch-Gruen fuehren wuerde.
+  body = body.replace(/\/\*[\s\S]*?\*\//g, '');
   const out = new Map<string, string>();
   for (const decl of body.split(';')) {
     const colon = decl.indexOf(':');
@@ -92,5 +98,19 @@ describe('Token-Parität mit der Design-Vorlage', () => {
   it('setzt --brand-fill themenunabhängig', () => {
     expect(customProps(tokensSrc, ':root').get('--brand-fill')).toBe('#7c3aed');
     expect(customProps(tokensSrc, ':root[data-ralia-theme="dark"]').has('--brand-fill')).toBe(false);
+  });
+
+  it('liest Properties auch mit Kommentaren im Block', () => {
+    const cases = [
+      ':root{ --a:#111; /* Gruppe */ --b:#222; }',
+      ':root{ /* Kopf */ --a:#111; --b:#222; }',
+      ':root{ --a:#111; --b:#222; /* Ende */ }',
+      ':root{ --a:#111; /* mehrzeilig\n   weiter */ --b:#222; }',
+    ];
+    for (const css of cases) {
+      const props = customProps(css, ':root');
+      expect([...props.keys()], css).toEqual(['--a', '--b']);
+      expect(props.get('--b'), css).toBe('#222');
+    }
   });
 });
