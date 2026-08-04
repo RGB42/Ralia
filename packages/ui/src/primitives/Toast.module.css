@@ -1,0 +1,81 @@
+/*
+ * Nicht in der Vorlage. Aus deren Sprache abgeleitet: Kartenoptik wie Card,
+ * Einblendkurve wie die Sheets (ral-up .22s cubic-bezier(.2,.8,.2,1)).
+ * Ueber dem FAB, der mobil auf bottom:74px sitzt.
+ */
+
+.host {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(74px + env(safe-area-inset-bottom) + 12px);
+  z-index: 60;
+  width: min(420px, calc(100vw - 32px));
+  display: flex;
+  justify-content: center;
+}
+
+@media (min-width: 1024px) {
+  .host {
+    bottom: 20px;
+  }
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-900);
+  font-size: 12.5px;
+  font-weight: 500;
+  box-shadow: var(--shadow-lg);
+  animation: ral-up 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}
+
+.info {
+  border-color: var(--brand-line);
+  background: var(--brand-soft);
+  color: var(--brand-600);
+}
+
+.ok {
+  color: var(--ok);
+}
+
+.danger {
+  border-color: rgba(220, 38, 38, 0.45);
+  background: var(--hov-danger);
+  color: var(--danger);
+}
+
+.message {
+  flex: 1;
+  min-width: 0;
+}
+
+.close {
+  flex: none;
+  border: none;
+  background: transparent;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px;
+}
+
+.close:hover {
+  opacity: 1;
+}

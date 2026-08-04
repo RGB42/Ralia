@@ -1,0 +1,12 @@
+/* Platzhalter waehrend des Ladens. Nicht in der Vorlage; Fuellfarbe ist --line-soft. */
+
+.skeleton {
+  background: var(--line-soft);
+  animation: ral-pulse 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}

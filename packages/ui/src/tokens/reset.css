@@ -77,6 +77,21 @@ select {
 }
 
 /*
+ * Nicht in der Vorlage: Puls fuer Skeleton-Platzhalter. Die Vorlage kennt
+ * keinen Ladezustand, weil sie feste Demo-Daten zeigt. Abgeschaltet bei
+ * prefers-reduced-motion (im Modul der Komponente).
+ */
+@keyframes ral-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/*
  * Abweichung 1: Fokus-Zustand. Die Vorlage hat keinen - dort gibt es keine
  * Tastaturnavigation zu bedienen. Nur bei Tastaturnutzung sichtbar (:focus-visible),
  * damit Mausklicks keinen Ring auslösen.
