@@ -2499,7 +2499,9 @@ function renderAt(path: string) {
 describe('Routing', () => {
   it('leitet / auf /kalender', async () => {
     renderAt('/');
-    expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
+    // Die Platzhalter dieser Task rendern nur ihren Namen; einen <h1> gibt es
+    // erst ab Task 16, wenn die Screens den AppHeader mitbringen.
+    expect(await screen.findByText('Kalender', { selector: 'p' })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Kalender' })[0])
       .toHaveAttribute('aria-current', 'page');
   });
@@ -3996,9 +3998,9 @@ Expected: FAIL
 
 - [ ] **Step 4: `todo-store.ts` implementieren**
 
-Ein `useState`-Haken mit den Fixtures als Startwert, `toggle(id)` kippt `done`, `filter` ist `'alle' | 'u1' | 'u2' | 'offen'` (Vorlage Z. 1382–1400). Kein Kontext: SP3 ersetzt das ohnehin durch ein Repository, und ein Kontext hier wäre Ballast.
+Ein `useState`-Speicher mit den Fixtures als Startwert, `toggle(id)` kippt `done`, `filter` ist `'alle' | 'u1' | 'u2' | 'offen'` (Vorlage Z. 1382–1400).
 
-Der Zustand liegt in einem Kontext auf `/todos`-Ebene, damit Übersicht und Detail dieselbe Wahrheit sehen — sonst würde ein Abhaken im Detail beim Zurückgehen verpuffen. Also: `TodoStoreProvider` im Router als Elternroute für `/todos` und `/todos/:listId`.
+Der Zustand muss in einem Kontext auf `/todos`-Ebene liegen, damit Übersicht und Detail dieselbe Wahrheit sehen — sonst verpufft ein Abhaken im Detail beim Zurückgehen. Also `TodoStoreProvider` als Elternroute für `/todos` und `/todos/:listId`; `useTodoStore` liest daraus. Mehr als das braucht es nicht: SP3 ersetzt den Speicher durch ein Repository.
 
 - [ ] **Step 5: `TodoOverview` implementieren**
 
@@ -4271,9 +4273,14 @@ describe('SettingsScreen', () => {
 
   it('wechselt die Sprache auf Englisch', async () => {
     renderScreen();
+    // Vorher steht die Abschnittsüberschrift auf Deutsch da.
+    expect(screen.getByText('Persönlich')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('radio', { name: 'EN' }));
     expect(localStorage.getItem(LANG_STORAGE_KEY)).toBe('en');
-    expect(screen.getByText('Settings')).toBeInTheDocument();
+    // Der Screen-Titel lebt im AppHeader, nicht hier — geprüft wird eine
+    // Beschriftung, die dieser Screen selbst rendert.
+    expect(screen.queryByText('Persönlich')).toBeNull();
+    expect(screen.getByText('Personal')).toBeInTheDocument();
   });
 
   it('zeigt den Einladungscode', () => {
@@ -4315,6 +4322,8 @@ Vorlage Z. 443–563, sechs Blöcke:
 1. **Profilkarte** (Z. 444–467): `Avatar` 52 px Radius 18, Name `font-size:15px`, E-Mail `font-size:11.5px`, „Bearbeiten"-Knopf; darunter drei Kennzahlen im `repeat(3,...)`-Raster auf `--surface-2`, Radius 13, Zahl `font-size:17px`, Beschriftung `font-size:10px`. Jede Kennzahl trägt `data-testid="profile-stat"`.
 2. **Partner** (Z. 469–495): Partnerzeile mit „verbunden seit …" in `--ok` und „Trennen" als `Button variant="danger"`; darunter der Einladungscode `font-size:21px`, `letter-spacing:4px`, `font-variant-numeric:tabular-nums` in `--brand-600`, daneben der QR-Platzhalter 66×66 mit `border:1px dashed`; drei Knöpfe Kopieren/Teilen/Neuer Code.
 3. **Persönlich** (Z. 497–533): `ListRow` für Geburtstag; `ListRow` mit `Toggle` für Dark Mode, beschriftet nach `useTheme().resolved`; `ListRow` mit `Toggle` für Push-Erinnerungen; `ListRow` mit `SegmentSwitch` `Mo | So` für den Wochenstart.
+
+Jede Abschnittsüberschrift braucht einen i18n-Schlüssel in `additions.json` — die Vorlage hat sie nur deutsch hartcodiert. Mindestens: `settingsPartner` (Partner / Partner), `settingsPersonal` (Persönlich / Personal), `settingsGoogle` (Google Kalender / Google Calendar), `settingsLanguage` (Sprache / Language). Der Test in Step 1 prüft den Wechsel an `settingsPersonal`, weil der Screen-Titel im `AppHeader` liegt und hier nicht mitgerendert wird.
 4. **Sprache** — in der Vorlage nicht vorhanden, aus der Sprache abgeleitet: eine `ListRow` mit `SegmentSwitch` `DE | EN`, gebaut wie der Wochenstart-Schalter. Abnahmekriterium 7 verlangt eine erreichbare Umschaltung.
 5. **Google Kalender** (Z. 535–560): Zeile „Verbunden" mit `Toggle`, zwei Knöpfe Importieren/Exportieren, darunter die klickbare `ListRow` „Kalender & Konflikte verwalten", die auf `/profil/sync` navigiert.
 6. **Fußzeile** (Z. 562): `font-size:10.5px`, zentriert, `--ink-400`.
@@ -4352,7 +4361,7 @@ abgeleitet - Abnahmekriterium 7 verlangt sie erreichbar."
 - [ ] **Step 1: Tests schreiben**
 
 ```tsx
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RouterProvider, createMemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
@@ -4372,7 +4381,9 @@ describe('SyncScreen', () => {
 
   it('zeigt fünf Kalender mit Schaltern', async () => {
     renderSync();
-    expect(await screen.findAllByRole('switch')).toHaveLength(6); // 5 Kalender + Auto-Sync
+    // Nur die fünf Kalender: der Auto-Sync-Schalter sitzt in den
+    // Einstellungen, nicht hier (Vorlage Z. 542 gegen Z. 594–604).
+    expect(await screen.findAllByRole('switch')).toHaveLength(5);
   });
 
   it('schaltet einen Kalender aus', async () => {
@@ -4383,10 +4394,21 @@ describe('SyncScreen', () => {
     expect(screen.getAllByRole('switch')[0]).not.toBeChecked();
   });
 
-  it('wählt eine Sync-Richtung', async () => {
+  it('bietet die drei Sync-Richtungen als Radiogruppe an', async () => {
     renderSync();
-    const options = await screen.findAllByRole('radio', { name: /Richtung|Ralia|Google/ });
-    expect(options.length).toBeGreaterThanOrEqual(3);
+    const group = await screen.findByRole('radiogroup', { name: 'Richtung' });
+    expect(within(group).getAllByRole('radio')).toHaveLength(3);
+  });
+
+  it('wechselt die Sync-Richtung mit den Pfeiltasten', async () => {
+    renderSync();
+    const group = await screen.findByRole('radiogroup', { name: 'Richtung' });
+    const checked = within(group).getAllByRole('radio').find((r) => r.getAttribute('aria-checked') === 'true');
+    checked!.focus();
+    await userEvent.keyboard('{ArrowDown}');
+    const nowChecked = within(group).getAllByRole('radio').filter((r) => r.getAttribute('aria-checked') === 'true');
+    expect(nowChecked).toHaveLength(1);
+    expect(nowChecked[0]).not.toBe(checked);
   });
 
   it('zeigt den offenen Konflikt mit beiden Fassungen', async () => {
@@ -4441,7 +4463,7 @@ Alle Fixtures dieses Screens (Konten, Kalender, Protokoll, Konflikt) nach `apps/
 - [ ] **Step 4: Tests laufen lassen und committen**
 
 Run: `npx vitest run apps/app/src/screens/settings`
-Expected: PASS, 17 Tests
+Expected: PASS, 18 Tests (8 aus Task 21, 10 hier)
 
 ```bash
 git add apps/app
