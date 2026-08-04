@@ -2,15 +2,12 @@ import { Navigate, Outlet, type RouteObject } from 'react-router';
 import { CalendarScreen } from '../screens/calendar/CalendarScreen.js';
 import { MoneyScreen } from '../screens/money/MoneyScreen.js';
 import { PlannerScreen } from '../screens/planner/PlannerScreen.js';
+import { SettingsScreen } from '../screens/settings/SettingsScreen.js';
+import { SyncScreen } from '../screens/settings/SyncScreen.js';
 import { TodoDetail } from '../screens/todos/TodoDetail.js';
 import { TodoOverview } from '../screens/todos/TodoOverview.js';
 import { TodoStoreProvider } from '../screens/todos/todo-store.js';
 import { AppFrame } from './AppFrame.js';
-
-/** Platzhalter fuer die noch offenen Screens. */
-function Placeholder({ name }: { name: string }): React.JSX.Element {
-  return <p>{name}</p>;
-}
 
 /**
  * Der Todo-Zustand haengt an einer Elternroute statt an den Screens: sonst
@@ -41,8 +38,8 @@ export const routes: RouteObject[] = [
         ],
       },
       { path: 'geld', element: <MoneyScreen /> },
-      { path: 'profil', element: <Placeholder name="Einstellungen" /> },
-      { path: 'profil/sync', element: <Placeholder name="Google Kalender" /> },
+      { path: 'profil', element: <SettingsScreen /> },
+      { path: 'profil/sync', element: <SyncScreen /> },
       { path: '*', element: <Navigate to="/kalender" replace /> },
     ],
   },

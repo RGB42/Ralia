@@ -1,20 +1,10 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { RouterProvider, createMemoryRouter } from 'react-router';
-import { beforeEach, describe, expect, it } from 'vitest';
-import { I18nProvider } from '../../i18n/I18nProvider.js';
-import { LANG_STORAGE_KEY } from '../../i18n/catalog.js';
-import { routes } from '../../routes/router.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { pinLanguage, renderAppAt as renderAt } from '../../test-harness.js';
 
-beforeEach(() => localStorage.setItem(LANG_STORAGE_KEY, 'de'));
-
-function renderAt(path: string) {
-  return render(
-    <I18nProvider>
-      <RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />
-    </I18nProvider>,
-  );
-}
+beforeEach(() => pinLanguage('de'));
+afterEach(() => vi.unstubAllGlobals());
 
 describe('TodoOverview', () => {
   it('zeigt eine Kachel je Liste plus die Anlegen-Kachel', async () => {

@@ -467,3 +467,45 @@ export const MOCK_BALANCE = {
   expenseCount: 14,
   monthlyBudget: 2000,
 } as const;
+
+export interface MockSyncAccount {
+  email: string;
+  initial: string;
+  slot: PersonSlot;
+  meta: string;
+  status: string;
+}
+
+/** Vorlage Z. 579–587. */
+export const MOCK_SYNC_ACCOUNTS: readonly MockSyncAccount[] = [
+  {
+    email: 'jonas.berger@gmail.com',
+    initial: 'J',
+    slot: 'u1',
+    meta: '2 Kalender · seit 04.01.2026',
+    status: 'aktiv',
+  },
+  {
+    email: 'lena.wolf@gmail.com',
+    initial: 'L',
+    slot: 'u2',
+    meta: '2 Kalender · seit 19.02.2026',
+    status: 'aktiv',
+  },
+];
+
+/** Vorlage Z. 671–676. */
+export const MOCK_SYNC_LOG: readonly { when: string; text: string }[] = [
+  { when: 'heute 08:14', text: '3 Termine von Google übernommen' },
+  { when: 'heute 08:14', text: '1 Termin nach Google geschrieben (Yoga)' },
+  { when: 'gestern 22:03', text: '1 Konflikt erkannt (Zahnarzt)' },
+  { when: 'gestern 07:58', text: '5 Termine abgeglichen, keine Änderungen' },
+];
+
+/** Vorlage Z. 641–651. */
+export const MOCK_CONFLICT = {
+  title: 'Zahnarzt',
+  date: '29. Juli',
+  ralia: { time: '09:00 – 10:00', location: 'Praxis Dr. Feld' },
+  google: { time: '09:30 – 10:30', location: 'Praxis Dr. Feld' },
+} as const;

@@ -31,3 +31,18 @@
 .on .knob {
   left: 22px;
 }
+
+/* Schmalere Bahn der Sync-Kalenderliste (Vorlage Z. 611): 44×25, Knopf 19. */
+.small {
+  width: 44px;
+  height: 25px;
+}
+
+.small .knob {
+  width: 19px;
+  height: 19px;
+}
+
+.small.on .knob {
+  left: 22px;
+}

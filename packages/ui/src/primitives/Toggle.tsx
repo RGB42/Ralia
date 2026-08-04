@@ -5,6 +5,8 @@ export interface ToggleProps {
   onChange(next: boolean): void;
   label: string;
   disabled?: boolean;
+  /** `sm` ist die schmalere Bahn der Sync-Kalenderliste (Vorlage Z. 611). */
+  size?: 'md' | 'sm';
 }
 
 /**
@@ -16,6 +18,7 @@ export function Toggle({
   onChange,
   label,
   disabled = false,
+  size = 'md',
 }: ToggleProps): React.JSX.Element {
   return (
     <button
@@ -24,7 +27,9 @@ export function Toggle({
       aria-checked={checked}
       aria-label={label}
       disabled={disabled}
-      className={`${styles.track} ${checked ? styles.on : ''}`}
+      className={[styles.track, size === 'sm' ? styles.small : null, checked ? styles.on : null]
+        .filter(Boolean)
+        .join(' ')}
       onClick={() => onChange(!checked)}
     >
       <span className={styles.knob} />
