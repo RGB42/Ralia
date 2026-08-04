@@ -37,7 +37,27 @@
     "plannerShoppingList": "Einkaufsliste",
     "plannerAddTask": "Aufgabe",
     "plannerAddEntry": "Eintrag hinzufügen",
-    "plannerEditMeal": "Essen bearbeiten"
+    "plannerEditMeal": "Essen bearbeiten",
+
+    "back": "Zurück",
+    "todosKicker": "Todos & Einkauf",
+    "todosTitle": "Listen",
+    "todosNewList": "Neue Liste",
+    "todosRecentlyDone": "Zuletzt erledigt",
+    "todosAllDone": "alles erledigt",
+    "todosOfOpen": "von",
+    "todosOpenSuffix": "offen",
+    "todosProgress": "Fortschritt",
+    "todosFilterAll": "Alle",
+    "todosFilterOpen": "Nur offen",
+    "todosNothingOpen": "Nichts offen – alles abgehakt",
+    "todosAddItem": "Eintrag hinzufügen",
+    "todosDone": "Erledigt",
+    "todosShow": "anzeigen",
+    "todosHide": "verbergen",
+    "todosEntries": "Einträge",
+    "todosSharedWith": "geteilt mit",
+    "todosMetaHint": "antippen = erledigt, lange drücken = bearbeiten"
   },
   "en": {
     "bootFailed": "The app could not start.",
@@ -77,6 +97,26 @@
     "plannerShoppingList": "Shopping list",
     "plannerAddTask": "Task",
     "plannerAddEntry": "Add entry",
-    "plannerEditMeal": "Edit meal"
+    "plannerEditMeal": "Edit meal",
+
+    "back": "Back",
+    "todosKicker": "To-dos & shopping",
+    "todosTitle": "Lists",
+    "todosNewList": "New list",
+    "todosRecentlyDone": "Recently done",
+    "todosAllDone": "all done",
+    "todosOfOpen": "of",
+    "todosOpenSuffix": "open",
+    "todosProgress": "Progress",
+    "todosFilterAll": "All",
+    "todosFilterOpen": "Open only",
+    "todosNothingOpen": "Nothing open – all ticked off",
+    "todosAddItem": "Add item",
+    "todosDone": "Done",
+    "todosShow": "show",
+    "todosHide": "hide",
+    "todosEntries": "items",
+    "todosSharedWith": "shared with",
+    "todosMetaHint": "tap = done, long press = edit"
   }
 }
