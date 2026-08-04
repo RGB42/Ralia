@@ -1,4 +1,4 @@
-import { AppApi } from './app-api.js';
+import type { AppApi } from './app-api.js';
 
 /**
  * Runtime configuration.

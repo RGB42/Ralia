@@ -66,7 +66,7 @@ describe('AppApi.url', () => {
 
 describe('AppApi.fetch', () => {
   it('sends the apikey header the Supabase gateway requires', async () => {
-    const fetchImpl = vi.fn<Parameters<typeof fetch>, Promise<Response>>(async () =>
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
       jsonResponse({}),
     );
 
@@ -77,7 +77,7 @@ describe('AppApi.fetch', () => {
   });
 
   it('does not clobber a caller-supplied apikey', async () => {
-    const fetchImpl = vi.fn<Parameters<typeof fetch>, Promise<Response>>(async () =>
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
       jsonResponse({}),
     );
 
@@ -88,7 +88,7 @@ describe('AppApi.fetch', () => {
   });
 
   it('uses the replacement key after setAnonKey', async () => {
-    const fetchImpl = vi.fn<Parameters<typeof fetch>, Promise<Response>>(async () =>
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
       jsonResponse({}),
     );
     const subject = api(fetchImpl);
@@ -103,7 +103,7 @@ describe('AppApi.fetch', () => {
 
 describe('AppApi.getJson', () => {
   it('parses a successful response', async () => {
-    const fetchImpl = vi.fn<Parameters<typeof fetch>, Promise<Response>>(async () =>
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
       jsonResponse({ billingEnabled: true }),
     );
 
@@ -111,7 +111,7 @@ describe('AppApi.getJson', () => {
   });
 
   it('throws AppApiError carrying status and body on a rejected response', async () => {
-    const fetchImpl = vi.fn<Parameters<typeof fetch>, Promise<Response>>(
+    const fetchImpl = vi.fn<typeof fetch>(
       async () => new Response('nope', { status: 403 }),
     );
 
@@ -126,7 +126,7 @@ describe('AppApi.getJson', () => {
   });
 
   it('throws on malformed JSON rather than returning a broken value', async () => {
-    const fetchImpl = vi.fn<Parameters<typeof fetch>, Promise<Response>>(
+    const fetchImpl = vi.fn<typeof fetch>(
       async () => new Response('{not json', { status: 200 }),
     );
 
@@ -134,7 +134,7 @@ describe('AppApi.getJson', () => {
   });
 
   it('resolves undefined for an empty 204 body', async () => {
-    const fetchImpl = vi.fn<Parameters<typeof fetch>, Promise<Response>>(
+    const fetchImpl = vi.fn<typeof fetch>(
       async () => new Response(null, { status: 204 }),
     );
 
@@ -144,7 +144,7 @@ describe('AppApi.getJson', () => {
 
 describe('AppApi.postJson', () => {
   it('serialises the body and sets the content type', async () => {
-    const fetchImpl = vi.fn<Parameters<typeof fetch>, Promise<Response>>(async () =>
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
       jsonResponse({ ok: true }),
     );
 

@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BACKOFF_BASE_MS } from './backoff.js';
 import { Outbox } from './outbox.js';
-import type { FlushOutcome, OutboxRecord } from './types.js';
+import type { FlushOutcome, OutboxExecutor } from './types.js';
 
 interface TestMutation {
   kind: string;
@@ -74,7 +74,7 @@ describe('Outbox', () => {
   });
 
   it('keeps a record and applies backoff when the executor reports a transport failure', async () => {
-    let clock = 1_000;
+    const clock = 1_000;
     outbox = freshOutbox(() => clock);
     await outbox.enqueue<TestMutation>('events', 'cal-1', { kind: 'insert' });
     outbox.registerExecutor<TestMutation>('events', async () => ({
@@ -99,7 +99,7 @@ describe('Outbox', () => {
     await outbox.enqueue<TestMutation>('events', 'cal-1', { kind: 'insert' });
 
     const executor = vi
-      .fn<[OutboxRecord<TestMutation>], Promise<FlushOutcome>>()
+      .fn<OutboxExecutor<TestMutation>>()
       .mockResolvedValueOnce({ status: 'retry', reason: 'offline' })
       .mockResolvedValue(done());
     outbox.registerExecutor<TestMutation>('events', executor);
