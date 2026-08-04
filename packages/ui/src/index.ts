@@ -5,6 +5,8 @@
  * Alle Maße und Farben stammen aus tokens.css, abgesichert durch
  * tokens/tokens.parity.test.ts gegen docs/design-reference.
  */
+export { ICON_NAMES, Icon, type IconName, type IconProps } from './icons/Icon.js';
+
 export { PERSON_SLOTS, personTokens, type PersonSlot, type PersonTokens } from './person.js';
 
 export {
