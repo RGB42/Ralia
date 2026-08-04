@@ -1,0 +1,33 @@
+/* Vorlage Z. 511–512, Bahnfarbe aus track() (Z. 1243), Knopfposition aus knob() (Z. 1250). */
+
+.track {
+  width: 46px;
+  height: 27px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  background: var(--track-off);
+  position: relative;
+  flex: none;
+  transition: background-color 0.18s ease;
+}
+
+.on {
+  background: var(--brand-fill);
+}
+
+.knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: left 0.18s ease;
+}
+
+.on .knob {
+  left: 22px;
+}

@@ -1,0 +1,17 @@
+# Wertgenaue Uebernahmen. Prettier wuerde hier Werte umschreiben
+# (rgba(15,23,42,.07) -> rgba(15, 23, 42, 0.07)) und damit den
+# Token-Paritaetstest gegen die Vorlage brechen.
+packages/ui/src/tokens/tokens.css
+docs/design-reference/
+
+# Generierte Kataloge: extract-i18n.mjs erzeugt sie byte-identisch,
+# Prettier wuerde die Idempotenz-Pruefung des Skripts unterlaufen.
+apps/app/src/i18n/de.json
+apps/app/src/i18n/en.json
+
+# Nicht unser Code.
+docs/native-rebuild-reference/
+node_modules/
+dist/
+coverage/
+package-lock.json

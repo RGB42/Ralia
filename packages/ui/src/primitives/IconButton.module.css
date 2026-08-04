@@ -1,0 +1,48 @@
+/* Vorlage Z. 111 und Z. 119–121 (34×34), Sheet-Schliesser Z. 719 (32×32). */
+
+.iconButton {
+  flex: none;
+  border-radius: 11px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  cursor: pointer;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background-color 0.14s ease,
+    border-color 0.14s ease,
+    color 0.14s ease;
+}
+
+.iconButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.size34 {
+  width: 34px;
+  height: 34px;
+  color: var(--ink-700);
+  font-size: 15px;
+}
+
+.size34:hover:not(:disabled) {
+  background: var(--hov-surf);
+  border-color: var(--hov-ring);
+  color: var(--brand-600);
+}
+
+.size32 {
+  width: 32px;
+  height: 32px;
+  color: var(--ink-500);
+  font-size: 14px;
+}
+
+.size32:hover:not(:disabled) {
+  background: var(--hov-surf);
+  border-color: var(--hov-ring);
+  color: var(--ink-900);
+}
