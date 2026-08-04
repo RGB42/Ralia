@@ -7,6 +7,34 @@
  * Ralia 1.x could not do, because all of it lived in globals next to DOM code.
  */
 
+export {
+  MONTH_CELL_CHROME_PX,
+  MONTH_CHIP_HEIGHT_PX,
+  MONTH_MAX_CHIPS,
+  MONTH_MAX_DOTS,
+  MONTH_ROW_COUNT,
+  monthDensity,
+  type MonthDensity,
+} from './calendar/month-density.js';
+
+export {
+  MONTH_CELL_COUNT,
+  monthGridCells,
+  type MonthGridCell,
+  type WeekStart,
+} from './calendar/month-grid.js';
+
+export {
+  WEEK_DEFAULT_START_HOUR,
+  WEEK_EVENT_HEIGHT_INSET_PX,
+  WEEK_EXPANDED_START_HOUR,
+  WEEK_HOUR_HEIGHT_PX,
+  WEEK_MIN_EVENT_HEIGHT_PX,
+  parseTimeToMinutes,
+  weekEventGeometry,
+  type WeekEventGeometry,
+} from './calendar/week-geometry.js';
+
 export { isLocalId, localIdScope, makeLocalId, type IdFactoryOptions } from './ids.js';
 
 export {
