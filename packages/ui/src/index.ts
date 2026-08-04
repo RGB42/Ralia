@@ -7,6 +7,12 @@
  */
 export { ICON_NAMES, Icon, type IconName, type IconProps } from './icons/Icon.js';
 
+export { BottomSheet, type BottomSheetProps } from './overlays/BottomSheet.js';
+export { ConfirmDialog, type ConfirmDialogProps } from './overlays/ConfirmDialog.js';
+export { Modal, type ModalProps } from './overlays/Modal.js';
+export { useFocusTrap } from './overlays/use-focus-trap.js';
+export { useScrollLock } from './overlays/use-scroll-lock.js';
+
 export { PERSON_SLOTS, personTokens, type PersonSlot, type PersonTokens } from './person.js';
 
 export { Avatar, type AvatarProps } from './primitives/Avatar.js';

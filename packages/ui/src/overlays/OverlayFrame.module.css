@@ -1,0 +1,102 @@
+/*
+ * Huelle aller acht Sheets der Vorlage (Z. 711–713), bei allen identisch.
+ *
+ * Zwei Abweichungen:
+ *   1. position:fixed statt absolute — es gibt keine Telefon-Attrappe mehr,
+ *      auf die sich absolute beziehen koennte.
+ *   2. Ab Sidebar-Breite wird das Panel zentriert und begrenzt. Ohne das
+ *      waere ein Sheet auf einem 1400px-Fenster 1400px breit.
+ */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.42);
+  z-index: 50;
+  display: flex;
+  cursor: pointer;
+  animation: ral-fade 0.16s ease;
+}
+
+.bottom {
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.center {
+  align-items: center;
+  justify-content: center;
+}
+
+.panel {
+  cursor: auto;
+  width: 100%;
+  background: var(--surface);
+  overflow-y: auto;
+  animation: ral-up 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop,
+  .panel {
+    animation: none;
+  }
+}
+
+.panelBottom {
+  border-radius: 24px 24px 0 0;
+  padding: 16px 16px calc(20px + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 1024px) {
+  .panelBottom {
+    max-width: 520px;
+    border-radius: 24px 24px 0 0;
+  }
+}
+
+.panelCenter {
+  border-radius: 24px;
+  padding: 18px;
+  max-width: 420px;
+  margin: 16px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.headText {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Vorlage Z. 715. */
+.kicker {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.9px;
+  color: var(--ink-400);
+}
+
+/* Vorlage Z. 716 (mit Kicker, 19px) und Z. 746 (ohne, 17px). */
+.title {
+  font-weight: 600;
+  color: var(--ink-900);
+}
+
+.titleLarge {
+  font-size: 19px;
+  margin-top: 2px;
+}
+
+.titlePlain {
+  font-size: 17px;
+}
+
+.body {
+  margin-top: 14px;
+}

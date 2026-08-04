@@ -1,0 +1,17 @@
+/* Knopfreihe wie Vorlage Z. 654–657. */
+
+.message {
+  font-size: 13px;
+  color: var(--ink-700);
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  gap: 9px;
+  margin-top: 16px;
+}
+
+.actions > * {
+  flex: 1;
+}
