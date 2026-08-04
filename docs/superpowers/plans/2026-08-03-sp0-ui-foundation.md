@@ -371,7 +371,11 @@ Expected: FAIL — `ENOENT` auf `tokens.css`
 
 - [ ] **Step 4: `tokens.css` schreiben**
 
-Quelle: Vorlage Z. 16–35 (`:root` und `:root[data-ralia-theme="dark"]`), **wertgenau übernehmen**. Danach die verdeckten Tokens ergänzen — Werte aus der Tabelle „Verdeckte Tokens" im Spec, hergeleitet aus Vorlage Z. 1172–1181 (`colors()`), Z. 1243 (`track()`), Z. 1280–1281 und Z. 1345 (Heute-Markierungen).
+Quelle: Vorlage Z. 16–35 (`:root` und `:root[data-ralia-theme="dark"]`), **wertgenau übernehmen**. Danach die verdeckten Tokens ergänzen — Werte aus der Tabelle „Verdeckte Tokens" im Spec, hergeleitet aus Vorlage Z. 1172–1181 (`colors()`), Z. 1243 (`track()`), Z. 1282 (`border: isToday …`, dieselben Werte erneut auf Z. 1337 für den Wochenkopf) und Z. 1317 (`colBg: isToday …`).
+
+Erwarteter Umfang, als Gegenprobe: die Vorlage hat **34** Custom Properties im Light- und **26** im Dark-Block. Mit den 11 verdeckten Tokens je Theme ergibt das 45 und 37.
+
+**Keine Kommentare innerhalb der `:root`-Blöcke** — siehe die Parser-Anforderung in Step 2.
 
 Struktur:
 
