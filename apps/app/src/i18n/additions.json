@@ -1,0 +1,26 @@
+{
+  "de": {
+    "navCalendar": "Kalender",
+    "navCalendarShort": "Kalender",
+    "navPlanner": "Wochenplaner",
+    "navPlannerShort": "Planer",
+    "navTodos": "Todos",
+    "navTodosShort": "Todos",
+    "navMoney": "Geld",
+    "navMoneyShort": "Geld",
+    "navSettings": "Einstellungen",
+    "navProfileShort": "Profil"
+  },
+  "en": {
+    "navCalendar": "Calendar",
+    "navCalendarShort": "Calendar",
+    "navPlanner": "Week planner",
+    "navPlannerShort": "Planner",
+    "navTodos": "To-dos",
+    "navTodosShort": "To-dos",
+    "navMoney": "Money",
+    "navMoneyShort": "Money",
+    "navSettings": "Settings",
+    "navProfileShort": "Profile"
+  }
+}

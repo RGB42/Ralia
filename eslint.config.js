@@ -52,6 +52,15 @@ export default tseslint.config(
     },
   },
   {
+    // Node-Skripte sind kein TypeScript, der Block oben greift also nicht —
+    // ohne diese Globals meldet no-undef hier URL, process und console.
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: { ...globals.node },
+      sourceType: 'module',
+    },
+  },
+  {
     files: ['**/*.test.{ts,tsx}', 'scripts/**/*.mjs', 'vitest.setup.ts'],
     rules: {
       'no-console': 'off',
