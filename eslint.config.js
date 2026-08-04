@@ -30,6 +30,15 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'error',
       eqeqeq: ['error', 'always', { null: 'ignore' }],
       'no-console': ['warn', { allow: ['warn', 'error'] }],
+      'no-restricted-imports': ['error', {
+        paths: [{
+          name: 'react-router-dom',
+          message:
+            'react-router-dom ist in v8 aufgeloest — aus react-router importieren. ' +
+            'Achtung: der Name bleibt aus dem Hauptcheckout aufloesbar und wuerde still ' +
+            'die verwundbare 7.18.2 laden (GHSA-qwww-vcr4-c8h2).',
+        }],
+      }],
     },
   },
   {
