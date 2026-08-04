@@ -6,7 +6,7 @@
 
 **Architecture:** `packages/ui` liefert Tokens, Primitive und AppShell als CSS-Modules-Komponenten; die Primitive werden 1:1 aus den Helferfunktionen der Vorlage abgeleitet. `apps/app` ist eine Vite-SPA, die diese Komponenten zu den Screens der Vorlage zusammensetzt. Reine Geometrie- und Dichte-Logik (Monatsraster, Wochen-Timeline) liegt in `packages/core`, damit sie ohne DOM testbar ist.
 
-**Tech Stack:** TypeScript strict, React 19, Vite 7, CSS Modules, react-router-dom 7, Vitest 3 + Testing Library, Playwright, `@fontsource/poppins`.
+**Tech Stack:** TypeScript strict, React 19, Vite 7, CSS Modules, react-router 8, Vitest 3 + Testing Library, Playwright, `@fontsource/poppins`.
 
 **Spec:** [../specs/2026-08-03-sp0-ui-foundation-design.md](../specs/2026-08-03-sp0-ui-foundation-design.md)
 **Design-Vorlage:** [../../design-reference/Ralia-Organizer.dc.html](../../design-reference/Ralia-Organizer.dc.html)
@@ -21,6 +21,7 @@
 - **Testdatei-Benennung** (die Vitest-Projekte matchen darauf): Node-Tests `packages/{core,data,ui}/src/**/*.test.ts`, DOM-Tests `packages/ui/src/**/*.test.tsx` und `apps/app/src/**/*.test.{ts,tsx}`.
 - **Vitest 3 Mock-Signatur:** `vi.fn<typeof fn>()` mit **einem** Typargument. Die Zwei-Argument-Form `vi.fn<Args, Return>()` aus Vitest 2 ist ein Typfehler.
 - **Web-Basispfad ist `/app/`.** Vite `base: '/app/'`, Router `basename="/app"`. Die Marketing-Site belegt später `/` (SP8). SP7 stellt für Capacitor auf relative Pfade um.
+- **Routing-Paket ist `react-router` ab `^8.3.0`, nicht `react-router-dom`.** Nachgetragen am 2026-08-04, nachdem `npm audit` nach Task 2 zwei High-Advisories meldete: GHSA-qwww-vcr4-c8h2 („RSC Mode CSRF Bypass") betrifft `react-router` in `>=7.12.0 <8.3.0`. Im gesamten 7.x-Zweig existiert **keine** gepatchte Version — 7.18.2 ist dessen letzte. In v8 wurde `react-router-dom` aufgelöst; `react-router` ist das einzige Paket und trägt `latest`. Die Lücke betrifft ausschließlich RSC-Modus mit Server-Actions, den diese App nicht nutzt (statischer Vite-Build, kein Server-Rendering) — umgestellt wird trotzdem, weil zu diesem Zeitpunkt noch keine einzige Routing-Zeile existiert und die Umstellung damit gratis ist, während sie ab Task 12 jede Routendatei berühren würde. Peer-Deps von 8.3.0 (`react >=19.2.7`) sind mit 19.2.8 erfüllt. Verifiziert vorhanden in 8.3.0: `createBrowserRouter`, `createMemoryRouter`, `RouterProvider`, `Outlet`, `Navigate`, `useLocation`, `useNavigate`, `useParams`, `Link`.
 - **Sprach-Speicherschlüssel ist `appLanguage`** — derselbe wie in Ralia_Opus, damit die Sprachwahl den Umbau übersteht. Die Legacy-Migration löscht nur `ralia:*-queue:` und `ralia:*-cache:`, dieser Schlüssel bleibt also unberührt.
 - **Theme-Speicherschlüssel ist `ralia.theme`**, Attribut `data-ralia-theme` auf `<html>`, Werte `light` | `dark` | `system` (gespeichert) → Attribut nur bei dunkel gesetzt.
 - **Übernahme-Konvention:** Wenn ein Schritt „Vorlage Z. A–B" nennt, ist der Zeilenbereich in `docs/design-reference/Ralia-Organizer.dc.html` die **verbindliche Quelle** für Markup-Struktur und Stilwerte. Werte werden von dort gelesen, nicht aus dem Gedächtnis. Das ist bewusst kein Kopieren in den Plan — Doppelung würde genau die Transkriptionsdrift erzeugen, die der Paritätstest verhindern soll.
@@ -128,7 +129,7 @@ git commit -m "fix: Vitest-3-Mock-Signaturen und drei Lint-Verstoesse"
 
 ## Task 2: Abhängigkeiten deklarieren
 
-`react` und `react-dom` 19.2.8 liegen im Lockfile nur als transitive **dev**-Pakete und sind in `package.json` überhaupt nicht deklariert. `react-router-dom`, `@fontsource/poppins` und `@playwright/test` fehlen ganz. Ohne diesen Schritt hängt jede folgende Task an Zufallszuständen des `node_modules`-Baums.
+`react` und `react-dom` 19.2.8 liegen im Lockfile nur als transitive **dev**-Pakete und sind in `package.json` überhaupt nicht deklariert. `react-router`, `@fontsource/poppins` und `@playwright/test` fehlen ganz. Ohne diesen Schritt hängt jede folgende Task an Zufallszuständen des `node_modules`-Baums.
 
 **Files:**
 - Modify: `package.json`
@@ -137,12 +138,12 @@ git commit -m "fix: Vitest-3-Mock-Signaturen und drei Lint-Verstoesse"
 
 **Interfaces:**
 - Consumes: Task 1 (grüne Baseline)
-- Produces: Workspaces `@ralia/ui` und `@ralia/app` existieren; `react@19`, `react-dom@19`, `react-router-dom@7`, `@fontsource/poppins`, `@playwright/test` sind installiert
+- Produces: Workspaces `@ralia/ui` und `@ralia/app` existieren; `react@19`, `react-dom@19`, `react-router@8`, `@fontsource/poppins`, `@playwright/test` sind installiert
 
 - [ ] **Step 1: Ausgangslage bestätigen**
 
 ```bash
-node -e "const p=require('./package.json');const a={...p.dependencies,...p.devDependencies};for(const k of ['react','react-dom','react-router-dom','@fontsource/poppins','@playwright/test'])console.log((a[k]||'NOT DECLARED').padEnd(16),k)"
+node -e "const p=require('./package.json');const a={...p.dependencies,...p.devDependencies};for(const k of ['react','react-dom','react-router','@fontsource/poppins','@playwright/test'])console.log((a[k]||'NOT DECLARED').padEnd(16),k)"
 ```
 Expected: alle fünf `NOT DECLARED`
 
@@ -191,7 +192,7 @@ Vorbild ist `packages/core/package.json` (gleiche Felder, gleiche `exports`-Form
     "@ralia/ui": "*",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-router-dom": "^7.9.6"
+    "react-router": "^8.3.0"
   }
 }
 ```
@@ -212,7 +213,7 @@ Expected: Exit 0. `react`, `react-dom` erscheinen jetzt als reguläre (nicht-dev
 - [ ] **Step 6: Auflösung prüfen**
 
 ```bash
-node -e "console.log(require('react/package.json').version, require('react-router-dom/package.json').version)"
+node -e "console.log(require('react/package.json').version, require('react-router/package.json').version)"
 npm run typecheck
 ```
 Expected: `19.2.x 7.x.x`, Typecheck Exit 0
@@ -2488,7 +2489,7 @@ Ab hier gibt es zum ersten Mal etwas zu sehen. Ziel dieser Task: `npm run dev` s
 ```tsx
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { RouterProvider, createMemoryRouter } from 'react-router-dom';
+import { RouterProvider, createMemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { routes } from './router.js';
 
@@ -2629,7 +2630,7 @@ Diese Datei liegt unter `apps/app/src/**/*.test.ts` und läuft damit im `dom`-Pr
 - [ ] **Step 6: `router.tsx` schreiben**
 
 ```tsx
-import { Navigate, type RouteObject } from 'react-router-dom';
+import { Navigate, type RouteObject } from 'react-router';
 import { AppFrame } from './AppFrame.js';
 
 /** Platzhalter für SP0; die Screens kommen in Task 15 bis 21. */
@@ -2661,7 +2662,7 @@ export const routes: RouteObject[] = [
 - [ ] **Step 7: `AppFrame.tsx` schreiben**
 
 ```tsx
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router';
 import { AppLayout, TABS, type TabId } from '@ralia/ui';
 
 function tabFromPath(pathname: string): TabId {
@@ -2693,7 +2694,7 @@ export function AppFrame(): React.JSX.Element {
 `App.tsx` klammert die Provider:
 
 ```tsx
-import { RouterProvider, createBrowserRouter } from 'react-router-dom';
+import { RouterProvider, createBrowserRouter } from 'react-router';
 import { ThemeProvider, ToastProvider } from '@ralia/ui';
 import { routes } from './routes/router.js';
 
@@ -3891,7 +3892,7 @@ Optik, aber der Zustand ist fuer Screenreader lesbar."
 ```tsx
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { RouterProvider, createMemoryRouter } from 'react-router-dom';
+import { RouterProvider, createMemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { routes } from '../../routes/router.js';
 
@@ -3931,7 +3932,7 @@ describe('TodoOverview', () => {
 ```tsx
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { RouterProvider, createMemoryRouter } from 'react-router-dom';
+import { RouterProvider, createMemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { routes } from '../../routes/router.js';
 
@@ -4220,7 +4221,7 @@ Der erste Screen, der echte Funktion trägt: hier hängen Theme- und Sprachumsch
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { THEME_ATTRIBUTE, THEME_STORAGE_KEY, ThemeProvider, ToastProvider } from '@ralia/ui';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../../i18n/I18nProvider.js';
 import { LANG_STORAGE_KEY } from '../../i18n/catalog.js';
@@ -4363,7 +4364,7 @@ abgeleitet - Abnahmekriterium 7 verlangt sie erreichbar."
 ```tsx
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { RouterProvider, createMemoryRouter } from 'react-router-dom';
+import { RouterProvider, createMemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { routes } from '../../routes/router.js';
 

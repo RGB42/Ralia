@@ -33,7 +33,7 @@ Danach ist die App vollständig sichtbar und beurteilbar, und alle folgenden Sub
 |---|---|---|
 | Design-Treue | Vorlage 1:1; die rund 30 nicht abgedeckten Oberflächen strikt aus derselben Sprache extrapoliert | Kein eigener Stil; maximale Konsistenz über alle späteren Screens |
 | Prototyp-Gerüst der Vorlage | **Nicht übernehmen** (siehe unten) | Würde eine Telefon-Attrappe auf einem echten Telefon erzeugen |
-| Routing | `react-router-dom` | Android-Hardware-Back und Deep Links (SP7) müssten sonst nachgebaut werden |
+| Routing | `react-router` ab `^8.3.0` | Android-Hardware-Back und Deep Links (SP7) müssten sonst nachgebaut werden. Ursprünglich war `react-router-dom@^7` vorgesehen; nach Task 2 zeigte `npm audit` GHSA-qwww-vcr4-c8h2 für `react-router >=7.12.0 <8.3.0`, und der 7.x-Zweig hat keine gepatchte Version. In v8 ist `react-router-dom` aufgelöst, `react-router` ist das einzige Paket. Details in der Plan-Constraint |
 | Poppins | `@fontsource/poppins` (400/500/600/700) | Normales npm-Paket mit woff2; selbst gehostet, offline- und Capacitor-fähig, kein Laufzeit-Abruf bei Google |
 | Werttreue-Absicherung | Mechanischer Token-Paritätstest gegen die Vorlage | Transkription per Hand ist nicht überprüfbar; ein Test ist es |
 | Demo-Daten | Fixtures der Vorlage portieren, als SP0-Platzhalter markiert | Screens sind nur gefüllt beurteilbar; Entfernung in SP2–SP4 |
