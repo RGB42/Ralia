@@ -1,0 +1,9 @@
+/* Vorlage Z. 713. */
+
+.handle {
+  width: 38px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--line);
+  margin: 0 auto 12px;
+}

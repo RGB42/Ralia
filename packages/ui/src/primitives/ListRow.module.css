@@ -1,0 +1,60 @@
+/* Vorlage Z. 499–505 (statisch) und Z. 553–559 (klickbar). */
+
+.row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 15px;
+  border-bottom: 1px solid var(--line-soft);
+  text-align: left;
+}
+
+.last {
+  border-bottom: none;
+}
+
+.clickable {
+  border: none;
+  border-bottom: 1px solid var(--line-soft);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: background-color 0.14s ease;
+}
+
+.clickable:hover {
+  background: var(--hov-tint);
+}
+
+.clickable.last {
+  border-bottom: none;
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-900);
+}
+
+.clickable .title {
+  font-weight: 600;
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--ink-400);
+  margin-top: 1px;
+}
+
+.chevron {
+  font-size: 17px;
+  color: var(--ink-400);
+  line-height: 1;
+}

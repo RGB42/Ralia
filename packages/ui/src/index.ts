@@ -9,7 +9,26 @@ export { ICON_NAMES, Icon, type IconName, type IconProps } from './icons/Icon.js
 
 export { PERSON_SLOTS, personTokens, type PersonSlot, type PersonTokens } from './person.js';
 
+export { Avatar, type AvatarProps } from './primitives/Avatar.js';
+export {
+  AvatarPair,
+  type AvatarPairPerson,
+  type AvatarPairProps,
+} from './primitives/AvatarPair.js';
 export { Button, type ButtonProps, type ButtonVariant } from './primitives/Button.js';
+export { Card, type CardProps, type CardTone } from './primitives/Card.js';
+export { FieldLabel, type FieldLabelProps } from './primitives/FieldLabel.js';
+export { Input, type InputProps, type InputType } from './primitives/Input.js';
+export { ListRow, type ListRowProps } from './primitives/ListRow.js';
+export {
+  ProgressBar,
+  type ProgressBarProps,
+  type ProgressSegment,
+} from './primitives/ProgressBar.js';
+export { SectionLabel, type SectionLabelProps } from './primitives/SectionLabel.js';
+export { Select, type SelectOption, type SelectProps } from './primitives/Select.js';
+export { SheetHandle } from './primitives/SheetHandle.js';
+export { Textarea, type TextareaProps } from './primitives/Textarea.js';
 export { Chip, type ChipProps } from './primitives/Chip.js';
 export { IconButton, type IconButtonProps } from './primitives/IconButton.js';
 export { NavItem, type NavItemProps } from './primitives/NavItem.js';

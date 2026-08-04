@@ -1,0 +1,12 @@
+/* Vorlage Z. 291 (6px), Z. 392 (7px), Z. 370 (9px). */
+
+.track {
+  display: flex;
+  border-radius: 999px;
+  background: var(--line-soft);
+  overflow: hidden;
+}
+
+.segment {
+  height: 100%;
+}
