@@ -25,6 +25,20 @@ Reines TypeScript ohne React-Native-Abhängigkeit, also Kandidaten für `package
 
 Alle `.tsx`-Dateien. Sie nutzen React-Native-Primitive (`View`, `Text`, `StyleSheet`, `Pressable`) und NativeWind. Für die DOM-Zielplattform ist davon nichts direkt übertragbar — als Referenz für Aufbau und Zustandsführung bleiben sie aber lesenswert, besonders `src/components/ui/` gegenüber den Primitiven aus Task 7 bis 10.
 
+## Bereits geprüft: `month-grid.ts`
+
+Gelesen am 2026-08-04, mit zwei Ergebnissen — eines gegen uns, eines für uns.
+
+**`buildMonthGrid` nicht übernehmen.** Es erzeugt **variabel 4 bis 6 Wochen** statt feste 42 Zellen, mit der Begründung, ein starres 42er-Raster zeige bei kurzen Monaten eine komplette ausgegraute Schlusswoche. Für das damalige Design richtig — für unseres falsch: die Vorlage legt `grid-template-rows:repeat(6,minmax(46px,1fr))` fest (Z. 153) und iteriert `for (let i = 0; i < 42; i++)` (Z. 1267). Ein variables Raster würde die Kalenderhöhe von Monat zu Monat springen lassen. `packages/core/src/calendar/month-grid.ts` bleibt bei 42.
+
+Zweiter Unterschied: die Referenz rechnet in **lokaler** Zeit (`local-date.ts`), Vorlage und unser Plan rechnen in **UTC**. UTC vermeidet, dass eine Zelle bei Sommerzeitwechsel verrutscht. Wer `local-date.ts` heranzieht, muss diesen Unterschied bewusst entscheiden, nicht übersehen.
+
+**`layoutMonthEvents` unbedingt aufheben — für SP2.** Es löst ein Problem, das unser Plan noch nicht adressiert und die Vorlage nicht zeigt: **Mehrtagestermine**. Das Datenmodell hat `start_date` und `end_date`, aber alle Demo-Daten der Vorlage sind eintägig, also demonstriert sie nie, wie ein durchgehender Balken über mehrere Tage aussieht. Die naive Umsetzung lässt denselben Termin an verschiedenen Tagen auf verschiedenen Höhen erscheinen.
+
+Die Referenz weist jedem Termin eine „Lane" zu, die über seine gesamte Spanne konstant bleibt, und belegt sie nur, wenn sie an **jedem** Tag der Spanne frei ist — genau das verhindert das Zeilentauschen mitten im Balken. Längere Termine werden zuerst einsortiert, damit sie die oberen Lanes belegen und kurze das Raster nicht zerreißen. Termine, für die keine Lane frei ist, wandern in einen `+N`-Zähler statt still zu verschwinden.
+
+Das ist die durchdachtere Lösung. Wenn SP2 die Monatsansicht mit echten Daten füllt, ist das der Startpunkt — mit Tests, die es hier nicht hat.
+
 ## Vor der Übernahme prüfen
 
 Es liegen **keine Tests** bei. Nichts hiervon ist verifiziert. Wer Code übernimmt, schreibt zuerst die Tests dafür — sonst wandert unverifizierte Logik in `packages/core`, dessen ganzer Zweck Testbarkeit ist.
