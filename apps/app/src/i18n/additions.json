@@ -57,7 +57,22 @@
     "todosHide": "verbergen",
     "todosEntries": "Einträge",
     "todosSharedWith": "geteilt mit",
-    "todosMetaHint": "antippen = erledigt, lange drücken = bearbeiten"
+    "todosMetaHint": "antippen = erledigt, lange drücken = bearbeiten",
+
+    "moneyTitle": "Haushalt",
+    "moneyBudget": "Budget Juli",
+    "moneyOf": "von",
+    "moneyRemaining": "übrig",
+    "moneyCategories": "Kategorien",
+    "moneyShared": "Gemeinsam",
+    "moneyContributors": "Beteiligte",
+    "moneyBalance": "Bilanz",
+    "moneyAsOf": "Stand",
+    "moneyExpenses": "Ausgaben",
+    "moneySettleUp": "Ausgleich buchen",
+    "moneySettled": "Ausgleich notiert ✓",
+    "moneyRecentExpenses": "Letzte Ausgaben",
+    "moneyAddExpense": "Ausgabe hinzufügen"
   },
   "en": {
     "bootFailed": "The app could not start.",
@@ -117,6 +132,21 @@
     "todosHide": "hide",
     "todosEntries": "items",
     "todosSharedWith": "shared with",
-    "todosMetaHint": "tap = done, long press = edit"
+    "todosMetaHint": "tap = done, long press = edit",
+
+    "moneyTitle": "Household",
+    "moneyBudget": "July budget",
+    "moneyOf": "of",
+    "moneyRemaining": "left",
+    "moneyCategories": "Categories",
+    "moneyShared": "Shared",
+    "moneyContributors": "contributors",
+    "moneyBalance": "Balance",
+    "moneyAsOf": "As of",
+    "moneyExpenses": "expenses",
+    "moneySettleUp": "Settle up",
+    "moneySettled": "Settlement noted ✓",
+    "moneyRecentExpenses": "Recent expenses",
+    "moneyAddExpense": "Add expense"
   }
 }

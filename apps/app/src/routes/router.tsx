@@ -1,5 +1,6 @@
 import { Navigate, Outlet, type RouteObject } from 'react-router';
 import { CalendarScreen } from '../screens/calendar/CalendarScreen.js';
+import { MoneyScreen } from '../screens/money/MoneyScreen.js';
 import { PlannerScreen } from '../screens/planner/PlannerScreen.js';
 import { TodoDetail } from '../screens/todos/TodoDetail.js';
 import { TodoOverview } from '../screens/todos/TodoOverview.js';
@@ -39,7 +40,7 @@ export const routes: RouteObject[] = [
           { path: ':listId', element: <TodoDetail /> },
         ],
       },
-      { path: 'geld', element: <Placeholder name="Geld" /> },
+      { path: 'geld', element: <MoneyScreen /> },
       { path: 'profil', element: <Placeholder name="Einstellungen" /> },
       { path: 'profil/sync', element: <Placeholder name="Google Kalender" /> },
       { path: '*', element: <Navigate to="/kalender" replace /> },
