@@ -60,6 +60,22 @@ export {
 } from './primitives/SegmentSwitch.js';
 export { Toggle, type ToggleProps } from './primitives/Toggle.js';
 
+export { AppHeader, type AppHeaderProps, type AppHeaderRange } from './shell/AppHeader.js';
+export { AppLayout, type AppLayoutProps } from './shell/AppLayout.js';
+export { BottomNav, type BottomNavProps } from './shell/BottomNav.js';
+export { Fab, type FabProps } from './shell/Fab.js';
+export { Sidebar, type SidebarPairing, type SidebarProps } from './shell/Sidebar.js';
+export {
+  DEFAULT_TAB_LABELS,
+  SIDEBAR_BREAKPOINT_PX,
+  TABS,
+  tabLabel,
+  type TabDef,
+  type TabId,
+  type TabLabel,
+  type TabLabels,
+} from './shell/nav-items.js';
+
 export {
   THEME_ATTRIBUTE,
   THEME_STORAGE_KEY,

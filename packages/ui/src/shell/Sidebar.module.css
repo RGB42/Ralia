@@ -1,0 +1,69 @@
+/* Vorlage Z. 71–103. */
+
+.sidebar {
+  width: 236px;
+  flex: none;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 18px 14px;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Vorlage Z. 72. */
+.pairing {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 6px 8px 16px;
+}
+
+.pairingText {
+  min-width: 0;
+}
+
+/* Vorlage Z. 78. */
+.pairingTitle {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-900);
+}
+
+/* Vorlage Z. 79. */
+.pairingSubtitle {
+  font-size: 10.5px;
+  color: var(--ink-400);
+}
+
+/* Vorlage Z. 82. */
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Vorlage Z. 99. */
+.summary {
+  margin-top: 18px;
+  padding: 13px;
+  border-radius: 14px;
+  background: var(--brand-soft);
+  border: 1px solid var(--brand-line);
+}
+
+/* Vorlage Z. 100 — kleiner als SectionLabel (10.5px gegen 11px). */
+.summaryTitle {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--brand-600);
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+}
+
+/* Vorlage Z. 101. */
+.summaryBody {
+  font-size: 12px;
+  color: var(--ink-500);
+  margin-top: 6px;
+  line-height: 1.5;
+}
