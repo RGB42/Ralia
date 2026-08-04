@@ -1,0 +1,195 @@
+/* Die Formularmasze, die alle acht Sheets teilen (Vorlage Z. 749–780). */
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  margin-top: 15px;
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+}
+
+.rowGrow {
+  flex: 1;
+}
+
+/* Vorlage: 104px, 110px oder 112px je Sheet — 110 ist der haeufigste Wert. */
+.rowNarrow {
+  width: 110px;
+}
+
+.actions {
+  display: flex;
+  gap: 9px;
+  margin-top: 2px;
+}
+
+.actionsGrow {
+  flex: 1;
+}
+
+.people {
+  display: flex;
+  gap: 8px;
+  margin-top: 7px;
+}
+
+.chips {
+  display: flex;
+  gap: 8px;
+  margin-top: 7px;
+  flex-wrap: wrap;
+}
+
+/* Fehlermeldung unter einem Feld. Die Vorlage kennt keine. */
+.error {
+  font-size: 11px;
+  color: var(--danger);
+  margin-top: 5px;
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--ink-400);
+  margin-top: 10px;
+  text-align: center;
+}
+
+/* Tagesliste im Tages-Sheet, Vorlage Z. 721–730. */
+.dayList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.dayEvent {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  border: none;
+  border-left-width: 3px;
+  border-left-style: solid;
+  border-radius: 14px;
+  padding: 12px;
+  user-select: none;
+  touch-action: manipulation;
+  transition:
+    filter 0.14s ease,
+    box-shadow 0.14s ease;
+}
+
+.dayEvent:hover {
+  filter: brightness(0.97);
+  box-shadow: var(--hov-shadow);
+}
+
+.dayTime {
+  flex: none;
+  min-width: 44px;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.dayBody {
+  flex: 1;
+  min-width: 0;
+}
+
+/*
+ * display:block, weil die Zeile aus <span> in <span> besteht — ein <button>
+ * darf keine <div> enthalten. Ohne das laufen Titel und Untertitel in einer
+ * Zeile zusammen.
+ */
+.dayTitle {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-900);
+}
+
+.daySub {
+  display: block;
+  font-size: 11px;
+  color: var(--ink-500);
+  margin-top: 2px;
+}
+
+.dayDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  margin-top: 4px;
+  flex: none;
+}
+
+/* Farbwahl im Profil-Sheet, Vorlage Z. 970–978. */
+.colors {
+  display: flex;
+  gap: 8px;
+  margin-top: 7px;
+}
+
+.color {
+  flex: 1;
+  height: 44px;
+  border-radius: 13px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.colorActive {
+  border-color: var(--ink-900);
+}
+
+/* Grosze Umschalter des Plan-Sheets, Vorlage Z. 823–828. */
+.modeChips {
+  display: flex;
+  gap: 8px;
+}
+
+.modeChip {
+  flex: 1;
+  border: 1.5px solid var(--line);
+  background: transparent;
+  color: var(--ink-500);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 13px;
+  border-radius: 14px;
+  transition:
+    border-color 0.14s ease,
+    background-color 0.14s ease,
+    color 0.14s ease;
+}
+
+.modeChipActive {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand-600);
+}
+
+/* Hinweisfeld des Ausgaben-Sheets, Vorlage Z. 943. */
+.noteBox {
+  margin-top: 11px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--brand-soft);
+  border: 1px solid var(--brand-line);
+  font-size: 11.5px;
+  color: var(--brand-600);
+}

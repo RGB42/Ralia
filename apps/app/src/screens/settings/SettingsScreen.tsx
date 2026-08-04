@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router';
 import type { Lang } from '../../i18n/catalog.js';
 import { useT } from '../../i18n/useT.js';
 import { MOCK_CALENDARS, MOCK_PROFILE } from '../../mock/fixtures.js';
+import { ProfileSheet } from '../../sheets/ProfileSheet.js';
 import screen from '../screen.module.css';
 import styles from './SettingsScreen.module.css';
 
@@ -29,6 +30,7 @@ export function SettingsScreen(): React.JSX.Element {
   const [pushOn, setPushOn] = useState(true);
   const [googleOn, setGoogleOn] = useState(true);
   const [weekStart, setWeekStart] = useState<WeekStartChoice>('mo');
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const activeCalendars = MOCK_CALENDARS.filter((cal) => cal.on).length;
 
@@ -60,7 +62,7 @@ export function SettingsScreen(): React.JSX.Element {
                 <div className={styles.profileName}>{MOCK_PROFILE.me.name}</div>
                 <div className={styles.profileMail}>{MOCK_PROFILE.me.email}</div>
               </div>
-              <Button variant="secondary" onClick={() => undefined}>
+              <Button variant="secondary" onClick={() => setProfileOpen(true)}>
                 {t('settingsEdit')}
               </Button>
             </div>
@@ -218,6 +220,14 @@ export function SettingsScreen(): React.JSX.Element {
           <div className={styles.footer}>{t('settingsFooter')}</div>
         </div>
       </div>
+
+      <ProfileSheet
+        key={`profile-${profileOpen}`}
+        open={profileOpen}
+        profile={MOCK_PROFILE.me}
+        onClose={() => setProfileOpen(false)}
+        onSave={() => setProfileOpen(false)}
+      />
     </div>
   );
 }

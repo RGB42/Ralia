@@ -3,6 +3,7 @@ import { useId, useState } from 'react';
 import { useT } from '../../i18n/useT.js';
 import { MOCK_PLANNER, MOCK_TODAY } from '../../mock/fixtures.js';
 import screen from '../screen.module.css';
+import { PlanSheet, type PlanEntryKind } from '../../sheets/PlanSheet.js';
 import styles from './PlannerScreen.module.css';
 
 const TODAY_DAY = Number(MOCK_TODAY.slice(8, 10));
@@ -18,11 +19,7 @@ const LONG_WEEKDAY: Record<string, string> = {
   So: 'Sonntag',
 };
 
-export interface PlannerScreenProps {
-  onEditDay?(index: number): void;
-}
-
-export function PlannerScreen({ onEditDay }: PlannerScreenProps): React.JSX.Element {
+export function PlannerScreen(): React.JSX.Element {
   const { t } = useT();
   const baseId = useId();
 
@@ -36,6 +33,7 @@ export function PlannerScreen({ onEditDay }: PlannerScreenProps): React.JSX.Elem
   const [open, setOpen] = useState<Record<number, boolean>>(() =>
     Object.fromEntries(MOCK_PLANNER.map((_, index) => [index, index >= todayIndex])),
   );
+  const [sheet, setSheet] = useState<{ dayIndex: number; kind: PlanEntryKind } | null>(null);
   const [done, setDone] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(
       MOCK_PLANNER.flatMap((day) => day.tasks.map((task) => [task.id, task.done])),
@@ -122,7 +120,7 @@ export function PlannerScreen({ onEditDay }: PlannerScreenProps): React.JSX.Elem
                           type="button"
                           className={styles.paneAction}
                           aria-label={`${t('plannerEditMeal')}: ${LONG_WEEKDAY[day.weekday] ?? day.weekday}`}
-                          onClick={() => onEditDay?.(index)}
+                          onClick={() => setSheet({ dayIndex: index, kind: 'meal' })}
                         >
                           <span aria-hidden="true">✎</span>
                         </button>
@@ -170,7 +168,11 @@ export function PlannerScreen({ onEditDay }: PlannerScreenProps): React.JSX.Elem
                       {dayTasks.length === 0 ? (
                         <div className={styles.noTasks}>{t('plannerNoTasks')}</div>
                       ) : null}
-                      <button type="button" className={styles.addTask}>
+                      <button
+                        type="button"
+                        className={styles.addTask}
+                        onClick={() => setSheet({ dayIndex: index, kind: 'task' })}
+                      >
                         + {t('plannerAddTask')}
                       </button>
                     </div>
@@ -181,7 +183,19 @@ export function PlannerScreen({ onEditDay }: PlannerScreenProps): React.JSX.Elem
           })}
         </div>
       </div>
-      <Fab label={t('plannerAddEntry')} onClick={() => onEditDay?.(todayIndex)} />
+      <Fab
+        label={t('plannerAddEntry')}
+        onClick={() => setSheet({ dayIndex: todayIndex, kind: 'meal' })}
+      />
+
+      <PlanSheet
+        key={sheet ? `${sheet.dayIndex}-${sheet.kind}` : 'none'}
+        open={sheet !== null}
+        defaultDayIndex={sheet?.dayIndex ?? todayIndex}
+        defaultKind={sheet?.kind ?? 'meal'}
+        onClose={() => setSheet(null)}
+        onSave={() => setSheet(null)}
+      />
     </div>
   );
 }

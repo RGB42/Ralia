@@ -2,6 +2,7 @@ import { AppHeader, Card, Fab, ProgressBar, SectionLabel, personTokens } from '@
 import { useState } from 'react';
 import { useT } from '../../i18n/useT.js';
 import { MOCK_BALANCE, MOCK_CATEGORIES, MOCK_EXPENSES, MOCK_PROFILE } from '../../mock/fixtures.js';
+import { ExpenseSheet } from '../../sheets/ExpenseSheet.js';
 import screen from '../screen.module.css';
 import styles from './MoneyScreen.module.css';
 import { budgetSummary, categoryTotals, formatEur } from './money-math.js';
@@ -13,13 +14,10 @@ const INITIAL_BY_SLOT: Record<string, string> = {
   bday: '·',
 };
 
-export interface MoneyScreenProps {
-  onAddExpense?(): void;
-}
-
-export function MoneyScreen({ onAddExpense }: MoneyScreenProps): React.JSX.Element {
+export function MoneyScreen(): React.JSX.Element {
   const { t, lang } = useT();
   const [settled, setSettled] = useState(false);
+  const [expenseOpen, setExpenseOpen] = useState(false);
 
   const summary = budgetSummary(MOCK_CATEGORIES, MOCK_BALANCE.monthlyBudget);
   const totals = categoryTotals(MOCK_CATEGORIES);
@@ -164,7 +162,15 @@ export function MoneyScreen({ onAddExpense }: MoneyScreenProps): React.JSX.Eleme
           </Card>
         </div>
       </div>
-      <Fab label={t('moneyAddExpense')} onClick={() => onAddExpense?.()} />
+      <Fab label={t('moneyAddExpense')} onClick={() => setExpenseOpen(true)} />
+
+      <ExpenseSheet
+        key={`expense-${expenseOpen}`}
+        open={expenseOpen}
+        categories={MOCK_CATEGORIES}
+        onClose={() => setExpenseOpen(false)}
+        onSave={() => setExpenseOpen(false)}
+      />
     </div>
   );
 }

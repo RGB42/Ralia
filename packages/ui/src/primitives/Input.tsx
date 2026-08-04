@@ -12,6 +12,10 @@ export interface InputProps {
   step?: string;
   width?: string;
   inputMode?: 'text' | 'decimal' | 'numeric';
+  /** Id einer Fehler- oder Hilfsmeldung, die das Feld beschreibt. */
+  describedBy?: string;
+  /** Setzt `aria-invalid`, damit Screenreader den Fehler ansagen. */
+  invalid?: boolean;
 }
 
 const COMPACT: readonly InputType[] = ['date', 'time'];
@@ -25,6 +29,8 @@ export function Input({
   step,
   width,
   inputMode,
+  describedBy,
+  invalid,
 }: InputProps): React.JSX.Element {
   const classes = `${styles.field} ${COMPACT.includes(type) ? styles.compact : ''}`;
   return (
@@ -37,6 +43,8 @@ export function Input({
       {...(placeholder ? { placeholder } : {})}
       {...(step ? { step } : {})}
       {...(inputMode ? { inputMode } : {})}
+      {...(describedBy ? { 'aria-describedby': describedBy } : {})}
+      {...(invalid ? { 'aria-invalid': true as const } : {})}
       {...(width ? { style: { width } } : {})}
     />
   );

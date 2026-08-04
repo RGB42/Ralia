@@ -1,14 +1,24 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { MOCK_TODO_LISTS, MOCK_TODOS, type MockTodoItem } from '../../mock/fixtures.js';
 
 /** Vorlage Z. 1382–1400. */
 export type TodoFilter = 'alle' | 'u1' | 'u2' | 'offen';
 
+export interface TodoDraft {
+  text: string;
+  note: string;
+  listId: string;
+  slot: MockTodoItem['slot'];
+}
+
 export interface TodoStoreValue {
   items: readonly MockTodoItem[];
   lists: typeof MOCK_TODO_LISTS;
   toggle(id: string): void;
+  add(draft: TodoDraft): void;
+  update(next: MockTodoItem): void;
+  remove(id: string): void;
   filter: TodoFilter;
   setFilter(next: TodoFilter): void;
 }
@@ -32,9 +42,27 @@ export function TodoStoreProvider({ children }: { children: ReactNode }): React.
     );
   }, []);
 
+  // Fortlaufende Nummer statt Zufalls-Id: SP0 hat keinen Server, der eine
+  // vergibt, und makeLocalId aus @ralia/core gehoert an die echte Datenschicht.
+  const nextId = useRef(MOCK_TODOS.length);
+
+  const add = useCallback((draft: TodoDraft) => {
+    nextId.current += 1;
+    const id = `t${nextId.current}`;
+    setItems((current) => [...current, { id, done: false, ...draft }]);
+  }, []);
+
+  const update = useCallback((next: MockTodoItem) => {
+    setItems((current) => current.map((item) => (item.id === next.id ? next : item)));
+  }, []);
+
+  const remove = useCallback((id: string) => {
+    setItems((current) => current.filter((item) => item.id !== id));
+  }, []);
+
   const value = useMemo<TodoStoreValue>(
-    () => ({ items, lists: MOCK_TODO_LISTS, toggle, filter, setFilter }),
-    [items, toggle, filter],
+    () => ({ items, lists: MOCK_TODO_LISTS, toggle, add, update, remove, filter, setFilter }),
+    [items, toggle, add, update, remove, filter],
   );
 
   return <TodoStoreContext.Provider value={value}>{children}</TodoStoreContext.Provider>;
