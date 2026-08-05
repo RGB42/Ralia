@@ -182,6 +182,68 @@ describe('restoreSession', () => {
     expect(state).toMatchObject({ status: 'signed-in', offline: true });
   });
 
+  it('wartet nicht auf ein haengendes Profil, wenn ein Abzug daliegt', async () => {
+    /*
+     * Der gemessene Fall: postgrest-js wiederholt einen fehlgeschlagenen GET
+     * dreimal mit 1 s, 2 s, 4 s Backoff. Ohne Frist stand die App 7,5 s im
+     * Ladezustand, obwohl Profil und Partner im Speicher lagen.
+     */
+    writeIdentitySnapshot(storage, PROFILE, null);
+    let settled = false;
+
+    const state = await restoreSession({
+      getSession: async () => ({ session: { user: { id: ME, email: null } } }),
+      // Antwortet nie — wie eine Anfrage hinter einem Captive Portal.
+      loadIdentity: () =>
+        new Promise(() => {
+          settled = true;
+        }),
+      storage,
+      isOnline: () => true,
+      identityTimeoutMs: 20,
+    });
+
+    expect(state).toMatchObject({ status: 'signed-in', offline: true });
+    expect(state.status === 'signed-in' && state.identity.profile.name).toBe('Lena');
+    // Die Zusage laeuft weiter; entschieden wurde ohne sie.
+    expect(settled).toBe(true);
+  });
+
+  it('meldet ohne Abzug nach der Frist ab', async () => {
+    /*
+     * Die andere Seite derselben Regel, und die unangenehmere: ohne Abzug gibt
+     * es nichts zu zeigen, also fuehrt die abgelaufene Frist zum
+     * Anmeldebildschirm. Das ist bewusst so und nicht schoen — ein Nutzer mit
+     * gueltiger Sitzung und lahmem Netz muss sich neu anmelden.
+     *
+     * Die Alternative waere ein eigener Zustand „Profil nicht erreichbar" mit
+     * Wiederholen-Knopf. Dagegen spricht, dass der Fall genau einmal auftritt:
+     * beim allerersten Laden in diesem Browser. Danach liegt immer ein Abzug da,
+     * denn jeder erfolgreiche Start schreibt einen. Ein eigener Zustand fuer ein
+     * Zeitfenster von einem Ladevorgang ist mehr Maschinerie als Nutzen.
+     */
+    const state = await restoreSession({
+      getSession: async () => ({ session: { user: { id: ME, email: null } } }),
+      loadIdentity: () => new Promise(() => undefined),
+      storage,
+      isOnline: () => true,
+      identityTimeoutMs: 20,
+    });
+
+    expect(state).toEqual({ status: 'signed-out' });
+  });
+
+  it('laesst die Frist mit 0 abschalten', async () => {
+    const state = await restoreSession({
+      getSession: async () => ({ session: { user: { id: ME, email: null } } }),
+      loadIdentity: async () => ({ profile: PROFILE, partner: null }),
+      storage,
+      isOnline: () => true,
+      identityTimeoutMs: 0,
+    });
+    expect(state).toMatchObject({ status: 'signed-in', offline: false });
+  });
+
   it('rechnet die calendar_id aus Profil und Partner', async () => {
     const partnerId = '22222222-2222-4222-8222-222222222222';
     const state = await restoreSession({

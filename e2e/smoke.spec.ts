@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { blockBackend, seedSignedIn } from './session.js';
 
 test.beforeEach(async ({ context }) => {
   /*
@@ -8,12 +9,20 @@ test.beforeEach(async ({ context }) => {
   await context.addInitScript(() => localStorage.setItem('appLanguage', 'de'));
 
   /*
-   * /config sofort scheitern lassen statt in die Sechs-Sekunden-Frist des
+   * Jeden Netzweg zum Backend abschneiden statt in die Sechs-Sekunden-Frist des
    * Boots zu laufen. Damit pruefen diese Tests gleich den Fall ohne Netz —
    * und das ist genau die Zusicherung aus Abnahmekriterium 8: ein
    * fehlgeschlagenes /config blockiert den Start nicht.
    */
-  await context.route('**/functions/v1/app-api/**', (route) => route.abort());
+  await blockBackend(context);
+
+  /*
+   * Ab SP1 liegt jede Route hinter der Anmeldewache. Diese Tests pruefen die
+   * Screens, nicht die Anmeldung — sie bekommen eine Sitzung mitgegeben. Der Weg
+   * dorthin ist derselbe wie bei einem Nutzer ohne Empfang: Sitzung im Speicher,
+   * Identitaet aus dem Abzug.
+   */
+  await seedSignedIn(context, { partnerId: '22222222-2222-4222-8222-222222222222' });
 });
 
 test('bootet und zeigt den Kalender', async ({ page }) => {

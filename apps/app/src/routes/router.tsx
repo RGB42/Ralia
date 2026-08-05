@@ -1,4 +1,10 @@
 import { Navigate, Outlet, type RouteObject } from 'react-router';
+import { RedirectIfSignedIn, RequireAuth } from '../auth/RequireAuth.js';
+import { ConnectPartnerScreen } from '../screens/auth/ConnectPartnerScreen.js';
+import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen.js';
+import { NewPasswordScreen } from '../screens/auth/NewPasswordScreen.js';
+import { SignInScreen } from '../screens/auth/SignInScreen.js';
+import { VerifyNoticeScreen } from '../screens/auth/VerifyNoticeScreen.js';
 import { CalendarScreen } from '../screens/calendar/CalendarScreen.js';
 import { MoneyScreen } from '../screens/money/MoneyScreen.js';
 import { PlannerScreen } from '../screens/planner/PlannerScreen.js';
@@ -21,26 +27,53 @@ function TodoBranch(): React.JSX.Element {
   );
 }
 
+/**
+ * Drei Gruppen, absichtlich getrennt:
+ *
+ *   1. **Offen fuer Abgemeldete** — die Anmeldeseiten. `RedirectIfSignedIn` haelt
+ *      einen angemeldeten Nutzer davon fern, damit er nicht nach einem Passwort
+ *      gefragt wird, das er nicht braucht.
+ *   2. **`/passwort-neu` ohne Wache in beide Richtungen** — dort *ist* eine
+ *      Sitzung da (der Recovery-Link liefert eine), und trotzdem darf es nicht
+ *      weiter in die App. Diese Route muss aus beiden Zustaenden erreichbar sein.
+ *   3. **Alles andere** hinter `RequireAuth`, in der AppShell.
+ */
 export const routes: RouteObject[] = [
   {
-    path: '/',
-    element: <AppFrame />,
+    element: <RedirectIfSignedIn />,
     children: [
-      { index: true, element: <Navigate to="/kalender" replace /> },
-      { path: 'kalender', element: <CalendarScreen /> },
-      { path: 'planer', element: <PlannerScreen /> },
+      { path: '/anmelden', element: <SignInScreen /> },
+      { path: '/passwort-vergessen', element: <ForgotPasswordScreen /> },
+      { path: '/bestaetigen', element: <VerifyNoticeScreen /> },
+    ],
+  },
+  { path: '/passwort-neu', element: <NewPasswordScreen /> },
+  {
+    element: <RequireAuth />,
+    children: [
+      // Ausserhalb der AppShell: hier gibt es noch keinen Kalender zu navigieren.
+      { path: '/partner-verbinden', element: <ConnectPartnerScreen /> },
       {
-        path: 'todos',
-        element: <TodoBranch />,
+        path: '/',
+        element: <AppFrame />,
         children: [
-          { index: true, element: <TodoOverview /> },
-          { path: ':listId', element: <TodoDetail /> },
+          { index: true, element: <Navigate to="/kalender" replace /> },
+          { path: 'kalender', element: <CalendarScreen /> },
+          { path: 'planer', element: <PlannerScreen /> },
+          {
+            path: 'todos',
+            element: <TodoBranch />,
+            children: [
+              { index: true, element: <TodoOverview /> },
+              { path: ':listId', element: <TodoDetail /> },
+            ],
+          },
+          { path: 'geld', element: <MoneyScreen /> },
+          { path: 'profil', element: <SettingsScreen /> },
+          { path: 'profil/sync', element: <SyncScreen /> },
+          { path: '*', element: <Navigate to="/kalender" replace /> },
         ],
       },
-      { path: 'geld', element: <MoneyScreen /> },
-      { path: 'profil', element: <SettingsScreen /> },
-      { path: 'profil/sync', element: <SyncScreen /> },
-      { path: '*', element: <Navigate to="/kalender" replace /> },
     ],
   },
 ];

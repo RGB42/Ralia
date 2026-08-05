@@ -1,13 +1,15 @@
 import { THEME_ATTRIBUTE, THEME_STORAGE_KEY, ThemeProvider, ToastProvider } from '@ralia/ui';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AuthContext, type AuthContextValue } from '../../auth/AuthProvider.js';
 import { I18nProvider } from '../../i18n/I18nProvider.js';
 import { LANG_STORAGE_KEY } from '../../i18n/catalog.js';
+import { authDouble, signedInState, TEST_PROFILE } from '../../test-harness.js';
 import { SettingsScreen } from './SettingsScreen.js';
 
-function renderScreen() {
+function renderScreen(auth: Partial<AuthContextValue> = {}) {
   vi.stubGlobal('matchMedia', () => ({
     matches: false,
     media: '',
@@ -19,7 +21,9 @@ function renderScreen() {
       <ThemeProvider>
         <I18nProvider>
           <ToastProvider>
-            <SettingsScreen />
+            <AuthContext.Provider value={authDouble(auth)}>
+              <SettingsScreen />
+            </AuthContext.Provider>
           </ToastProvider>
         </I18nProvider>
       </ThemeProvider>
@@ -108,5 +112,70 @@ describe('SettingsScreen', () => {
     expect(
       screen.getByRole('button', { name: /Kalender & Konflikte verwalten/ }),
     ).toBeInTheDocument();
+  });
+
+  it('zeigt den Einladungscode aus der Sitzung, nicht aus den Fixtures', () => {
+    // Der erste Wert dieses Screens, der ab SP1 echt ist.
+    renderScreen({ session: signedInState({ ...TEST_PROFILE, invite_code: 'ABC123' }) });
+    expect(screen.getByText('ABC123')).toBeInTheDocument();
+  });
+
+  it('speichert den Jahrestag ueber die RPC', async () => {
+    const setAnniversary = vi.fn().mockResolvedValue({ ok: true });
+    renderScreen({ setAnniversary });
+
+    const field = screen.getByLabelText('Jahrestag');
+    await userEvent.type(field, '2019-06-14');
+
+    expect(setAnniversary).toHaveBeenLastCalledWith('2019-06-14');
+    expect(await screen.findByRole('status')).toHaveTextContent('Jahrestag gespeichert');
+  });
+
+  it('meldet einen Fehler beim Jahrestag statt still zu scheitern', async () => {
+    const setAnniversary = vi.fn().mockResolvedValue({ ok: false, messageKey: 'sessionError' });
+    renderScreen({ setAnniversary });
+
+    await userEvent.type(screen.getByLabelText('Jahrestag'), '2019-06-14');
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Sitzungsfehler');
+  });
+
+  it('fragt vor dem Trennen nach', async () => {
+    /*
+     * Trennen ist zerstoerend und in Ralia 1.x hinter showConfirmation. Ohne
+     * Rueckfrage waere ein Fehlgriff auf dem Telefon nicht rueckholbar.
+     */
+    const disconnectPartner = vi.fn().mockResolvedValue({ ok: true });
+    renderScreen({ disconnectPartner });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Trennen' }));
+
+    expect(disconnectPartner).not.toHaveBeenCalled();
+    expect(await screen.findByRole('dialog')).toHaveTextContent('wirklich');
+  });
+
+  it('trennt erst nach der Bestaetigung', async () => {
+    const disconnectPartner = vi.fn().mockResolvedValue({ ok: true });
+    renderScreen({ disconnectPartner });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Trennen' }));
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Trennen' }));
+
+    expect(disconnectPartner).toHaveBeenCalledTimes(1);
+  });
+
+  it('meldet ab ueber einen Knopf, nicht ueber eine Textzeile', async () => {
+    /*
+     * Die Vorlage hat „Abmelden" als Teil von „Ralia 2.0 · Datenschutz ·
+     * Abmelden". Etwas, das man nur durch Treffen des richtigen Wortes in einer
+     * Zeile ausloest, ist kein Bedienelement.
+     */
+    const signOut = vi.fn().mockResolvedValue(undefined);
+    renderScreen({ signOut });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Abmelden' }));
+
+    expect(signOut).toHaveBeenCalledTimes(1);
   });
 });

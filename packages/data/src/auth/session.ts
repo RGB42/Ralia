@@ -87,6 +87,30 @@ interface SessionUser {
   email: string | null;
 }
 
+/**
+ * Frist für das Laden der Identität, wenn ein Abzug daliegt.
+ *
+ * Kurz, und das mit Absicht: `postgrest-js` wiederholt seit 2.111 jeden
+ * fehlgeschlagenen GET selbst — dreimal mit 1 s, 2 s, 4 s Backoff. Ohne Frist
+ * wartet der Start also gut sieben Sekunden, um herauszufinden, dass kein Netz
+ * da ist, obwohl Profil und Partner die ganze Zeit im Speicher liegen. Gemessen
+ * am 2026-08-05: 7,5 s bis zum ersten Inhalt.
+ *
+ * Die Wiederholung selbst wird *nicht* abgeschaltet. Für gewöhnliche
+ * Lesezugriffe ist sie richtig — ein 503 von PostgREST beim Nachladen des
+ * Schema-Caches ist wirklich vorübergehend. Sie darf nur nicht den Start
+ * aufhalten.
+ */
+export const IDENTITY_TIMEOUT_WITH_SNAPSHOT_MS = 2500;
+
+/**
+ * Frist ohne Abzug. Länger, weil hier nichts zum Zurückfallen da ist: das Profil
+ * *muss* kommen, sonst hat die App keine `calendar_id`. Derselbe Wert wie die
+ * `/config`-Frist im Boot, aus demselben Grund — irgendwann muss ein Ergebnis da
+ * sein, auch wenn die Anfrage nie antwortet.
+ */
+export const IDENTITY_TIMEOUT_WITHOUT_SNAPSHOT_MS = 6000;
+
 export interface RestoreDeps {
   /** Üblicherweise `client.auth.getSession()`, auf das Nötige eingeengt. */
   getSession(): Promise<{ session: { user: SessionUser } | null }>;
@@ -94,6 +118,35 @@ export interface RestoreDeps {
   loadIdentity(user: SessionUser): Promise<{ profile: ProfilesRow; partner: ProfilesRow | null }>;
   storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
   isOnline?: () => boolean;
+  /** Nur für Tests: setzt beide Fristen. 0 schaltet sie ab. */
+  identityTimeoutMs?: number;
+}
+
+/** Fehler einer abgelaufenen Frist. Als Transportfehler eingeordnet. */
+class IdentityTimeoutError extends Error {
+  constructor(ms: number) {
+    // Die Meldung trägt 'timed out', damit `isOfflineSyncError` sie erkennt —
+    // eine abgelaufene Frist *ist* ein Transportproblem, kein fachlicher Fehler.
+    super(`Identität nach ${ms} ms nicht geladen — timed out`);
+    this.name = 'IdentityTimeoutError';
+  }
+}
+
+function withDeadline<T>(promise: Promise<T>, ms: number): Promise<T> {
+  if (ms <= 0) return promise;
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new IdentityTimeoutError(ms)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error instanceof Error ? error : new Error(String(error)));
+      },
+    );
+  });
 }
 
 function fromSnapshot(storage: RestoreDeps['storage']): SessionState {
@@ -141,8 +194,18 @@ export async function restoreSession(deps: RestoreDeps): Promise<SessionState> {
   // Kein Fehler und keine Sitzung: wirklich abgemeldet.
   if (user === null) return { status: 'signed-out' };
 
+  /*
+   * Die Frist haengt daran, ob es etwas zum Zurueckfallen gibt. Mit Abzug darf
+   * sie kurz sein — der Nutzer sieht sofort seine Daten und die frischen kommen
+   * beim naechsten Start. Ohne Abzug muss das Profil wirklich her.
+   */
+  const hasSnapshot = readIdentitySnapshot(deps.storage) !== null;
+  const deadlineMs =
+    deps.identityTimeoutMs ??
+    (hasSnapshot ? IDENTITY_TIMEOUT_WITH_SNAPSHOT_MS : IDENTITY_TIMEOUT_WITHOUT_SNAPSHOT_MS);
+
   try {
-    const { profile, partner } = await deps.loadIdentity(user);
+    const { profile, partner } = await withDeadline(deps.loadIdentity(user), deadlineMs);
     writeIdentitySnapshot(deps.storage, profile, partner);
 
     return {

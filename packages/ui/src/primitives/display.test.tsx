@@ -67,6 +67,42 @@ describe('Input', () => {
     render(<Input id="d" value="2026-07-29" onChange={() => {}} type="date" />);
     expect(document.querySelector('input[type="date"]')).not.toBeNull();
   });
+
+  it('gibt autoComplete und name weiter', () => {
+    /*
+     * Ohne beides finden Passwortmanager das Feld nicht — bei einem
+     * Anmeldeformular ist das kein Detail, sondern der Unterschied zwischen
+     * „einmal antippen" und „Passwort von Hand abtippen".
+     */
+    render(
+      <Input
+        id="pw"
+        value=""
+        onChange={() => {}}
+        type="password"
+        name="password"
+        autoComplete="current-password"
+      />,
+    );
+    const field = document.querySelector('input[type="password"]');
+    expect(field?.getAttribute('autocomplete')).toBe('current-password');
+    expect(field?.getAttribute('name')).toBe('password');
+  });
+
+  it('setzt required, damit das Formular selbst prueft', () => {
+    render(<Input id="e" value="" onChange={() => {}} type="email" required />);
+    expect(document.querySelector('input[type="email"]')?.hasAttribute('required')).toBe(true);
+  });
+
+  it('bekommt ueber ariaLabel einen Namen ohne sichtbares Label', () => {
+    /*
+     * Der Fall ist eine ListRow: dort ist der Zeilentitel die Beschriftung,
+     * steht aber als Text daneben und nicht als <label for>. Ohne das waere das
+     * Feld fuer einen Screenreader namenlos.
+     */
+    render(<Input value="" onChange={() => {}} type="date" ariaLabel="Jahrestag" />);
+    expect(screen.getByLabelText('Jahrestag')).toBeInTheDocument();
+  });
 });
 
 describe('Textarea', () => {

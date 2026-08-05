@@ -77,25 +77,85 @@ Reset-Link ist damit nur dort einlösbar.
 Die Datenschicht zuerst, weil alles darauf sitzt, und in ihr die reinen
 Funktionen zuerst, weil sie ohne Netz und ohne DOM prüfbar sind.
 
-| #   | Schritt                             | Zustand | Tests |
-| --- | ----------------------------------- | ------- | ----- |
-| 1   | Schema-Typen berichtigen            | fertig  | —     |
-| 2   | `invite-code`                       | fertig  | 13    |
-| 3   | `auth-callback`                     | fertig  | 22    |
-| 4   | `identity-snapshot`                 | fertig  | 12    |
-| 5   | `mail-link-client`                  | fertig  | 6     |
-| 6   | `partner-repo`                      | fertig  | 15    |
-| 7   | `profile-repo`                      | fertig  | 17    |
-| 8   | `session`                           | fertig  | 17    |
-| 9   | i18n-Schlüssel für Auth und Partner | offen   |       |
-| 10  | `AuthProvider` und Routenwache      | offen   |       |
-| 11  | Anmelde- und Registrier-Screen      | offen   |       |
-| 12  | Passwort-Screens                    | offen   |       |
-| 13  | Verbinden-Screen                    | offen   |       |
-| 14  | Jahrestag in den Einstellungen      | offen   |       |
-| 15  | E2E: Wache und Rücksprung           | offen   |       |
+| #   | Schritt                                     | Zustand | Tests |
+| --- | ------------------------------------------- | ------- | ----- |
+| 1   | Schema-Typen berichtigen                    | fertig  | —     |
+| 2   | `invite-code`                               | fertig  | 13    |
+| 3   | `auth-callback`                             | fertig  | 22    |
+| 4   | `identity-snapshot`                         | fertig  | 12    |
+| 5   | `mail-link-client`                          | fertig  | 6     |
+| 6   | `partner-repo`                              | fertig  | 15    |
+| 7   | `profile-repo`                              | fertig  | 17    |
+| 8   | `session`                                   | fertig  | 20    |
+| 9   | i18n-Schlüssel für Auth und Partner         | fertig  | —     |
+| 10  | `AuthProvider`, `BootContext`, Routenwache  | fertig  | 5     |
+| 11  | Anmelde- und Registrier-Screen              | fertig  | 8     |
+| 12  | Passwort-Screens                            | fertig  | 5     |
+| 13  | Verbinden-Screen                            | fertig  | 5     |
+| 14  | Jahrestag und Abmelden in den Einstellungen | fertig  | 6     |
+| 15  | E2E: Wache und Rücksprung                   | fertig  | 8     |
 
-Stand nach Schritt 8: 465 Tests in 44 Dateien, `npm run verify` grün.
+Stand: 500 Unit-Tests in 45 Dateien, 19 E2E-Tests. `npm run verify` und
+`npm run e2e:live` grün.
+
+## Was während der Umsetzung dazukam
+
+### `postgrest-js` wiederholt Lesezugriffe selbst
+
+Aufgefallen, als die E2E-Tests nach der Routenwache scheiterten: die App
+brauchte **7,5 Sekunden** bis zum ersten Inhalt, wenn kein Netz da war. Gemessen
+mit einer Stapelspur um `fetch`:
+
+```
+   76 ms  rest/v1/profiles
+ 1100 ms  rest/v1/profiles
+ 3110 ms  rest/v1/profiles
+ 7122 ms  rest/v1/profiles
+```
+
+Die Ursache steht in `@supabase/postgrest-js` 2.111.0:
+
+```
+DEFAULT_MAX_RETRIES = 3
+getRetryDelay = (i) => Math.min(1000 * 2 ** i, 30000)
+retryEnabled  = builder.retry ?? true
+```
+
+Seit dieser Fassung wiederholt die Bibliothek jeden idempotenten Aufruf, der an
+einem Netzfehler oder an 503/520 scheitert — dreimal mit 1 s, 2 s, 4 s. Das ist
+für gewöhnliche Lesezugriffe richtig und wird **nicht** abgeschaltet: ein 503
+von PostgREST beim Nachladen des Schema-Caches ist wirklich vorübergehend.
+
+Falsch ist es nur im Start. Dort liegen Profil und Partner die ganze Zeit im
+Abzug, und sieben Sekunden zu warten, um herauszufinden, dass kein Netz da ist,
+ist verschwendete Zeit des Nutzers. `restoreSession` hat deshalb eine Frist
+bekommen — dieselbe Antwort, die SP0 für `/config` gefunden hat:
+
+- **mit Abzug:** 2,5 s, dann der Abzug. Der Nutzer sieht sofort seine Daten.
+- **ohne Abzug:** 6 s, dann der Anmeldebildschirm. Unschön und bewusst so; der
+  Fall tritt genau einmal auf, beim allerersten Laden in einem Browser, denn jeder
+  erfolgreiche Start schreibt einen Abzug.
+
+Danach: 3,5 s statt 7,5 s bis zum Kalender.
+
+### Ein formgültiges JWT im E2E-Seed
+
+Die Smoke-Tests brauchen ab jetzt eine Sitzung. Der erste Versuch legte
+`access_token: 'test-access-token'` ab — und der Start blieb hängen. Grund:
+`auth-js` dekodiert das Zugriffstoken, um die Restlaufzeit zu bestimmen; an
+einer Zeichenkette, die kein JWT ist, scheitert das, die Sitzung gilt als
+erneuerungsbedürftig, und die Bibliothek läuft in eine Erneuerung mit
+Wiederholungen gegen ein abgeschnittenes Netz. `e2e/session.ts` baut deshalb ein
+formgültiges, unsigniertes JWT. Signiert wird nicht — der Client prüft die
+Signatur nicht, und der Server sieht das Token nie.
+
+### Zwei kleine Ergänzungen an `packages/ui`
+
+`Input` hat `name`, `autoComplete`, `required` und `ariaLabel` bekommen. Die
+ersten drei, weil ein Anmeldeformular ohne sie für Passwortmanager unsichtbar
+ist. `ariaLabel` für den Fall `ListRow`: dort ist der Zeilentitel die
+Beschriftung, steht aber als Text daneben und nicht als `<label for>` — das
+Jahrestag-Feld wäre sonst namenlos gewesen.
 
 ## Was in Schritt 1 gefunden wurde
 

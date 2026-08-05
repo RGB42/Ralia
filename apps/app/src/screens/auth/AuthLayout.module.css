@@ -1,0 +1,180 @@
+/*
+ * Rahmen der Anmeldeseiten.
+ *
+ * Die Design-Vorlage hat keine Auth-Oberflaeche — sie ist aus deren Sprache
+ * abgeleitet, nicht neu erfunden: dieselbe Flaeche (`--surface`), derselbe
+ * Radius 20px und derselbe Schatten wie die Karten der App, dieselbe
+ * Schriftstaffel (18px/600 fuer Titel, 11.5px fuer Beiwerk), dieselbe
+ * Kicker-Zeile in Grossbuchstaben mit 0.4px Sperrung wie im AppHeader.
+ *
+ * Mittig statt randlos, und das mit Absicht: hier gibt es keine Navigation, die
+ * am Rand kleben muss, und ein Formular in Bildschirmbreite liest sich auf einem
+ * Tablet schlecht.
+ */
+
+.screen {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 18px calc(24px + env(safe-area-inset-bottom));
+  padding-left: calc(18px + env(safe-area-inset-left));
+  padding-right: calc(18px + env(safe-area-inset-right));
+  background: var(--bg-app);
+}
+
+@supports not (min-height: 100dvh) {
+  .screen {
+    min-height: 100vh;
+  }
+}
+
+.panel {
+  width: 100%;
+  max-width: 400px;
+}
+
+.brand {
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.logo {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--brand);
+  letter-spacing: -0.4px;
+}
+
+.kicker {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--ink-400);
+  margin-top: 4px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: var(--shadow-md);
+  padding: 20px 18px;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink-900);
+  margin: 0 0 4px;
+}
+
+.hint {
+  font-size: 11.5px;
+  color: var(--ink-500);
+  margin: 0 0 16px;
+  line-height: 1.45;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* role="alert" — ein gefaerbter Kasten allein wird von Screenreadern nicht angekuendigt. */
+.error {
+  font-size: 12px;
+  color: var(--danger);
+  background: var(--hov-danger);
+  border-radius: 11px;
+  padding: 9px 11px;
+  line-height: 1.4;
+}
+
+.notice {
+  font-size: 12px;
+  color: var(--ok);
+  background: var(--brand-soft);
+  border-radius: 11px;
+  padding: 9px 11px;
+  line-height: 1.4;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--ink-400);
+  margin: 2px 0;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.linkRow {
+  display: flex;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+/* Ein Textknopf, kein <a>: es fuehrt nirgendwohin, es schaltet die Ansicht um. */
+.link {
+  background: none;
+  border: 0;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--brand);
+  cursor: pointer;
+  border-radius: 9px;
+}
+
+.link:hover {
+  background: var(--hov-tint);
+}
+
+.link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--hov-ring);
+}
+
+.footer {
+  text-align: center;
+  font-size: 11px;
+  color: var(--ink-400);
+  margin-top: 14px;
+}
+
+.codeBox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--surface-2);
+  border: 1px dashed var(--brand-line);
+  border-radius: 13px;
+  padding: 12px 14px;
+}
+
+.code {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--brand);
+  /* Damit O und 0 unterscheidbar bleiben, wenn jemand den Code abliest. */
+  font-variant-numeric: slashed-zero;
+}
