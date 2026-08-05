@@ -44,7 +44,13 @@ npm run typecheck # tsc --noEmit, strict
 npm run lint      # ESLint
 npm run verify    # typecheck + lint + test + build
 npm run e2e       # Playwright gegen den Preview-Build
+npm run e2e:live  # zusätzlich die Tests, die das echte Backend brauchen
 ```
+
+`e2e:live` setzt `RALIA_LIVE=1` und lässt damit
+[`config-live.spec.ts`](e2e/config-live.spec.ts) mitlaufen — die Tests gegen den
+echten `/config`-Endpunkt. Ohne die Variable werden sie übersprungen statt rot,
+damit eine Umgebung ohne Netzzugang nicht falsch Alarm schlägt.
 
 Die Übersetzungen werden nicht getippt, sondern aus Ralia_Opus extrahiert:
 
