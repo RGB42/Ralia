@@ -44,12 +44,18 @@ export interface AuthContextValue {
   /** Fehler aus der Rücksprung-URL, als i18n-Schlüssel. */
   callbackErrorKey: string | null;
 
-  signIn(email: string, password: string): Promise<ActionResult>;
+  /**
+   * `needsPartner` ist gesetzt, wenn die Anmeldung geklappt hat und das Profil
+   * keinen Partner trägt. Der Screen entscheidet damit, ob es in den Kalender
+   * oder auf den Verbinden-Screen geht — er kann es nicht selbst wissen, weil
+   * `session` in seinem Abschluss noch der Zustand von vorher ist.
+   */
+  signIn(email: string, password: string): Promise<ActionResult & { needsPartner?: boolean }>;
   signUp(
     name: string,
     email: string,
     password: string,
-  ): Promise<ActionResult & { needsVerification?: boolean }>;
+  ): Promise<ActionResult & { needsVerification?: boolean; needsPartner?: boolean }>;
   signInWithGoogle(): Promise<ActionResult>;
   requestPasswordReset(email: string): Promise<ActionResult>;
   resendConfirmation(email: string): Promise<ActionResult>;
@@ -62,6 +68,11 @@ export interface AuthContextValue {
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
+
+/** Angemeldet, aber ohne verbundenen Partner. */
+function lacksPartner(state: SessionState): boolean {
+  return state.status === 'signed-in' && state.identity.profile.partner_id === null;
+}
 
 /** Wohin Mail-Links und der OAuth-Rundlauf zurückkommen. */
 function callbackUrl(): string {
@@ -234,8 +245,8 @@ export function AuthProvider({ children, initialHref }: AuthProviderProps): Reac
       async signIn(email, password) {
         const { error } = await client.auth.signInWithPassword({ email, password });
         if (error) return { ok: false, messageKey: authErrorKey(error) };
-        await refresh();
-        return { ok: true };
+        const next = await refresh();
+        return { ok: true, needsPartner: lacksPartner(next) };
       },
 
       async signUp(name, email, password) {
@@ -256,8 +267,8 @@ export function AuthProvider({ children, initialHref }: AuthProviderProps): Reac
          * kann, ohne dass dieser Code es erfährt.
          */
         if (data.user && !data.session) return { ok: true, needsVerification: true };
-        await refresh();
-        return { ok: true };
+        const next = await refresh();
+        return { ok: true, needsPartner: lacksPartner(next) };
       },
 
       async signInWithGoogle() {

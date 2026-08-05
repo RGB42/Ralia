@@ -101,17 +101,27 @@ export interface RenderAppOptions {
   auth?: Partial<AuthContextValue>;
 }
 
+/**
+ * Gibt den Router mit zurueck.
+ *
+ * Manche Zusicherungen sind ein *Ziel*, kein Bildschirm: nach der Anmeldung ohne
+ * Partner soll es auf `/partner-verbinden` gehen. Ob dort etwas Sichtbares
+ * ankommt, haengt am Auth-Doppelgaenger — der bleibt abgemeldet, also weist die
+ * Wache ihn ab. Geprueft wird deshalb der Pfad.
+ */
 export function renderAppAt(path: string, options: RenderAppOptions = {}) {
   stubMatchMedia();
-  return render(
+  const router = createMemoryRouter(routes, { initialEntries: [path] });
+  const result = render(
     <ThemeProvider>
       <I18nProvider>
         <ToastProvider>
           <AuthContext.Provider value={authDouble(options.auth)}>
-            <RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />
+            <RouterProvider router={router} />
           </AuthContext.Provider>
         </ToastProvider>
       </I18nProvider>
     </ThemeProvider>,
   );
+  return { ...result, router, path: () => router.state.location.pathname };
 }

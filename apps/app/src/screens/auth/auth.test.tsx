@@ -61,6 +61,49 @@ describe('SignInScreen', () => {
     expect(signIn).toHaveBeenCalledWith('lena@example.com', 'geheim123');
   });
 
+  it('fuehrt ohne Partner auf den Verbinden-Screen', async () => {
+    /*
+     * Fuer ein Paar ist das Verbinden der eigentliche Anfang — Ralia 1.x macht
+     * es genauso (navigateAfterAuth: ohne partner_id → connectionScreen).
+     */
+    const signIn = vi.fn().mockResolvedValue({ ok: true, needsPartner: true });
+    const app = renderAppAt('/anmelden', { auth: { session: { status: 'signed-out' }, signIn } });
+
+    await userEvent.type(screen.getByLabelText('E-Mail'), 'lena@example.com');
+    await userEvent.type(screen.getByLabelText('Passwort'), 'geheim123');
+    await userEvent.click(screen.getByRole('button', { name: 'Anmelden' }));
+
+    await waitFor(() => expect(app.path()).toBe('/partner-verbinden'));
+  });
+
+  it('fuehrt mit Partner direkt in den Kalender', async () => {
+    const signIn = vi.fn().mockResolvedValue({ ok: true, needsPartner: false });
+    const app = renderAppAt('/anmelden', { auth: { session: { status: 'signed-out' }, signIn } });
+
+    await userEvent.type(screen.getByLabelText('E-Mail'), 'lena@example.com');
+    await userEvent.type(screen.getByLabelText('Passwort'), 'geheim123');
+    await userEvent.click(screen.getByRole('button', { name: 'Anmelden' }));
+
+    await waitFor(() => expect(app.path()).toBe('/kalender'));
+  });
+
+  it('achtet auf ein gemerktes Ziel, auch ohne Partner', async () => {
+    /*
+     * Wer einen Link auf die Geld-Ansicht geoeffnet hat, will dorthin. Der
+     * Verbinden-Screen ist wichtig, aber nicht wichtiger als eine ausdrueckliche
+     * Absicht — er ist ueber die Einstellungen weiter erreichbar.
+     */
+    const signIn = vi.fn().mockResolvedValue({ ok: true, needsPartner: true });
+    const app = renderAppAt('/geld', { auth: { session: { status: 'signed-out' }, signIn } });
+
+    await waitFor(() => expect(app.path()).toBe('/anmelden'));
+    await userEvent.type(screen.getByLabelText('E-Mail'), 'lena@example.com');
+    await userEvent.type(screen.getByLabelText('Passwort'), 'geheim123');
+    await userEvent.click(screen.getByRole('button', { name: 'Anmelden' }));
+
+    await waitFor(() => expect(app.path()).toBe('/geld'));
+  });
+
   it('verlangt beide Felder, bevor es etwas schickt', async () => {
     const signIn = vi.fn();
     renderAppAt('/anmelden', { auth: { session: { status: 'signed-out' }, signIn } });

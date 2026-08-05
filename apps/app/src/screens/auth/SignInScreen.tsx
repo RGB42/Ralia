@@ -39,10 +39,26 @@ export function SignInScreen(): React.JSX.Element {
   // Nutzer überhaupt hier steht.
   const shownError = errorKey ?? callbackErrorKey;
 
-  /** Wohin nach der Anmeldung — zurück auf das Ziel, das die Wache gemerkt hat. */
-  function afterAuth(): string {
+  /**
+   * Wohin nach der Anmeldung.
+   *
+   * Drei Möglichkeiten, in dieser Ordnung:
+   *
+   *   1. Das Ziel, das die Wache gemerkt hat. Wer einen Link auf die
+   *      Geld-Ansicht geöffnet hat, will dorthin und nicht in den Kalender.
+   *   2. Der Verbinden-Screen, wenn kein Partner verbunden ist. So hält es
+   *      Ralia 1.x (`navigateAfterAuth`: ohne `partner_id` → `connectionScreen`),
+   *      und für ein Paar ist das Verbinden der eigentliche Anfang.
+   *   3. Der Kalender.
+   *
+   * „Überspringen" wird nicht gemerkt — auch das wie Ralia 1.x. Ein Nutzer, der
+   * allein bleibt, sieht den Screen bei der nächsten Anmeldung wieder; das ist
+   * der Preis dafür, dass ein Paar den Weg nicht verpasst.
+   */
+  function afterAuth(needsPartner: boolean | undefined): string {
     const from = (location.state as LocationState | null)?.from;
-    return from !== undefined && from !== '/anmelden' ? from : '/kalender';
+    if (from !== undefined && from !== '/anmelden') return from;
+    return needsPartner === true ? '/partner-verbinden' : '/kalender';
   }
 
   async function submit(event: React.FormEvent): Promise<void> {
@@ -63,7 +79,7 @@ export function SignInScreen(): React.JSX.Element {
       if (mode === 'signIn') {
         const result = await signIn(email.trim(), password);
         if (!result.ok) setErrorKey(result.messageKey);
-        else void navigate(afterAuth(), { replace: true });
+        else void navigate(afterAuth(result.needsPartner), { replace: true });
         return;
       }
 
@@ -76,7 +92,7 @@ export function SignInScreen(): React.JSX.Element {
         void navigate('/bestaetigen', { replace: true, state: { email: email.trim() } });
         return;
       }
-      void navigate(afterAuth(), { replace: true });
+      void navigate(afterAuth(result.needsPartner), { replace: true });
     } finally {
       setBusy(false);
     }
