@@ -22,7 +22,12 @@ export {
   isPairedCalendarId,
 } from './calendar-id.js';
 
-export { getSupabaseClient, resetSupabaseClient, type ClientOptions, type RaliaSupabaseClient } from './client.js';
+export {
+  getSupabaseClient,
+  resetSupabaseClient,
+  type ClientOptions,
+  type RaliaSupabaseClient,
+} from './client.js';
 
 export {
   BOOTSTRAP_ANON_KEY,

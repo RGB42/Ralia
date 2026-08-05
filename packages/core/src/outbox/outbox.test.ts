@@ -164,9 +164,9 @@ describe('Outbox', () => {
 
     // 'delete' must not reach the server before 'update' succeeds.
     expect(seen).toEqual(['insert', 'update']);
-    expect((await outbox.peek<TestMutation>('events', 'cal-1')).map((r) => r.mutation.kind)).toEqual(
-      ['update', 'delete'],
-    );
+    expect(
+      (await outbox.peek<TestMutation>('events', 'cal-1')).map((r) => r.mutation.kind),
+    ).toEqual(['update', 'delete']);
   });
 
   it('does not let one stalled queue block another', async () => {
@@ -242,9 +242,9 @@ describe('Outbox', () => {
 
       await outbox.replaceQueue<TestMutation>('events', 'cal-1', [{ kind: 'replaced' }]);
 
-      expect((await outbox.peek<TestMutation>('events', 'cal-2')).map((r) => r.mutation.kind)).toEqual(
-        ['other'],
-      );
+      expect(
+        (await outbox.peek<TestMutation>('events', 'cal-2')).map((r) => r.mutation.kind),
+      ).toEqual(['other']);
     });
   });
 

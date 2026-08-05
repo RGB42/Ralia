@@ -66,9 +66,7 @@ describe('AppApi.url', () => {
 
 describe('AppApi.fetch', () => {
   it('sends the apikey header the Supabase gateway requires', async () => {
-    const fetchImpl = vi.fn<typeof fetch>(async () =>
-      jsonResponse({}),
-    );
+    const fetchImpl = vi.fn<typeof fetch>(async () => jsonResponse({}));
 
     await api(fetchImpl).fetch('/config');
 
@@ -77,9 +75,7 @@ describe('AppApi.fetch', () => {
   });
 
   it('does not clobber a caller-supplied apikey', async () => {
-    const fetchImpl = vi.fn<typeof fetch>(async () =>
-      jsonResponse({}),
-    );
+    const fetchImpl = vi.fn<typeof fetch>(async () => jsonResponse({}));
 
     await api(fetchImpl).fetch('/config', { headers: { apikey: 'caller-key' } });
 
@@ -88,9 +84,7 @@ describe('AppApi.fetch', () => {
   });
 
   it('uses the replacement key after setAnonKey', async () => {
-    const fetchImpl = vi.fn<typeof fetch>(async () =>
-      jsonResponse({}),
-    );
+    const fetchImpl = vi.fn<typeof fetch>(async () => jsonResponse({}));
     const subject = api(fetchImpl);
 
     subject.setAnonKey('sb_publishable_rotated');
@@ -103,17 +97,13 @@ describe('AppApi.fetch', () => {
 
 describe('AppApi.getJson', () => {
   it('parses a successful response', async () => {
-    const fetchImpl = vi.fn<typeof fetch>(async () =>
-      jsonResponse({ billingEnabled: true }),
-    );
+    const fetchImpl = vi.fn<typeof fetch>(async () => jsonResponse({ billingEnabled: true }));
 
     await expect(api(fetchImpl).getJson('/config')).resolves.toEqual({ billingEnabled: true });
   });
 
   it('throws AppApiError carrying status and body on a rejected response', async () => {
-    const fetchImpl = vi.fn<typeof fetch>(
-      async () => new Response('nope', { status: 403 }),
-    );
+    const fetchImpl = vi.fn<typeof fetch>(async () => new Response('nope', { status: 403 }));
 
     const error = await api(fetchImpl)
       .getJson('/admin/users')
@@ -126,17 +116,13 @@ describe('AppApi.getJson', () => {
   });
 
   it('throws on malformed JSON rather than returning a broken value', async () => {
-    const fetchImpl = vi.fn<typeof fetch>(
-      async () => new Response('{not json', { status: 200 }),
-    );
+    const fetchImpl = vi.fn<typeof fetch>(async () => new Response('{not json', { status: 200 }));
 
     await expect(api(fetchImpl).getJson('/config')).rejects.toThrow(/malformed JSON/);
   });
 
   it('resolves undefined for an empty 204 body', async () => {
-    const fetchImpl = vi.fn<typeof fetch>(
-      async () => new Response(null, { status: 204 }),
-    );
+    const fetchImpl = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }));
 
     await expect(api(fetchImpl).getJson('/push/unsubscribe')).resolves.toBeUndefined();
   });
@@ -144,9 +130,7 @@ describe('AppApi.getJson', () => {
 
 describe('AppApi.postJson', () => {
   it('serialises the body and sets the content type', async () => {
-    const fetchImpl = vi.fn<typeof fetch>(async () =>
-      jsonResponse({ ok: true }),
-    );
+    const fetchImpl = vi.fn<typeof fetch>(async () => jsonResponse({ ok: true }));
 
     await api(fetchImpl).postJson('/api/push/subscribe', { endpoint: 'https://push.example' });
 

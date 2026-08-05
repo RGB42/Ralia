@@ -147,8 +147,7 @@ export async function importLegacyOutbox(
   const now = options.now ?? Date.now;
   const db = await outbox.db();
   const existing = (await db.get('meta', LEGACY_MIGRATION_META_KEY)) as
-    | LegacyMigrationMarker
-    | undefined;
+    LegacyMigrationMarker | undefined;
 
   if (existing && existing.version >= LEGACY_MIGRATION_VERSION) {
     // Already imported. Finish any cleanup a previous interrupted run left behind.

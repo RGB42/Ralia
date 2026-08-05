@@ -61,13 +61,13 @@ Das Design stammt aus einem Claude-Design-Prototypen, der versioniert unter [`do
 
 ## Dokumentation
 
-| Pfad | Inhalt |
-|---|---|
-| [`docs/superpowers/specs/`](docs/superpowers/specs/) | Programm-Design und Sub-Projekt-Spezifikationen |
-| [`docs/superpowers/plans/`](docs/superpowers/plans/) | Implementierungspläne |
-| [`docs/design-reference/`](docs/design-reference/) | Design-Vorlage, Quelle aller Tokens |
-| [`docs/superpowers/plans/2026-08-03-sp0-abnahme.md`](docs/superpowers/plans/2026-08-03-sp0-abnahme.md) | Abnahmeprotokoll SP0 gegen die zehn Kriterien des Specs |
-| [`docs/native-rebuild-reference/`](docs/native-rebuild-reference/) | Quellstand des vorherigen Expo-Anlaufs, als Referenz aufgehoben |
+| Pfad                                                                                                   | Inhalt                                                          |
+| ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| [`docs/superpowers/specs/`](docs/superpowers/specs/)                                                   | Programm-Design und Sub-Projekt-Spezifikationen                 |
+| [`docs/superpowers/plans/`](docs/superpowers/plans/)                                                   | Implementierungspläne                                           |
+| [`docs/design-reference/`](docs/design-reference/)                                                     | Design-Vorlage, Quelle aller Tokens                             |
+| [`docs/superpowers/plans/2026-08-03-sp0-abnahme.md`](docs/superpowers/plans/2026-08-03-sp0-abnahme.md) | Abnahmeprotokoll SP0 gegen die zehn Kriterien des Specs         |
+| [`docs/native-rebuild-reference/`](docs/native-rebuild-reference/)                                     | Quellstand des vorherigen Expo-Anlaufs, als Referenz aufgehoben |
 
 ## Lizenz
 
