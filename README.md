@@ -6,7 +6,7 @@ Eine Codebasis für **Android**, **iOS** und **Web** mit Marketing-Homepage.
 
 > **Status: SP0 abgeschlossen, SP1 umgesetzt.** `npm run dev` startet die App unter `/app/`. Alle acht Ansichten und alle acht Bottom Sheets stehen; seit SP1 liegen sie hinter einer echten Anmeldung, und Identität, Einladungscode, Partner-Verbindung und Jahrestag kommen aus der Datenbank. Die Inhalte der Screens — Termine, Todos, Geld — sind weiter die Demo-Daten der Design-Vorlage; sie folgen in SP2 bis SP4.
 >
-> [SP0-Abnahmeprotokoll](docs/superpowers/plans/2026-08-03-sp0-abnahme.md) · [SP1-Spec](docs/superpowers/specs/2026-08-05-sp1-auth-partner-design.md) · [SP1-Plan](docs/superpowers/plans/2026-08-05-sp1-auth-partner.md)
+> [SP0-Abnahmeprotokoll](docs/superpowers/plans/2026-08-03-sp0-abnahme.md) · [SP1-Spec](docs/superpowers/specs/2026-08-05-sp1-auth-partner-design.md) · [SP1-Plan](docs/superpowers/plans/2026-08-05-sp1-auth-partner.md) · [SP1-Abnahme](docs/superpowers/plans/2026-08-05-sp1-abnahme.md)
 
 ## Architektur
 
@@ -42,7 +42,7 @@ Der Quellcode der Edge Function liegt nicht in diesem Repo. Wir konsumieren sie,
 ```bash
 npm install
 npm run dev       # Vite, http://localhost:5173/app/
-npm test          # Vitest — 503 Tests
+npm test          # Vitest — 504 Tests
 npm run typecheck # tsc --noEmit, strict
 npm run lint      # ESLint
 npm run verify    # typecheck + lint + test + build

@@ -67,6 +67,19 @@ describe('authErrorKey', () => {
     );
   });
 
+  it('erkennt den fehlenden Code-Verifier', () => {
+    /*
+     * Der Fall, um den sich der ganze Zwei-Client-Aufbau dreht: ein
+     * PKCE-Ruecksprung, der in einem anderen Browser geoeffnet wird als dem, der
+     * ihn angefordert hat. Der Verifier liegt dort nicht, `auth-js` meldet es.
+     * Ein Rohtext waere hier besonders schlecht — der Nutzer koennte nicht
+     * wissen, dass ein neuer Link die Antwort ist.
+     */
+    expect(authErrorKey({ message: 'both auth code and code verifier should be non-empty' })).toBe(
+      'authVerifierMissing',
+    );
+  });
+
   it('faellt auf eine allgemeine Meldung zurueck statt den englischen Satz zu zeigen', () => {
     /*
      * Ralia 1.x zeigt error.message unverändert, auch in der deutschen
