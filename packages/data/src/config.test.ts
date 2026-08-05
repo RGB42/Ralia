@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AppApi } from './app-api.js';
-import { BOOTSTRAP_ANON_KEY, bootstrapConfig, loadRuntimeConfig, mergeRuntimeConfig } from './config.js';
+import {
+  BOOTSTRAP_ANON_KEY,
+  bootstrapConfig,
+  loadRuntimeConfig,
+  mergeRuntimeConfig,
+} from './config.js';
 
 /** The exact payload the live edge function returned on 2026-07-31. */
 const LIVE_CONFIG = {
@@ -8,7 +13,8 @@ const LIVE_CONFIG = {
   supabaseAnonKey: 'sb_publishable_U_KrjLMuc_o4TFwcY3SErA_N8EXxeCV',
   googleClientId: '1061137684494-49scn6qq27lkoqlih951750e627q3f4a.apps.googleusercontent.com',
   googleRedirectUri: 'postmessage',
-  vapidPublicKey: 'BADFWCUOj39xD1qDA2cx42EzRBF__Gifv0_h1ssMM_iMZ_7vuO92XXjAjN5f9a6k7JCojnOvrf7eW9KMZgorC7w',
+  vapidPublicKey:
+    'BADFWCUOj39xD1qDA2cx42EzRBF__Gifv0_h1ssMM_iMZ_7vuO92XXjAjN5f9a6k7JCojnOvrf7eW9KMZgorC7w',
   billingEnabled: true,
 };
 

@@ -36,11 +36,13 @@
 ## File Structure
 
 **`packages/core/src/calendar/`** — neue, reine Logik ohne DOM
+
 - `month-density.ts` — Chip-gegen-Punkt-Entscheidung aus der gemessenen Rasterhöhe
 - `week-geometry.ts` — `top`/`height` eines Termins in der Wochen-Timeline
 - `month-grid.ts` — die 42 Rasterzellen eines Monats aus Jahr/Monat/Wochenstart
 
 **`packages/ui/src/`**
+
 - `tokens/` — `tokens.css`, `reset.css`, `fonts.css`, `tokens.parity.test.ts`
 - `theme/` — `ThemeProvider.tsx`, `useTheme.ts`, `theme-storage.ts`
 - `primitives/` — je Komponente eine `.tsx` + `.module.css`, Tests gebündelt je Gruppe
@@ -51,6 +53,7 @@
 - `index.ts` — der einzige öffentliche Einstiegspunkt
 
 **`apps/app/src/`**
+
 - `boot/` — `bootstrap.ts`, `BootGate.tsx`
 - `i18n/` — `I18nProvider.tsx`, `useT.ts`, `catalog.ts`, `de.json`, `en.json`
 - `routes/` — `router.tsx`, `AppFrame.tsx`
@@ -67,12 +70,14 @@
 Vor dem ersten neuen Code muss `npm run verify` eine verlässliche Aussage liefern. Aktuell: 24 Typecheck-Fehler, 3 Lint-Fehler.
 
 **Files:**
+
 - Modify: `packages/data/src/app-api.test.ts` (8 Stellen)
 - Modify: `packages/core/src/outbox/outbox.test.ts:77`, `:102`
 - Modify: `packages/core/src/outbox/outbox.ts:253`
 - Modify: `packages/data/src/config.ts:1`
 
 **Interfaces:**
+
 - Consumes: nichts
 - Produces: `npm run verify` läuft durch — Voraussetzung für jede folgende Task
 
@@ -100,7 +105,9 @@ Das behebt zugleich die `TS2339`-Folgefehler (`Property 'headers' does not exist
 
 ```ts
 // vorher
-const executor = vi.fn<[OutboxRecord<TestMutation>], Promise<void>>(async () => {});
+const executor = vi.fn<[OutboxRecord<TestMutation>], Promise<void>>(
+  async () => {},
+);
 // nachher
 const executor = vi.fn<OutboxExecutor<TestMutation>>(async () => {});
 ```
@@ -137,11 +144,13 @@ git commit -m "fix: Vitest-3-Mock-Signaturen und drei Lint-Verstoesse"
 `react` und `react-dom` 19.2.8 liegen im Lockfile nur als transitive **dev**-Pakete und sind in `package.json` überhaupt nicht deklariert. `react-router`, `@fontsource/poppins` und `@playwright/test` fehlen ganz. Ohne diesen Schritt hängt jede folgende Task an Zufallszuständen des `node_modules`-Baums.
 
 **Files:**
+
 - Modify: `package.json`
 - Create: `packages/ui/package.json`
 - Create: `apps/app/package.json`
 
 **Interfaces:**
+
 - Consumes: Task 1 (grüne Baseline)
 - Produces: Workspaces `@ralia/ui` und `@ralia/app` existieren; `react@19`, `react-dom@19`, `react-router@8`, `@fontsource/poppins`, `@playwright/test` sind installiert
 
@@ -150,6 +159,7 @@ git commit -m "fix: Vitest-3-Mock-Signaturen und drei Lint-Verstoesse"
 ```bash
 node -e "const p=require('./package.json');const a={...p.dependencies,...p.devDependencies};for(const k of ['react','react-dom','react-router','@fontsource/poppins','@playwright/test'])console.log((a[k]||'NOT DECLARED').padEnd(16),k)"
 ```
+
 Expected: alle fünf `NOT DECLARED`
 
 - [x] **Step 2: `packages/ui/package.json` anlegen**
@@ -221,6 +231,7 @@ Expected: Exit 0. `react`, `react-dom` erscheinen jetzt als reguläre (nicht-dev
 node -e "console.log(require('react/package.json').version, require('react-router/package.json').version)"
 npm run typecheck
 ```
+
 Expected: `19.2.x 7.x.x`, Typecheck Exit 0
 
 - [x] **Step 7: Commit**
@@ -237,6 +248,7 @@ git commit -m "chore: Workspaces @ralia/ui und @ralia/app mit expliziten Abhaeng
 Das Herzstück. Der Test macht „wertgenau" zu einer geprüften Eigenschaft statt zu einer Behauptung — er liest die Vorlage und vergleicht sie mit `tokens.css`.
 
 **Files:**
+
 - Create: `packages/ui/src/tokens/tokens.css`
 - Create: `packages/ui/src/tokens/reset.css`
 - Create: `packages/ui/src/tokens/fonts.css`
@@ -246,6 +258,7 @@ Das Herzstück. Der Test macht „wertgenau" zu einer geprüften Eigenschaft sta
 - Modify: `vitest.config.ts` — Node-Projekt muss `packages/ui/src/**/*.test.ts` einschließen
 
 **Interfaces:**
+
 - Consumes: Task 2
 - Produces:
   - `packages/ui/src/tokens/tokens.css` mit `:root` und `:root[data-ralia-theme="dark"]`
@@ -277,7 +290,12 @@ import { describe, expect, it } from 'vitest';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const templateSrc = readFileSync(
-  fileURLToPath(new URL('../../../../docs/design-reference/Ralia-Organizer.dc.html', import.meta.url)),
+  fileURLToPath(
+    new URL(
+      '../../../../docs/design-reference/Ralia-Organizer.dc.html',
+      import.meta.url,
+    ),
+  ),
   'utf8',
 );
 const tokensSrc = readFileSync(`${here}tokens.css`, 'utf8');
@@ -294,14 +312,24 @@ function customProps(css: string, selector: string): Map<string, string> {
     if (colon === -1) continue;
     const prop = decl.slice(0, colon).trim();
     if (!prop.startsWith('--')) continue;
-    out.set(prop, decl.slice(colon + 1).trim().replace(/\s+/g, ' '));
+    out.set(
+      prop,
+      decl
+        .slice(colon + 1)
+        .trim()
+        .replace(/\s+/g, ' '),
+    );
   }
   return out;
 }
 
 /** Liest einen Eintrag der colors()-Map aus der Logik der Vorlage. */
 function templatePersonColors(slot: string): {
-  bar: string; bgDark: string; bgLight: string; fgDark: string; fgLight: string;
+  bar: string;
+  bgDark: string;
+  bgLight: string;
+  fgDark: string;
+  fgLight: string;
 } {
   const re = new RegExp(
     `${slot}\\s*:\\s*\\{\\s*bar\\s*:\\s*'([^']+)'\\s*,\\s*` +
@@ -310,7 +338,13 @@ function templatePersonColors(slot: string): {
   );
   const m = re.exec(templateSrc);
   if (!m) throw new Error(`colors()-Eintrag fehlt in der Vorlage: ${slot}`);
-  return { bar: m[1]!, bgDark: m[2]!, bgLight: m[3]!, fgDark: m[4]!, fgLight: m[5]! };
+  return {
+    bar: m[1]!,
+    bgDark: m[2]!,
+    bgLight: m[3]!,
+    fgDark: m[4]!,
+    fgLight: m[5]!,
+  };
 }
 
 describe('Token-Parität mit der Design-Vorlage', () => {
@@ -326,45 +360,77 @@ describe('Token-Parität mit der Design-Vorlage', () => {
     const template = customProps(templateSrc, ':root[data-ralia-theme="dark"]');
     const ours = customProps(tokensSrc, ':root[data-ralia-theme="dark"]');
     for (const [prop, value] of template) {
-      expect(ours.get(prop), `--> dark ${prop} fehlt oder weicht ab`).toBe(value);
+      expect(ours.get(prop), `--> dark ${prop} fehlt oder weicht ab`).toBe(
+        value,
+      );
     }
   });
 
-  it.each(['u1', 'u2', 'both', 'bday'])('hebt die Personenfarben von %s in Tokens', (slot) => {
-    const c = templatePersonColors(slot);
-    const light = customProps(tokensSrc, ':root');
-    const dark = customProps(tokensSrc, ':root[data-ralia-theme="dark"]');
-    expect(light.get(`--${slot}`)).toBe(c.bar);
-    expect(light.get(`--${slot}-bg`)).toBe(c.bgLight);
-    expect(light.get(`--${slot}-fg`)).toBe(c.fgLight);
-    expect(dark.get(`--${slot}-bg`)).toBe(c.bgDark);
-    expect(dark.get(`--${slot}-fg`)).toBe(c.fgDark);
-    // Die Balkenfarbe ist in beiden Themes identisch — die Vorlage überschreibt sie nicht.
-    expect(dark.has(`--${slot}`)).toBe(false);
-  });
+  it.each(['u1', 'u2', 'both', 'bday'])(
+    'hebt die Personenfarben von %s in Tokens',
+    (slot) => {
+      const c = templatePersonColors(slot);
+      const light = customProps(tokensSrc, ':root');
+      const dark = customProps(tokensSrc, ':root[data-ralia-theme="dark"]');
+      expect(light.get(`--${slot}`)).toBe(c.bar);
+      expect(light.get(`--${slot}-bg`)).toBe(c.bgLight);
+      expect(light.get(`--${slot}-fg`)).toBe(c.fgLight);
+      expect(dark.get(`--${slot}-bg`)).toBe(c.bgDark);
+      expect(dark.get(`--${slot}-fg`)).toBe(c.fgDark);
+      // Die Balkenfarbe ist in beiden Themes identisch — die Vorlage überschreibt sie nicht.
+      expect(dark.has(`--${slot}`)).toBe(false);
+    },
+  );
 
   it('hebt den ausgeschalteten Toggle-Track in Tokens', () => {
-    const m = /const track = \(on\) => on \? fill : \(s\.dark \? '([^']+)' : '([^']+)'\)/.exec(templateSrc);
+    const m =
+      /const track = \(on\) => on \? fill : \(s\.dark \? '([^']+)' : '([^']+)'\)/.exec(
+        templateSrc,
+      );
     expect(m, 'track()-Definition fehlt in der Vorlage').not.toBeNull();
     expect(customProps(tokensSrc, ':root').get('--track-off')).toBe(m![2]);
-    expect(customProps(tokensSrc, ':root[data-ralia-theme="dark"]').get('--track-off')).toBe(m![1]);
+    expect(
+      customProps(tokensSrc, ':root[data-ralia-theme="dark"]').get(
+        '--track-off',
+      ),
+    ).toBe(m![1]);
   });
 
   it('hebt die Heute-Markierungen in Tokens', () => {
-    const border = /border: isToday \? \(s\.dark \? '([^']+)' : '([^']+)'\) : line/.exec(templateSrc);
+    const border =
+      /border: isToday \? \(s\.dark \? '([^']+)' : '([^']+)'\) : line/.exec(
+        templateSrc,
+      );
     expect(border, 'Heute-Rand fehlt in der Vorlage').not.toBeNull();
-    expect(customProps(tokensSrc, ':root').get('--today-line')).toBe(border![2]);
-    expect(customProps(tokensSrc, ':root[data-ralia-theme="dark"]').get('--today-line')).toBe(border![1]);
+    expect(customProps(tokensSrc, ':root').get('--today-line')).toBe(
+      border![2],
+    );
+    expect(
+      customProps(tokensSrc, ':root[data-ralia-theme="dark"]').get(
+        '--today-line',
+      ),
+    ).toBe(border![1]);
 
-    const col = /colBg: isToday \? \(s\.dark \? '([^']+)' : '([^']+)'\) : 'transparent'/.exec(templateSrc);
+    const col =
+      /colBg: isToday \? \(s\.dark \? '([^']+)' : '([^']+)'\) : 'transparent'/.exec(
+        templateSrc,
+      );
     expect(col, 'Heute-Spaltenhintergrund fehlt in der Vorlage').not.toBeNull();
     expect(customProps(tokensSrc, ':root').get('--today-col')).toBe(col![2]);
-    expect(customProps(tokensSrc, ':root[data-ralia-theme="dark"]').get('--today-col')).toBe(col![1]);
+    expect(
+      customProps(tokensSrc, ':root[data-ralia-theme="dark"]').get(
+        '--today-col',
+      ),
+    ).toBe(col![1]);
   });
 
   it('setzt --brand-fill themenunabhängig', () => {
     expect(customProps(tokensSrc, ':root').get('--brand-fill')).toBe('#7c3aed');
-    expect(customProps(tokensSrc, ':root[data-ralia-theme="dark"]').has('--brand-fill')).toBe(false);
+    expect(
+      customProps(tokensSrc, ':root[data-ralia-theme="dark"]').has(
+        '--brand-fill',
+      ),
+    ).toBe(false);
   });
 });
 ```
@@ -391,25 +457,33 @@ Struktur:
      ok, danger, warn-*, shadow-*, hov-* : wertgenau aus der Vorlage */
 
   /* --- In der Vorlage in der Logik hartcodiert, hier als Token --- */
-  --u1-bg: #eff6ff;  --u1-fg: #1d4ed8;
-  --u2-bg: #fdf2f8;  --u2-fg: #be185d;
-  --both-bg: #f5f3ff; --both-fg: #6d28d9;
-  --bday-bg: #fff7ed; --bday-fg: #c2410c;
+  --u1-bg: #eff6ff;
+  --u1-fg: #1d4ed8;
+  --u2-bg: #fdf2f8;
+  --u2-fg: #be185d;
+  --both-bg: #f5f3ff;
+  --both-fg: #6d28d9;
+  --bday-bg: #fff7ed;
+  --bday-fg: #c2410c;
   --track-off: #cbd5e1;
   --today-line: #ddd0fb;
-  --today-col: rgba(124,58,237,.035);
+  --today-col: rgba(124, 58, 237, 0.035);
 }
 
 :root[data-ralia-theme='dark'] {
   /* Sichtbar: Vorlage Z. 27–35 — u1/u2/both/bday werden NICHT überschrieben */
 
-  --u1-bg: rgba(59,130,246,.17);  --u1-fg: #93c5fd;
-  --u2-bg: rgba(236,72,153,.17);  --u2-fg: #f9a8d4;
-  --both-bg: rgba(139,92,246,.19); --both-fg: #c4b5fd;
-  --bday-bg: rgba(249,115,22,.17); --bday-fg: #fdba74;
+  --u1-bg: rgba(59, 130, 246, 0.17);
+  --u1-fg: #93c5fd;
+  --u2-bg: rgba(236, 72, 153, 0.17);
+  --u2-fg: #f9a8d4;
+  --both-bg: rgba(139, 92, 246, 0.19);
+  --both-fg: #c4b5fd;
+  --bday-bg: rgba(249, 115, 22, 0.17);
+  --bday-fg: #fdba74;
   --track-off: #3a3450;
   --today-line: #3d3555;
-  --today-col: rgba(167,139,250,.06);
+  --today-col: rgba(167, 139, 250, 0.06);
 }
 ```
 
@@ -434,10 +508,17 @@ Zwei Anpassungen gegenüber der Vorlage, beide aus dem Spec:
 }
 
 /* Mobil randlos statt Telefon-Attrappe. */
-html, body { height: 100%; }
-body { min-height: 100dvh; }
+html,
+body {
+  height: 100%;
+}
+body {
+  min-height: 100dvh;
+}
 @supports not (min-height: 100dvh) {
-  body { min-height: 100vh; }
+  body {
+    min-height: 100vh;
+  }
 }
 ```
 
@@ -495,7 +576,12 @@ export function personTokens(slot: PersonSlot): PersonTokens {
  * Alle Maße und Farben stammen aus tokens.css, abgesichert durch
  * tokens/tokens.parity.test.ts gegen docs/design-reference.
  */
-export { PERSON_SLOTS, personTokens, type PersonSlot, type PersonTokens } from './person.js';
+export {
+  PERSON_SLOTS,
+  personTokens,
+  type PersonSlot,
+  type PersonTokens,
+} from './person.js';
 ```
 
 - [x] **Step 10: Gesamtlauf prüfen**
@@ -520,6 +606,7 @@ Eigenschaft."
 ## Task 4: ThemeProvider
 
 **Files:**
+
 - Create: `packages/ui/src/theme/theme-storage.ts`
 - Create: `packages/ui/src/theme/ThemeProvider.tsx`
 - Create: `packages/ui/src/theme/useTheme.ts`
@@ -527,6 +614,7 @@ Eigenschaft."
 - Modify: `packages/ui/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: Task 3
 - Produces:
   - `type ThemeChoice = 'light' | 'dark' | 'system'`
@@ -545,7 +633,11 @@ Create `packages/ui/src/theme/ThemeProvider.test.tsx`:
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { THEME_ATTRIBUTE, THEME_STORAGE_KEY, ThemeProvider } from './ThemeProvider.js';
+import {
+  THEME_ATTRIBUTE,
+  THEME_STORAGE_KEY,
+  ThemeProvider,
+} from './ThemeProvider.js';
 import { useTheme } from './useTheme.js';
 
 function Probe() {
@@ -566,8 +658,10 @@ function mockMatchMedia(darkPreferred: boolean) {
   const mql = {
     matches: darkPreferred,
     media: '(prefers-color-scheme: dark)',
-    addEventListener: (_: string, fn: (e: MediaQueryListEvent) => void) => listeners.add(fn),
-    removeEventListener: (_: string, fn: (e: MediaQueryListEvent) => void) => listeners.delete(fn),
+    addEventListener: (_: string, fn: (e: MediaQueryListEvent) => void) =>
+      listeners.add(fn),
+    removeEventListener: (_: string, fn: (e: MediaQueryListEvent) => void) =>
+      listeners.delete(fn),
     dispatch: (matches: boolean) => {
       mql.matches = matches;
       for (const fn of listeners) fn({ matches } as MediaQueryListEvent);
@@ -586,7 +680,11 @@ afterEach(() => vi.unstubAllGlobals());
 describe('ThemeProvider', () => {
   it('folgt ohne gespeicherte Wahl der Systemeinstellung', () => {
     mockMatchMedia(true);
-    render(<ThemeProvider><Probe /></ThemeProvider>);
+    render(
+      <ThemeProvider>
+        <Probe />
+      </ThemeProvider>,
+    );
     expect(screen.getByTestId('choice')).toHaveTextContent('system');
     expect(screen.getByTestId('resolved')).toHaveTextContent('dark');
     expect(document.documentElement.getAttribute(THEME_ATTRIBUTE)).toBe('dark');
@@ -594,14 +692,22 @@ describe('ThemeProvider', () => {
 
   it('setzt bei Hell kein Attribut', () => {
     mockMatchMedia(false);
-    render(<ThemeProvider><Probe /></ThemeProvider>);
+    render(
+      <ThemeProvider>
+        <Probe />
+      </ThemeProvider>,
+    );
     expect(screen.getByTestId('resolved')).toHaveTextContent('light');
     expect(document.documentElement.hasAttribute(THEME_ATTRIBUTE)).toBe(false);
   });
 
   it('speichert eine manuelle Wahl', async () => {
     mockMatchMedia(false);
-    render(<ThemeProvider><Probe /></ThemeProvider>);
+    render(
+      <ThemeProvider>
+        <Probe />
+      </ThemeProvider>,
+    );
     await userEvent.click(screen.getByRole('button', { name: 'dunkel' }));
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark');
     expect(document.documentElement.getAttribute(THEME_ATTRIBUTE)).toBe('dark');
@@ -610,14 +716,22 @@ describe('ThemeProvider', () => {
   it('stellt eine gespeicherte Wahl wieder her — Reload-Ersatz', () => {
     localStorage.setItem(THEME_STORAGE_KEY, 'dark');
     mockMatchMedia(false);
-    render(<ThemeProvider><Probe /></ThemeProvider>);
+    render(
+      <ThemeProvider>
+        <Probe />
+      </ThemeProvider>,
+    );
     expect(screen.getByTestId('choice')).toHaveTextContent('dark');
     expect(document.documentElement.getAttribute(THEME_ATTRIBUTE)).toBe('dark');
   });
 
   it('reagiert bei system auf einen Systemwechsel', async () => {
     const mql = mockMatchMedia(false);
-    render(<ThemeProvider><Probe /></ThemeProvider>);
+    render(
+      <ThemeProvider>
+        <Probe />
+      </ThemeProvider>,
+    );
     expect(screen.getByTestId('resolved')).toHaveTextContent('light');
     mql.dispatch(true);
     expect(await screen.findByText('dark')).toBeInTheDocument();
@@ -626,7 +740,11 @@ describe('ThemeProvider', () => {
   it('ignoriert einen unbekannten gespeicherten Wert', () => {
     localStorage.setItem(THEME_STORAGE_KEY, 'neon');
     mockMatchMedia(false);
-    render(<ThemeProvider><Probe /></ThemeProvider>);
+    render(
+      <ThemeProvider>
+        <Probe />
+      </ThemeProvider>,
+    );
     expect(screen.getByTestId('choice')).toHaveTextContent('system');
   });
 });
@@ -654,7 +772,9 @@ function isChoice(value: string | null): value is ThemeChoice {
 }
 
 /** Unbekannte oder fehlende Werte ergeben `system`. Storage-Zugriff kann werfen (Safari, privat). */
-export function readStoredChoice(storage?: Pick<Storage, 'getItem'>): ThemeChoice {
+export function readStoredChoice(
+  storage?: Pick<Storage, 'getItem'>,
+): ThemeChoice {
   try {
     const raw = (storage ?? globalThis.localStorage).getItem(THEME_STORAGE_KEY);
     return isChoice(raw) ? raw : 'system';
@@ -663,7 +783,10 @@ export function readStoredChoice(storage?: Pick<Storage, 'getItem'>): ThemeChoic
   }
 }
 
-export function writeStoredChoice(choice: ThemeChoice, storage?: Pick<Storage, 'setItem'>): void {
+export function writeStoredChoice(
+  choice: ThemeChoice,
+  storage?: Pick<Storage, 'setItem'>,
+): void {
   try {
     (storage ?? globalThis.localStorage).setItem(THEME_STORAGE_KEY, choice);
   } catch {
@@ -671,7 +794,10 @@ export function writeStoredChoice(choice: ThemeChoice, storage?: Pick<Storage, '
   }
 }
 
-export function resolveTheme(choice: ThemeChoice, systemPrefersDark: boolean): ResolvedTheme {
+export function resolveTheme(
+  choice: ThemeChoice,
+  systemPrefersDark: boolean,
+): ResolvedTheme {
   if (choice === 'system') return systemPrefersDark ? 'dark' : 'light';
   return choice;
 }
@@ -703,11 +829,22 @@ export function themeBootScript(): string {
 Kernpunkte: Kontext mit `choice`/`resolved`/`setChoice`; Startwert aus `readStoredChoice()`; `matchMedia`-Abo nur wenn `choice === 'system'`; `applyTheme` in einem `useEffect` auf `document.documentElement`; `matchMedia` defensiv behandeln (in älteren WebViews fehlt `addEventListener`).
 
 ```tsx
-import { createContext, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import type { ReactNode } from 'react';
 import {
-  DARK_QUERY, applyTheme, readStoredChoice, resolveTheme, writeStoredChoice,
-  type ResolvedTheme, type ThemeChoice,
+  DARK_QUERY,
+  applyTheme,
+  readStoredChoice,
+  resolveTheme,
+  writeStoredChoice,
+  type ResolvedTheme,
+  type ThemeChoice,
 } from './theme-storage.js';
 
 export { THEME_ATTRIBUTE, THEME_STORAGE_KEY } from './theme-storage.js';
@@ -725,14 +862,21 @@ function systemPrefersDark(): boolean {
   return typeof matchMedia === 'function' && matchMedia(DARK_QUERY).matches;
 }
 
-export function ThemeProvider({ children }: { children: ReactNode }): React.JSX.Element {
-  const [choice, setChoiceState] = useState<ThemeChoice>(() => readStoredChoice());
+export function ThemeProvider({
+  children,
+}: {
+  children: ReactNode;
+}): React.JSX.Element {
+  const [choice, setChoiceState] = useState<ThemeChoice>(() =>
+    readStoredChoice(),
+  );
   const [systemDark, setSystemDark] = useState<boolean>(systemPrefersDark);
 
   useEffect(() => {
     if (choice !== 'system' || typeof matchMedia !== 'function') return;
     const mql = matchMedia(DARK_QUERY);
-    const onChange = (event: MediaQueryListEvent) => setSystemDark(event.matches);
+    const onChange = (event: MediaQueryListEvent) =>
+      setSystemDark(event.matches);
     mql.addEventListener?.('change', onChange);
     setSystemDark(mql.matches);
     return () => mql.removeEventListener?.('change', onChange);
@@ -754,7 +898,9 @@ export function ThemeProvider({ children }: { children: ReactNode }): React.JSX.
     [choice, resolved, setChoice],
   );
 
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+  return (
+    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+  );
 }
 ```
 
@@ -780,8 +926,12 @@ Expected: PASS, 6 Tests
 
 ```ts
 export {
-  THEME_ATTRIBUTE, THEME_STORAGE_KEY, ThemeProvider,
-  type ResolvedTheme, type ThemeChoice, type ThemeContextValue,
+  THEME_ATTRIBUTE,
+  THEME_STORAGE_KEY,
+  ThemeProvider,
+  type ResolvedTheme,
+  type ThemeChoice,
+  type ThemeContextValue,
 } from './theme/ThemeProvider.js';
 export { readStoredChoice, themeBootScript } from './theme/theme-storage.js';
 export { useTheme } from './theme/useTheme.js';
@@ -801,6 +951,7 @@ git commit -m "feat(ui): ThemeProvider mit Light/Dark/System und Flash-Schutz"
 Reine Arithmetik, ohne DOM testbar. Sie ersetzt die Prototyp-Rechnung der Vorlage, die aus `window.innerHeight - 90` auf die Zeilenhöhe schloss — die 90 px waren deren eigene Kopfleiste.
 
 **Files:**
+
 - Create: `packages/core/src/calendar/month-density.ts`
 - Create: `packages/core/src/calendar/month-density.test.ts`
 - Create: `packages/core/src/calendar/week-geometry.ts`
@@ -810,6 +961,7 @@ Reine Arithmetik, ohne DOM testbar. Sie ersetzt die Prototyp-Rechnung der Vorlag
 - Modify: `packages/core/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: Task 1
 - Produces:
   - `function monthDensity(gridHeightPx: number): MonthDensity` mit `MonthDensity = { mode: 'chips' | 'dots'; maxChips: number; maxDots: number }`
@@ -824,22 +976,38 @@ Die Schwellwerte der Vorlage (Z. 1256–1260): Chiphöhe 19 px (16 px Chip + 3 p
 
 ```ts
 import { describe, expect, it } from 'vitest';
-import { MONTH_MAX_CHIPS, MONTH_MAX_DOTS, monthDensity } from './month-density.js';
+import {
+  MONTH_MAX_CHIPS,
+  MONTH_MAX_DOTS,
+  monthDensity,
+} from './month-density.js';
 
 describe('monthDensity', () => {
   it('zeigt Punkte, wenn nicht einmal ein Chip passt', () => {
     // Zeilenhöhe 50 → 50 - 35 = 15 < 19
-    expect(monthDensity(50 * 6)).toEqual({ mode: 'dots', maxChips: 0, maxDots: MONTH_MAX_DOTS });
+    expect(monthDensity(50 * 6)).toEqual({
+      mode: 'dots',
+      maxChips: 0,
+      maxDots: MONTH_MAX_DOTS,
+    });
   });
 
   it('zeigt genau einen Chip an der unteren Schwelle', () => {
     // Zeilenhöhe 54 → 19 verfügbar → floor(19/19) = 1
-    expect(monthDensity(54 * 6)).toEqual({ mode: 'chips', maxChips: 1, maxDots: 0 });
+    expect(monthDensity(54 * 6)).toEqual({
+      mode: 'chips',
+      maxChips: 1,
+      maxDots: 0,
+    });
   });
 
   it('zeigt zwei Chips bei mittlerer Höhe', () => {
     // Zeilenhöhe 73 → 38 verfügbar → floor(38/19) = 2
-    expect(monthDensity(73 * 6)).toEqual({ mode: 'chips', maxChips: 2, maxDots: 0 });
+    expect(monthDensity(73 * 6)).toEqual({
+      mode: 'chips',
+      maxChips: 2,
+      maxDots: 0,
+    });
   });
 
   it('deckelt bei drei Chips, egal wie hoch die Zeile ist', () => {
@@ -889,13 +1057,20 @@ export interface MonthDensity {
   maxDots: number;
 }
 
-const DOTS: MonthDensity = { mode: 'dots', maxChips: 0, maxDots: MONTH_MAX_DOTS };
+const DOTS: MonthDensity = {
+  mode: 'dots',
+  maxChips: 0,
+  maxDots: MONTH_MAX_DOTS,
+};
 
 export function monthDensity(gridHeightPx: number): MonthDensity {
   if (!Number.isFinite(gridHeightPx) || gridHeightPx <= 0) return DOTS;
   const rowHeight = gridHeightPx / MONTH_ROW_COUNT;
   const available = rowHeight - MONTH_CELL_CHROME_PX;
-  const maxChips = Math.min(MONTH_MAX_CHIPS, Math.floor(available / MONTH_CHIP_HEIGHT_PX));
+  const maxChips = Math.min(
+    MONTH_MAX_CHIPS,
+    Math.floor(available / MONTH_CHIP_HEIGHT_PX),
+  );
   return maxChips < 1 ? DOTS : { mode: 'chips', maxChips, maxDots: 0 };
 }
 ```
@@ -911,7 +1086,11 @@ Werte aus Vorlage Z. 1297–1305: Stundenhöhe 52 px, `top = max(0, startMin - s
 
 ```ts
 import { describe, expect, it } from 'vitest';
-import { WEEK_HOUR_HEIGHT_PX, parseTimeToMinutes, weekEventGeometry } from './week-geometry.js';
+import {
+  WEEK_HOUR_HEIGHT_PX,
+  parseTimeToMinutes,
+  weekEventGeometry,
+} from './week-geometry.js';
 
 describe('parseTimeToMinutes', () => {
   it('liest HH:MM', () => {
@@ -930,7 +1109,10 @@ describe('parseTimeToMinutes', () => {
 
 describe('weekEventGeometry', () => {
   it('setzt einen Termin zur Tagesstartstunde auf top 0', () => {
-    expect(weekEventGeometry(6 * 60, 7 * 60, 6)).toEqual({ topPx: 0, heightPx: 49 });
+    expect(weekEventGeometry(6 * 60, 7 * 60, 6)).toEqual({
+      topPx: 0,
+      heightPx: 49,
+    });
   });
 
   it('rechnet eine Stunde als Stundenhöhe minus 3 px Einzug', () => {
@@ -939,8 +1121,12 @@ describe('weekEventGeometry', () => {
   });
 
   it('verschiebt nach Tagesstartstunde', () => {
-    expect(weekEventGeometry(9 * 60, 10 * 60, 6).topPx).toBe(3 * WEEK_HOUR_HEIGHT_PX);
-    expect(weekEventGeometry(9 * 60, 10 * 60, 0).topPx).toBe(9 * WEEK_HOUR_HEIGHT_PX);
+    expect(weekEventGeometry(9 * 60, 10 * 60, 6).topPx).toBe(
+      3 * WEEK_HOUR_HEIGHT_PX,
+    );
+    expect(weekEventGeometry(9 * 60, 10 * 60, 0).topPx).toBe(
+      9 * WEEK_HOUR_HEIGHT_PX,
+    );
   });
 
   it('klemmt Termine vor dem Tagesstart auf top 0', () => {
@@ -999,7 +1185,8 @@ export function weekEventGeometry(
   const topPx = (Math.max(0, startMinutes - offset) / 60) * WEEK_HOUR_HEIGHT_PX;
   const heightPx = Math.max(
     WEEK_MIN_EVENT_HEIGHT_PX,
-    ((endMinutes - startMinutes) / 60) * WEEK_HOUR_HEIGHT_PX - WEEK_EVENT_HEIGHT_INSET_PX,
+    ((endMinutes - startMinutes) / 60) * WEEK_HOUR_HEIGHT_PX -
+      WEEK_EVENT_HEIGHT_INSET_PX,
   );
   return { topPx, heightPx };
 }
@@ -1106,7 +1293,8 @@ export function monthGridCells(
     cells.push({
       iso: toIso(date),
       dayOfMonth: date.getUTCDate(),
-      inMonth: date.getUTCMonth() === monthIndex && date.getUTCFullYear() === year,
+      inMonth:
+        date.getUTCMonth() === monthIndex && date.getUTCFullYear() === year,
     });
   }
   return cells;
@@ -1124,18 +1312,31 @@ Am Ende der Datei, alphabetisch vor den Outbox-Exporten einsortiert:
 
 ```ts
 export {
-  MONTH_CELL_CHROME_PX, MONTH_CHIP_HEIGHT_PX, MONTH_MAX_CHIPS, MONTH_MAX_DOTS,
-  MONTH_ROW_COUNT, monthDensity, type MonthDensity,
+  MONTH_CELL_CHROME_PX,
+  MONTH_CHIP_HEIGHT_PX,
+  MONTH_MAX_CHIPS,
+  MONTH_MAX_DOTS,
+  MONTH_ROW_COUNT,
+  monthDensity,
+  type MonthDensity,
 } from './calendar/month-density.js';
 
 export {
-  MONTH_CELL_COUNT, monthGridCells, type MonthGridCell, type WeekStart,
+  MONTH_CELL_COUNT,
+  monthGridCells,
+  type MonthGridCell,
+  type WeekStart,
 } from './calendar/month-grid.js';
 
 export {
-  WEEK_DEFAULT_START_HOUR, WEEK_EVENT_HEIGHT_INSET_PX, WEEK_EXPANDED_START_HOUR,
-  WEEK_HOUR_HEIGHT_PX, WEEK_MIN_EVENT_HEIGHT_PX, parseTimeToMinutes,
-  weekEventGeometry, type WeekEventGeometry,
+  WEEK_DEFAULT_START_HOUR,
+  WEEK_EVENT_HEIGHT_INSET_PX,
+  WEEK_EXPANDED_START_HOUR,
+  WEEK_HOUR_HEIGHT_PX,
+  WEEK_MIN_EVENT_HEIGHT_PX,
+  parseTimeToMinutes,
+  weekEventGeometry,
+  type WeekEventGeometry,
 } from './calendar/week-geometry.js';
 ```
 
@@ -1159,12 +1360,14 @@ per Test fixiert."
 ## Task 6: Icon-Set
 
 **Files:**
+
 - Create: `packages/ui/src/icons/paths.tsx`
 - Create: `packages/ui/src/icons/Icon.tsx`
 - Create: `packages/ui/src/icons/Icon.test.tsx`
 - Modify: `packages/ui/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: Task 3
 - Produces:
   - `type IconName = 'calendar' | 'planner' | 'todos' | 'money' | 'settings' | 'meal' | 'task'`
@@ -1184,12 +1387,16 @@ describe('Icon', () => {
     expect(svg).not.toBeNull();
     expect(svg?.getAttribute('viewBox')).toBe('0 0 20 20');
     expect(svg?.getAttribute('stroke-width')).toBe('1.6');
-    expect(svg?.querySelectorAll('rect, line, circle, path, polyline').length).toBeGreaterThan(0);
+    expect(
+      svg?.querySelectorAll('rect, line, circle, path, polyline').length,
+    ).toBeGreaterThan(0);
   });
 
   it('ist ohne Titel für Screenreader unsichtbar', () => {
     const { container } = render(<Icon name="calendar" />);
-    expect(container.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(container.querySelector('svg')?.getAttribute('aria-hidden')).toBe(
+      'true',
+    );
   });
 
   it('wird mit Titel zum Bild mit Namen', () => {
@@ -1215,15 +1422,15 @@ Expected: FAIL
 
 Die Pfade **wörtlich** aus der Vorlage übernehmen:
 
-| Name | Quelle | Inhalt |
-|---|---|---|
-| `calendar` | Z. 84 | `rect x=2.5 y=4 w=15 h=13.5 rx=3` + `line 2.5,8→17.5,8` + zwei Henkel-`line` |
-| `planner` | Z. 87 | `rect x=2.5 y=3 w=15 h=14.5 rx=3` + drei `line` |
-| `todos` | Z. 90 | zwei `rect` 5×5 rx=1.5 + zwei `line` |
-| `money` | Z. 93 | `circle r=7.2` + zwei `line` |
-| `settings` | Z. 96 | `circle r=2.6` + `circle r=7` |
-| `meal` | Z. 249 | Besteck-`path`, `stroke-linecap="round"` |
-| `task` | Z. 257 | `polyline 3,10.5 6.5,14 10.5,6` + zwei `line`, `stroke-linecap`/`linejoin="round"` |
+| Name       | Quelle | Inhalt                                                                             |
+| ---------- | ------ | ---------------------------------------------------------------------------------- |
+| `calendar` | Z. 84  | `rect x=2.5 y=4 w=15 h=13.5 rx=3` + `line 2.5,8→17.5,8` + zwei Henkel-`line`       |
+| `planner`  | Z. 87  | `rect x=2.5 y=3 w=15 h=14.5 rx=3` + drei `line`                                    |
+| `todos`    | Z. 90  | zwei `rect` 5×5 rx=1.5 + zwei `line`                                               |
+| `money`    | Z. 93  | `circle r=7.2` + zwei `line`                                                       |
+| `settings` | Z. 96  | `circle r=2.6` + `circle r=7`                                                      |
+| `meal`     | Z. 249 | Besteck-`path`, `stroke-linecap="round"`                                           |
+| `task`     | Z. 257 | `polyline 3,10.5 6.5,14 10.5,6` + zwei `line`, `stroke-linecap`/`linejoin="round"` |
 
 `meal` und `task` haben in der Vorlage feste Strichfarben (`#f97316`, `#3b82f6`). Hier **nicht** übernehmen: die Farbe kommt vom Aufrufer über `color` in einem Wrapper — sonst reagieren die Icons nicht auf das Theme. Die Screens setzen sie später auf `var(--bday)` bzw. `var(--u1)`, was denselben Farben entspricht.
 
@@ -1232,7 +1439,15 @@ Zusätzliche `<svg>`-Attribute je Icon (`strokeLinecap`, `strokeLinejoin`) über
 ```tsx
 import type { ReactNode } from 'react';
 
-export const ICON_NAMES = ['calendar', 'planner', 'todos', 'money', 'settings', 'meal', 'task'] as const;
+export const ICON_NAMES = [
+  'calendar',
+  'planner',
+  'todos',
+  'money',
+  'settings',
+  'meal',
+  'task',
+] as const;
 export type IconName = (typeof ICON_NAMES)[number];
 
 interface IconDef {
@@ -1294,7 +1509,12 @@ Expected: PASS, 10 Tests
 In `packages/ui/src/index.ts`:
 
 ```ts
-export { ICON_NAMES, Icon, type IconName, type IconProps } from './icons/Icon.js';
+export {
+  ICON_NAMES,
+  Icon,
+  type IconName,
+  type IconProps,
+} from './icons/Icon.js';
 ```
 
 ```bash
@@ -1309,6 +1529,7 @@ git commit -m "feat(ui): Icon-Set mit den Pfaden der Vorlage"
 Sieben Komponenten, jede aus genau einer Helferfunktion der Vorlage abgeleitet. Sie gehören in eine Task, weil sie dasselbe Muster teilen — `on`-Zustand entscheidet über drei Farbwerte — und ein Reviewer sie sinnvoll nur gemeinsam gegen die Vorlage prüft.
 
 **Files:**
+
 - Create: `packages/ui/src/primitives/Button.tsx` + `.module.css`
 - Create: `packages/ui/src/primitives/IconButton.tsx` + `.module.css`
 - Create: `packages/ui/src/primitives/SegmentSwitch.tsx` + `.module.css`
@@ -1320,6 +1541,7 @@ Sieben Komponenten, jede aus genau einer Helferfunktion der Vorlage abgeleitet. 
 - Modify: `packages/ui/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: Task 3 (`personTokens`, Tokens), Task 6 (`Icon`)
 - Produces:
   - `function Button(props: { variant?: 'primary' | 'secondary' | 'ghost' | 'danger'; children: ReactNode; onClick?: () => void; disabled?: boolean; fullWidth?: boolean; type?: 'button' | 'submit' })`
@@ -1356,7 +1578,11 @@ describe('Button', () => {
 
   it('löst deaktiviert nicht aus', async () => {
     const onClick = vi.fn();
-    render(<Button onClick={onClick} disabled>Speichern</Button>);
+    render(
+      <Button onClick={onClick} disabled>
+        Speichern
+      </Button>,
+    );
     await userEvent.click(screen.getByRole('button', { name: 'Speichern' }));
     expect(onClick).not.toHaveBeenCalled();
   });
@@ -1378,8 +1604,14 @@ describe('Button', () => {
 
 describe('IconButton', () => {
   it('trägt seinen Namen für Screenreader', () => {
-    render(<IconButton label="Nächster Monat" onClick={() => {}}>›</IconButton>);
-    expect(screen.getByRole('button', { name: 'Nächster Monat' })).toBeInTheDocument();
+    render(
+      <IconButton label="Nächster Monat" onClick={() => {}}>
+        ›
+      </IconButton>,
+    );
+    expect(
+      screen.getByRole('button', { name: 'Nächster Monat' }),
+    ).toBeInTheDocument();
   });
 });
 
@@ -1390,21 +1622,42 @@ describe('SegmentSwitch', () => {
   ] as const;
 
   it('kennzeichnet den aktiven Eintrag', () => {
-    render(<SegmentSwitch label="Ansicht" options={options} value="monat" onChange={() => {}} />);
+    render(
+      <SegmentSwitch
+        label="Ansicht"
+        options={options}
+        value="monat"
+        onChange={() => {}}
+      />,
+    );
     expect(screen.getByRole('radio', { name: 'Monat' })).toBeChecked();
     expect(screen.getByRole('radio', { name: 'Woche' })).not.toBeChecked();
   });
 
   it('meldet einen Wechsel per Klick', async () => {
     const onChange = vi.fn();
-    render(<SegmentSwitch label="Ansicht" options={options} value="monat" onChange={onChange} />);
+    render(
+      <SegmentSwitch
+        label="Ansicht"
+        options={options}
+        value="monat"
+        onChange={onChange}
+      />,
+    );
     await userEvent.click(screen.getByRole('radio', { name: 'Woche' }));
     expect(onChange).toHaveBeenCalledWith('woche');
   });
 
   it('wechselt mit den Pfeiltasten', async () => {
     const onChange = vi.fn();
-    render(<SegmentSwitch label="Ansicht" options={options} value="monat" onChange={onChange} />);
+    render(
+      <SegmentSwitch
+        label="Ansicht"
+        options={options}
+        value="monat"
+        onChange={onChange}
+      />,
+    );
     screen.getByRole('radio', { name: 'Monat' }).focus();
     await userEvent.keyboard('{ArrowRight}');
     expect(onChange).toHaveBeenCalledWith('woche');
@@ -1412,39 +1665,80 @@ describe('SegmentSwitch', () => {
 
   it('läuft am Ende wieder nach vorn', async () => {
     const onChange = vi.fn();
-    render(<SegmentSwitch label="Ansicht" options={options} value="woche" onChange={onChange} />);
+    render(
+      <SegmentSwitch
+        label="Ansicht"
+        options={options}
+        value="woche"
+        onChange={onChange}
+      />,
+    );
     screen.getByRole('radio', { name: 'Woche' }).focus();
     await userEvent.keyboard('{ArrowRight}');
     expect(onChange).toHaveBeenCalledWith('monat');
   });
 
   it('trägt den Gruppennamen', () => {
-    render(<SegmentSwitch label="Ansicht" options={options} value="monat" onChange={() => {}} />);
-    expect(screen.getByRole('radiogroup', { name: 'Ansicht' })).toBeInTheDocument();
+    render(
+      <SegmentSwitch
+        label="Ansicht"
+        options={options}
+        value="monat"
+        onChange={() => {}}
+      />,
+    );
+    expect(
+      screen.getByRole('radiogroup', { name: 'Ansicht' }),
+    ).toBeInTheDocument();
   });
 });
 
 describe('NavItem', () => {
   it('markiert die aktive Seite', () => {
-    render(<NavItem active label="Kalender" icon="calendar" layout="bottom" onClick={() => {}} />);
-    expect(screen.getByRole('button', { name: 'Kalender' })).toHaveAttribute('aria-current', 'page');
+    render(
+      <NavItem
+        active
+        label="Kalender"
+        icon="calendar"
+        layout="bottom"
+        onClick={() => {}}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Kalender' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
   });
 
   it('lässt aria-current bei inaktiven Einträgen weg', () => {
-    render(<NavItem active={false} label="Geld" icon="money" layout="bottom" onClick={() => {}} />);
-    expect(screen.getByRole('button', { name: 'Geld' })).not.toHaveAttribute('aria-current');
+    render(
+      <NavItem
+        active={false}
+        label="Geld"
+        icon="money"
+        layout="bottom"
+        onClick={() => {}}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Geld' })).not.toHaveAttribute(
+      'aria-current',
+    );
   });
 });
 
 describe('PersonChip', () => {
   it('kennzeichnet den gedrückten Zustand', () => {
     render(<PersonChip slot="u1" active label="Jonas" onClick={() => {}} />);
-    expect(screen.getByRole('button', { name: 'Jonas' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Jonas' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
   });
 
   it('setzt die Personenfarbe als Token, nicht als Literal', () => {
     render(<PersonChip slot="u2" active label="Lena" onClick={() => {}} />);
-    const style = screen.getByRole('button', { name: 'Lena' }).getAttribute('style') ?? '';
+    const style =
+      screen.getByRole('button', { name: 'Lena' }).getAttribute('style') ?? '';
     expect(style).toContain('var(--u2');
     expect(style).not.toMatch(/#[0-9a-f]{6}/i);
   });
@@ -1491,12 +1785,12 @@ Expected: FAIL — keines der Module existiert
 
 Vier Varianten, alle in der Vorlage vorhanden:
 
-| Variante | Quelle | Kern |
-|---|---|---|
-| `primary` | Z. 778 | `background:var(--brand-fill)`, `color:#fff`, Radius 14, `padding:14px`, Hover `filter:brightness(1.09)` + `box-shadow:0 10px 22px rgba(124,58,237,.34)` |
+| Variante    | Quelle | Kern                                                                                                                                                     |
+| ----------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `primary`   | Z. 778 | `background:var(--brand-fill)`, `color:#fff`, Radius 14, `padding:14px`, Hover `filter:brightness(1.09)` + `box-shadow:0 10px 22px rgba(124,58,237,.34)` |
 | `secondary` | Z. 656 | `border:1px solid var(--line)`, `background:var(--surface)`, `color:var(--ink-700)`, Hover `background:var(--hov-surf)` + `border-color:var(--hov-ring)` |
-| `ghost` | Z. 335 | randlos, `background:transparent`, `color:var(--brand)` |
-| `danger` | Z. 777 | wie `secondary`, aber `color:var(--danger)`, Hover `background:var(--hov-danger)` + `border-color:rgba(220,38,38,.45)` |
+| `ghost`     | Z. 335 | randlos, `background:transparent`, `color:var(--brand)`                                                                                                  |
+| `danger`    | Z. 777 | wie `secondary`, aber `color:var(--danger)`, Hover `background:var(--hov-danger)` + `border-color:rgba(220,38,38,.45)`                                   |
 
 Die `style-hover`-Angaben der Vorlage werden zu echten `:hover`-Regeln im CSS-Modul. Ergänzend `:disabled { opacity:.5; cursor:not-allowed; }` — die Vorlage kennt keinen deaktivierten Zustand, aber Formulare brauchen ihn.
 
@@ -1580,11 +1874,13 @@ ergaenzt, die der Prototyp nicht hatte."
 ## Task 8: Formular- und Darstellungs-Primitive
 
 **Files:**
+
 - Create in `packages/ui/src/primitives/`: `FieldLabel.tsx`, `SectionLabel.tsx`, `Input.tsx`, `Textarea.tsx`, `Select.tsx`, `Card.tsx`, `ListRow.tsx`, `Avatar.tsx`, `AvatarPair.tsx`, `ProgressBar.tsx`, `SheetHandle.tsx`, je mit `.module.css`
 - Create: `packages/ui/src/primitives/display.test.tsx`
 - Modify: `packages/ui/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: Task 3, Task 7
 - Produces:
   - `function FieldLabel(props: { htmlFor?: string; children: ReactNode })`
@@ -1656,7 +1952,12 @@ describe('Select', () => {
         id="s"
         value="a"
         onChange={onChange}
-        options={[{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }] as const}
+        options={
+          [
+            { value: 'a', label: 'A' },
+            { value: 'b', label: 'B' },
+          ] as const
+        }
       />,
     );
     await userEvent.selectOptions(screen.getByRole('combobox'), 'b');
@@ -1674,7 +1975,9 @@ describe('ListRow', () => {
   it('ist mit onClick ein Knopf mit Titel als Name', async () => {
     const onClick = vi.fn();
     render(<ListRow title="Kalender verwalten" onClick={onClick} />);
-    await userEvent.click(screen.getByRole('button', { name: /Kalender verwalten/ }));
+    await userEvent.click(
+      screen.getByRole('button', { name: /Kalender verwalten/ }),
+    );
     expect(onClick).toHaveBeenCalledOnce();
   });
 });
@@ -1689,7 +1992,12 @@ describe('Avatar', () => {
 
 describe('AvatarPair', () => {
   it('zeigt beide Initialen', () => {
-    render(<AvatarPair first={{ initial: 'J', slot: 'u1' }} second={{ initial: 'L', slot: 'u2' }} />);
+    render(
+      <AvatarPair
+        first={{ initial: 'J', slot: 'u1' }}
+        second={{ initial: 'L', slot: 'u2' }}
+      />,
+    );
     expect(screen.getByText('J')).toBeInTheDocument();
     expect(screen.getByText('L')).toBeInTheDocument();
   });
@@ -1697,7 +2005,12 @@ describe('AvatarPair', () => {
 
 describe('ProgressBar', () => {
   it('meldet den Fortschritt als Messwert', () => {
-    render(<ProgressBar label="Budget" segments={[{ widthPct: 70, color: 'var(--brand)' }]} />);
+    render(
+      <ProgressBar
+        label="Budget"
+        segments={[{ widthPct: 70, color: 'var(--brand)' }]}
+      />,
+    );
     const bar = screen.getByRole('progressbar', { name: 'Budget' });
     expect(bar).toHaveAttribute('aria-valuenow', '70');
   });
@@ -1712,18 +2025,32 @@ describe('ProgressBar', () => {
         ]}
       />,
     );
-    expect(screen.getByRole('progressbar', { name: 'Freizeit' })).toHaveAttribute('aria-valuenow', '45');
+    expect(
+      screen.getByRole('progressbar', { name: 'Freizeit' }),
+    ).toHaveAttribute('aria-valuenow', '45');
   });
 
   it('deckelt den Messwert bei 100', () => {
-    render(<ProgressBar label="Wohnen" segments={[{ widthPct: 140, color: 'var(--u1)' }]} />);
-    expect(screen.getByRole('progressbar', { name: 'Wohnen' })).toHaveAttribute('aria-valuenow', '100');
+    render(
+      <ProgressBar
+        label="Wohnen"
+        segments={[{ widthPct: 140, color: 'var(--u1)' }]}
+      />,
+    );
+    expect(screen.getByRole('progressbar', { name: 'Wohnen' })).toHaveAttribute(
+      'aria-valuenow',
+      '100',
+    );
   });
 });
 
 describe('Card', () => {
   it('rendert seinen Inhalt', () => {
-    render(<Card><p>Inhalt</p></Card>);
+    render(
+      <Card>
+        <p>Inhalt</p>
+      </Card>,
+    );
     expect(screen.getByText('Inhalt')).toBeInTheDocument();
   });
 });
@@ -1750,6 +2077,7 @@ Die `onChange`-Signatur gibt **den Wert**, nicht das Event: `onChange={(e) => on
 - [x] **Step 5: `Card` implementieren**
 
 Drei Tonlagen, alle in der Vorlage:
+
 - `surface` (Z. 361): `border:1px solid var(--line)`, `background:var(--surface)`, Radius 20, `box-shadow:var(--shadow-sm)`
 - `brand` (Z. 404): `border:1px solid var(--brand-line)`, `background:var(--brand-soft)`, Radius 20
 - `warn` (Z. 636): `border:1px solid var(--warn-line)`, `background:var(--warn-soft)`, Radius 20
@@ -1794,6 +2122,7 @@ git commit -m "feat(ui): Formular- und Darstellungs-Primitive"
 Toast, ConfirmDialog, EmptyState und Skeleton kommen **nicht** aus der Vorlage — sie existieren in Ralia_Opus (`state.js`: `showToast`, `showConfirmationModal`) und werden ab SP1 überall gebraucht. Sie werden aus der Design-Sprache extrapoliert.
 
 **Files:**
+
 - Create: `packages/ui/src/primitives/Toast.tsx` + `.module.css`
 - Create: `packages/ui/src/primitives/ToastProvider.tsx`
 - Create: `packages/ui/src/primitives/useToast.ts`
@@ -1805,6 +2134,7 @@ Toast, ConfirmDialog, EmptyState und Skeleton kommen **nicht** aus der Vorlage �
 `ConfirmDialog` folgt in Task 10, weil es auf `Modal` aufbaut.
 
 **Interfaces:**
+
 - Consumes: Task 3, Task 7 (`Button`)
 - Produces:
   - `type ToastTone = 'info' | 'ok' | 'danger'`
@@ -1836,7 +2166,11 @@ afterEach(() => vi.useRealTimers());
 describe('Toast', () => {
   it('zeigt eine Meldung und blendet sie nach der Standzeit aus', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    render(<ToastProvider><Trigger /></ToastProvider>);
+    render(
+      <ToastProvider>
+        <Trigger />
+      </ToastProvider>,
+    );
     await user.click(screen.getByRole('button', { name: 'melden' }));
     expect(screen.getByRole('status')).toHaveTextContent('Gespeichert');
     vi.advanceTimersByTime(TOAST_DURATION_MS + 50);
@@ -1845,7 +2179,11 @@ describe('Toast', () => {
 
   it('lässt sich vorzeitig schließen', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    render(<ToastProvider><Trigger /></ToastProvider>);
+    render(
+      <ToastProvider>
+        <Trigger />
+      </ToastProvider>,
+    );
     await user.click(screen.getByRole('button', { name: 'melden' }));
     await user.click(screen.getByRole('button', { name: 'Meldung schließen' }));
     expect(screen.queryByRole('status')).toBeNull();
@@ -1865,7 +2203,12 @@ describe('EmptyState', () => {
   it('bietet auf Wunsch eine Handlung an', async () => {
     const onClick = vi.fn();
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    render(<EmptyState message="Nichts hier" action={{ label: 'Anlegen', onClick }} />);
+    render(
+      <EmptyState
+        message="Nichts hier"
+        action={{ label: 'Anlegen', onClick }}
+      />,
+    );
     await user.click(screen.getByRole('button', { name: 'Anlegen' }));
     expect(onClick).toHaveBeenCalledOnce();
   });
@@ -1874,7 +2217,9 @@ describe('EmptyState', () => {
 describe('Skeleton', () => {
   it('ist für Screenreader unsichtbar', () => {
     const { container } = render(<Skeleton />);
-    expect(container.firstElementChild?.getAttribute('aria-hidden')).toBe('true');
+    expect(container.firstElementChild?.getAttribute('aria-hidden')).toBe(
+      'true',
+    );
   });
 });
 ```
@@ -1911,7 +2256,15 @@ Vorlage Z. 733 und Z. 333: `padding:26px 12px`, `text-align:center`, `font-size:
 `background:var(--line-soft)`, Radius aus Prop (Standard 12), `height` Standard 16, `width` Standard `100%`. Pulsieren über eine neue Keyframe in `reset.css`:
 
 ```css
-@keyframes ral-pulse { 0%,100% { opacity: 1 } 50% { opacity: .55 } }
+@keyframes ral-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
 ```
 
 In `@media (prefers-reduced-motion: reduce)` die Animation abschalten.
@@ -1936,6 +2289,7 @@ git commit -m "feat(ui): Toast, EmptyState und Skeleton aus der Design-Sprache a
 Der anspruchsvollste Teil des Design-Systems. Die Vorlage zeigt acht Sheets mit identischer Hülle, aber ohne Fokusverwaltung: dort ist ein Sheet ein `div` über dem Inhalt, und der Fokus bleibt hinter dem Backdrop erreichbar. Das wird hier korrigiert.
 
 **Files:**
+
 - Create: `packages/ui/src/overlays/use-focus-trap.ts`
 - Create: `packages/ui/src/overlays/use-scroll-lock.ts`
 - Create: `packages/ui/src/overlays/BottomSheet.tsx` + `.module.css`
@@ -1946,6 +2300,7 @@ Der anspruchsvollste Teil des Design-Systems. Die Vorlage zeigt acht Sheets mit 
 - Modify: `packages/ui/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: Task 7 (`Button`, `IconButton`), Task 8 (`SheetHandle`)
 - Produces:
   - `function BottomSheet(props: { open: boolean; onClose(): void; title: string; kicker?: string; maxHeight?: string; children: ReactNode })` — `maxHeight` Standard `'90%'`
@@ -1974,7 +2329,11 @@ function open(onClose = vi.fn()) {
 
 describe('BottomSheet', () => {
   it('rendert geschlossen nichts', () => {
-    render(<BottomSheet open={false} onClose={() => {}} title="X"><p>Inhalt</p></BottomSheet>);
+    render(
+      <BottomSheet open={false} onClose={() => {}} title="X">
+        <p>Inhalt</p>
+      </BottomSheet>,
+    );
     expect(screen.queryByText('Inhalt')).toBeNull();
   });
 
@@ -2036,7 +2395,9 @@ describe('BottomSheet', () => {
 
   it('sperrt und entsperrt das Scrollen des Hintergrunds', () => {
     const { unmount } = render(
-      <BottomSheet open onClose={() => {}} title="X"><p>Inhalt</p></BottomSheet>,
+      <BottomSheet open onClose={() => {}} title="X">
+        <p>Inhalt</p>
+      </BottomSheet>,
     );
     expect(document.body.style.overflow).toBe('hidden');
     unmount();
@@ -2100,8 +2461,11 @@ export function useScrollLock(active: boolean): void {
 import { useEffect, useRef } from 'react';
 
 const FOCUSABLE = [
-  'a[href]', 'button:not([disabled])', 'input:not([disabled])',
-  'select:not([disabled])', 'textarea:not([disabled])',
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
   '[tabindex]:not([tabindex="-1"])',
 ].join(',');
 
@@ -2117,7 +2481,9 @@ function focusable(root: HTMLElement): HTMLElement[] {
  * Die Vorlage hat das nicht: dort bleibt alles hinter dem Backdrop per Tab
  * erreichbar. Für einen modalen Dialog ist das ein Fehler.
  */
-export function useFocusTrap(active: boolean): React.RefObject<HTMLDivElement | null> {
+export function useFocusTrap(
+  active: boolean,
+): React.RefObject<HTMLDivElement | null> {
   const ref = useRef<HTMLDivElement | null>(null);
   const restoreTo = useRef<HTMLElement | null>(null);
 
@@ -2126,7 +2492,10 @@ export function useFocusTrap(active: boolean): React.RefObject<HTMLDivElement | 
     const container = ref.current;
     if (!container) return;
 
-    restoreTo.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    restoreTo.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
 
     const first = focusable(container)[0];
     (first ?? container).focus();
@@ -2142,7 +2511,10 @@ export function useFocusTrap(active: boolean): React.RefObject<HTMLDivElement | 
       const lastItem = items[items.length - 1]!;
       const activeEl = document.activeElement;
 
-      if (event.shiftKey && (activeEl === firstItem || activeEl === container)) {
+      if (
+        event.shiftKey &&
+        (activeEl === firstItem || activeEl === container)
+      ) {
         event.preventDefault();
         lastItem.focus();
       } else if (!event.shiftKey && activeEl === lastItem) {
@@ -2167,11 +2539,13 @@ Der Container braucht `tabIndex={-1}`, damit `container.focus()` greift, wenn er
 - [x] **Step 5: `BottomSheet` implementieren**
 
 Hülle aus Vorlage Z. 712–713, bei allen acht Sheets identisch:
+
 - Backdrop: `position:absolute; inset:0; background:rgba(15,23,42,.42); z-index:50; display:flex; align-items:flex-end; animation:ral-fade .16s ease`
 - Panel: `width:100%; background:var(--surface); border-radius:24px 24px 0 0; padding:16px 16px 20px; overflow-y:auto; animation:ral-up .22s cubic-bezier(.2,.8,.2,1)`
 - Kopf (Z. 714–720): `SheetHandle`, dann Kicker (`font-size:11px`, `letter-spacing:.9px`, uppercase, `--ink-400`) über Titel (`font-size:19px`, `600`, `--ink-900`) bzw. bei Formular-Sheets nur ein Titel mit `font-size:17px` (Z. 746), plus `IconButton size={32}` mit `✕`
 
 Zwei Abweichungen von der Vorlage:
+
 1. `position:fixed` statt `absolute`, weil es keine Telefon-Attrappe als Bezugsrahmen mehr gibt. Unteres Polster `calc(20px + env(safe-area-inset-bottom))`.
 2. Bei Sidebar-Breite wird das Panel auf `max-width:520px` zentriert, statt über die ganze Fensterbreite zu laufen — sonst wäre ein 1400 px breites Sheet die Folge.
 
@@ -2207,14 +2581,23 @@ const base = {
 describe('ConfirmDialog', () => {
   it('meldet die Zustimmung', async () => {
     const onConfirm = vi.fn();
-    render(<ConfirmDialog {...base} tone="danger" onConfirm={onConfirm} onCancel={() => {}} />);
+    render(
+      <ConfirmDialog
+        {...base}
+        tone="danger"
+        onConfirm={onConfirm}
+        onCancel={() => {}}
+      />,
+    );
     await userEvent.click(screen.getByRole('button', { name: 'Löschen' }));
     expect(onConfirm).toHaveBeenCalledOnce();
   });
 
   it('meldet den Abbruch', async () => {
     const onCancel = vi.fn();
-    render(<ConfirmDialog {...base} onConfirm={() => {}} onCancel={onCancel} />);
+    render(
+      <ConfirmDialog {...base} onConfirm={() => {}} onCancel={onCancel} />,
+    );
     await userEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
     expect(onCancel).toHaveBeenCalledOnce();
   });
@@ -2222,21 +2605,36 @@ describe('ConfirmDialog', () => {
   it('behandelt Escape als Abbruch, nicht als Zustimmung', async () => {
     const onConfirm = vi.fn();
     const onCancel = vi.fn();
-    render(<ConfirmDialog {...base} onConfirm={onConfirm} onCancel={onCancel} />);
+    render(
+      <ConfirmDialog {...base} onConfirm={onConfirm} onCancel={onCancel} />,
+    );
     await userEvent.keyboard('{Escape}');
     expect(onCancel).toHaveBeenCalledOnce();
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
   it('legt den Startfokus auf Abbrechen, nicht auf die zerstörende Handlung', () => {
-    render(<ConfirmDialog {...base} tone="danger" onConfirm={() => {}} onCancel={() => {}} />);
+    render(
+      <ConfirmDialog
+        {...base}
+        tone="danger"
+        onConfirm={() => {}}
+        onCancel={() => {}}
+      />,
+    );
     expect(screen.getByRole('button', { name: 'Abbrechen' })).toHaveFocus();
   });
 
   it('nennt Titel und Meldung', () => {
-    render(<ConfirmDialog {...base} onConfirm={() => {}} onCancel={() => {}} />);
-    expect(screen.getByRole('dialog', { name: 'Termin löschen?' })).toBeInTheDocument();
-    expect(screen.getByText('Das lässt sich nicht rückgängig machen.')).toBeInTheDocument();
+    render(
+      <ConfirmDialog {...base} onConfirm={() => {}} onCancel={() => {}} />,
+    );
+    expect(
+      screen.getByRole('dialog', { name: 'Termin löschen?' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Das lässt sich nicht rückgängig machen.'),
+    ).toBeInTheDocument();
   });
 });
 ```
@@ -2267,6 +2665,7 @@ scrollt nicht mit. Das Panel ist ab Sidebar-Breite zentriert statt fensterbreit.
 ## Task 11: AppShell
 
 **Files:**
+
 - Create: `packages/ui/src/shell/nav-items.ts`
 - Create: `packages/ui/src/shell/AppLayout.tsx` + `.module.css`
 - Create: `packages/ui/src/shell/Sidebar.tsx` + `.module.css`
@@ -2277,6 +2676,7 @@ scrollt nicht mit. Das Panel ist ab Sidebar-Breite zentriert statt fensterbreit.
 - Modify: `packages/ui/src/index.ts`
 
 **Interfaces:**
+
 - Consumes: Task 6 (`Icon`), Task 7 (`NavItem`, `IconButton`), Task 8 (`AvatarPair`, `Card`, `SectionLabel`)
 - Produces:
   - `type TabId = 'kalender' | 'planer' | 'todos' | 'geld' | 'profil'`
@@ -2299,7 +2699,13 @@ import { TABS } from './nav-items.js';
 
 describe('TABS', () => {
   it('hat genau fünf Einträge in der Reihenfolge der Vorlage', () => {
-    expect(TABS.map((t) => t.id)).toEqual(['kalender', 'planer', 'todos', 'geld', 'profil']);
+    expect(TABS.map((t) => t.id)).toEqual([
+      'kalender',
+      'planer',
+      'todos',
+      'geld',
+      'profil',
+    ]);
   });
 });
 
@@ -2311,22 +2717,35 @@ describe('AppLayout', () => {
       </AppLayout>,
     );
     // Beide Navigationen liegen im DOM; CSS entscheidet, welche sichtbar ist.
-    expect(screen.getByRole('navigation', { name: 'Hauptnavigation' })).toBeInTheDocument();
-    expect(screen.getByRole('navigation', { name: 'Bereiche' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('navigation', { name: 'Hauptnavigation' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('navigation', { name: 'Bereiche' }),
+    ).toBeInTheDocument();
     expect(screen.getByText('Inhalt')).toBeInTheDocument();
   });
 
   it('meldet einen Tabwechsel', async () => {
     const onNavigate = vi.fn();
-    render(<AppLayout activeTab="kalender" onNavigate={onNavigate}><p>x</p></AppLayout>);
+    render(
+      <AppLayout activeTab="kalender" onNavigate={onNavigate}>
+        <p>x</p>
+      </AppLayout>,
+    );
     const [geld] = screen.getAllByRole('button', { name: 'Geld' });
     await userEvent.click(geld!);
     expect(onNavigate).toHaveBeenCalledWith('geld');
   });
 
   it('markiert den aktiven Tab in beiden Navigationen', () => {
-    render(<AppLayout activeTab="todos" onNavigate={() => {}}><p>x</p></AppLayout>);
-    const current = screen.getAllByRole('button', { name: 'Todos' })
+    render(
+      <AppLayout activeTab="todos" onNavigate={() => {}}>
+        <p>x</p>
+      </AppLayout>,
+    );
+    const current = screen
+      .getAllByRole('button', { name: 'Todos' })
       .filter((b) => b.getAttribute('aria-current') === 'page');
     expect(current).toHaveLength(2);
   });
@@ -2336,7 +2755,9 @@ describe('AppHeader', () => {
   it('zeigt Kicker und Titel', () => {
     render(<AppHeader kicker="Gemeinsamer Kalender" title="Juli 2026" />);
     expect(screen.getByText('Gemeinsamer Kalender')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Juli 2026' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Juli 2026' }),
+    ).toBeInTheDocument();
   });
 
   it('zeigt den Zurück-Knopf nur mit onBack', () => {
@@ -2348,13 +2769,21 @@ describe('AppHeader', () => {
 
   it('bedient die Bereichsnavigation', async () => {
     const range = {
-      onPrev: vi.fn(), onToday: vi.fn(), onNext: vi.fn(),
-      prevLabel: 'Vorheriger Monat', todayLabel: 'Heute', nextLabel: 'Nächster Monat',
+      onPrev: vi.fn(),
+      onToday: vi.fn(),
+      onNext: vi.fn(),
+      prevLabel: 'Vorheriger Monat',
+      todayLabel: 'Heute',
+      nextLabel: 'Nächster Monat',
     };
     render(<AppHeader kicker="k" title="t" range={range} />);
-    await userEvent.click(screen.getByRole('button', { name: 'Vorheriger Monat' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Vorheriger Monat' }),
+    );
     await userEvent.click(screen.getByRole('button', { name: 'Heute' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Nächster Monat' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Nächster Monat' }),
+    );
     expect(range.onPrev).toHaveBeenCalledOnce();
     expect(range.onToday).toHaveBeenCalledOnce();
     expect(range.onNext).toHaveBeenCalledOnce();
@@ -2365,7 +2794,9 @@ describe('Fab', () => {
   it('trägt seinen Namen und meldet Klicks', async () => {
     const onClick = vi.fn();
     render(<Fab label="Termin hinzufügen" onClick={onClick} />);
-    await userEvent.click(screen.getByRole('button', { name: 'Termin hinzufügen' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Termin hinzufügen' }),
+    );
     expect(onClick).toHaveBeenCalledOnce();
   });
 });
@@ -2396,11 +2827,41 @@ export interface TabDef {
 }
 
 export const TABS: readonly TabDef[] = [
-  { id: 'kalender', icon: 'calendar', path: '/kalender', sidebarLabelKey: 'navCalendar', bottomLabelKey: 'navCalendarShort' },
-  { id: 'planer', icon: 'planner', path: '/planer', sidebarLabelKey: 'navPlanner', bottomLabelKey: 'navPlannerShort' },
-  { id: 'todos', icon: 'todos', path: '/todos', sidebarLabelKey: 'navTodos', bottomLabelKey: 'navTodosShort' },
-  { id: 'geld', icon: 'money', path: '/geld', sidebarLabelKey: 'navMoney', bottomLabelKey: 'navMoneyShort' },
-  { id: 'profil', icon: 'settings', path: '/profil', sidebarLabelKey: 'navSettings', bottomLabelKey: 'navProfileShort' },
+  {
+    id: 'kalender',
+    icon: 'calendar',
+    path: '/kalender',
+    sidebarLabelKey: 'navCalendar',
+    bottomLabelKey: 'navCalendarShort',
+  },
+  {
+    id: 'planer',
+    icon: 'planner',
+    path: '/planer',
+    sidebarLabelKey: 'navPlanner',
+    bottomLabelKey: 'navPlannerShort',
+  },
+  {
+    id: 'todos',
+    icon: 'todos',
+    path: '/todos',
+    sidebarLabelKey: 'navTodos',
+    bottomLabelKey: 'navTodosShort',
+  },
+  {
+    id: 'geld',
+    icon: 'money',
+    path: '/geld',
+    sidebarLabelKey: 'navMoney',
+    bottomLabelKey: 'navMoneyShort',
+  },
+  {
+    id: 'profil',
+    icon: 'settings',
+    path: '/profil',
+    sidebarLabelKey: 'navSettings',
+    bottomLabelKey: 'navProfileShort',
+  },
 ];
 
 export const SIDEBAR_BREAKPOINT_PX = 1024;
@@ -2477,6 +2938,7 @@ Sidebar und Inhaltsspalte behalten ihre Maximalbreiten aus dem Entwurf."
 Ab hier gibt es zum ersten Mal etwas zu sehen. Ziel dieser Task: `npm run dev` startet, die fünf Tabs sind navigierbar, jeder Tab zeigt einen Platzhalter im richtigen Rahmen.
 
 **Files:**
+
 - Create: `apps/app/index.html`
 - Create: `apps/app/vite.config.ts`
 - Create: `apps/app/src/main.tsx`
@@ -2487,6 +2949,7 @@ Ab hier gibt es zum ersten Mal etwas zu sehen. Ziel dieser Task: `npm run dev` s
 - Modify: `package.json` — `build` muss `tsc` nicht doppelt laufen lassen
 
 **Interfaces:**
+
 - Consumes: Task 4 (`ThemeProvider`, `themeBootScript`), Task 11 (`AppLayout`, `AppHeader`, `Fab`, `TABS`)
 - Produces:
   - `function AppFrame(): React.JSX.Element` — verbindet `AppLayout` mit dem Router: leitet `useLocation` auf `activeTab` und `onNavigate` auf `navigate`
@@ -2503,7 +2966,11 @@ import { describe, expect, it } from 'vitest';
 import { routes } from './router.js';
 
 function renderAt(path: string) {
-  return render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
+  return render(
+    <RouterProvider
+      router={createMemoryRouter(routes, { initialEntries: [path] })}
+    />,
+  );
 }
 
 describe('Routing', () => {
@@ -2511,9 +2978,12 @@ describe('Routing', () => {
     renderAt('/');
     // Die Platzhalter dieser Task rendern nur ihren Namen; einen <h1> gibt es
     // erst ab Task 16, wenn die Screens den AppHeader mitbringen.
-    expect(await screen.findByText('Kalender', { selector: 'p' })).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: 'Kalender' })[0])
-      .toHaveAttribute('aria-current', 'page');
+    expect(
+      await screen.findByText('Kalender', { selector: 'p' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByRole('button', { name: 'Kalender' })[0],
+    ).toHaveAttribute('aria-current', 'page');
   });
 
   it.each([
@@ -2523,8 +2993,9 @@ describe('Routing', () => {
     ['/profil', 'Profil'],
   ])('markiert bei %s den Tab %s', async (path, label) => {
     renderAt(path);
-    const active = (await screen.findAllByRole('button', { name: label }))
-      .filter((b) => b.getAttribute('aria-current') === 'page');
+    const active = (
+      await screen.findAllByRole('button', { name: label })
+    ).filter((b) => b.getAttribute('aria-current') === 'page');
     expect(active.length).toBeGreaterThan(0);
   });
 
@@ -2532,22 +3003,25 @@ describe('Routing', () => {
     renderAt('/kalender');
     const [geld] = await screen.findAllByRole('button', { name: 'Geld' });
     await userEvent.click(geld!);
-    const active = screen.getAllByRole('button', { name: 'Geld' })
+    const active = screen
+      .getAllByRole('button', { name: 'Geld' })
       .filter((b) => b.getAttribute('aria-current') === 'page');
     expect(active.length).toBeGreaterThan(0);
   });
 
   it('hält /profil/sync auf dem Profil-Tab', async () => {
     renderAt('/profil/sync');
-    const active = (await screen.findAllByRole('button', { name: 'Profil' }))
-      .filter((b) => b.getAttribute('aria-current') === 'page');
+    const active = (
+      await screen.findAllByRole('button', { name: 'Profil' })
+    ).filter((b) => b.getAttribute('aria-current') === 'page');
     expect(active.length).toBeGreaterThan(0);
   });
 
   it('zeigt bei unbekanntem Pfad den Kalender', async () => {
     renderAt('/gibtsnicht');
-    expect(screen.getAllByRole('button', { name: 'Kalender' })[0])
-      .toHaveAttribute('aria-current', 'page');
+    expect(
+      screen.getAllByRole('button', { name: 'Kalender' })[0],
+    ).toHaveAttribute('aria-current', 'page');
   });
 });
 ```
@@ -2564,7 +3038,8 @@ import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
-const resolvePath = (relative: string) => fileURLToPath(new URL(relative, import.meta.url));
+const resolvePath = (relative: string) =>
+  fileURLToPath(new URL(relative, import.meta.url));
 
 export default defineConfig({
   // Web serviert die App unter /app/*; / gehört der Marketing-Site (SP8).
@@ -2590,7 +3065,10 @@ export default defineConfig({
 <html lang="de">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
     <title>Ralia</title>
     <script>
       // Vor dem ersten Frame: verhindert den Hell-Blitz beim Laden im Dark Mode.
@@ -2598,8 +3076,12 @@ export default defineConfig({
       try {
         var c = localStorage.getItem('ralia.theme');
         if (c !== 'light' && c !== 'dark') c = 'system';
-        var d = c === 'dark' || (c === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
-        if (d) document.documentElement.setAttribute('data-ralia-theme', 'dark');
+        var d =
+          c === 'dark' ||
+          (c === 'system' &&
+            matchMedia('(prefers-color-scheme: dark)').matches);
+        if (d)
+          document.documentElement.setAttribute('data-ralia-theme', 'dark');
       } catch (e) {}
     </script>
   </head>
@@ -2675,7 +3157,9 @@ import { Outlet, useLocation, useNavigate } from 'react-router';
 import { AppLayout, TABS, type TabId } from '@ralia/ui';
 
 function tabFromPath(pathname: string): TabId {
-  const match = TABS.find((tab) => pathname === tab.path || pathname.startsWith(`${tab.path}/`));
+  const match = TABS.find(
+    (tab) => pathname === tab.path || pathname.startsWith(`${tab.path}/`),
+  );
   return match?.id ?? 'kalender';
 }
 
@@ -2769,6 +3253,7 @@ Inline-Theme-Skript in index.html mit themeBootScript() synchron."
 ## Task 13: i18n — Extraktion und Provider
 
 **Files:**
+
 - Create: `scripts/extract-i18n.mjs`
 - Create: `apps/app/src/i18n/de.json` (generiert)
 - Create: `apps/app/src/i18n/en.json` (generiert)
@@ -2780,6 +3265,7 @@ Inline-Theme-Skript in index.html mit themeBootScript() synchron."
 - Create: `apps/app/src/i18n/I18nProvider.test.tsx`
 
 **Interfaces:**
+
 - Consumes: Task 12
 - Produces:
   - `type Lang = 'de' | 'en'`
@@ -2826,9 +3312,16 @@ describe('Übersetzungskataloge', () => {
 
   it('enthalten die Navigations-Schlüssel der AppShell', () => {
     for (const key of [
-      'navCalendar', 'navCalendarShort', 'navPlanner', 'navPlannerShort',
-      'navTodos', 'navTodosShort', 'navMoney', 'navMoneyShort',
-      'navSettings', 'navProfileShort',
+      'navCalendar',
+      'navCalendarShort',
+      'navPlanner',
+      'navPlannerShort',
+      'navTodos',
+      'navTodosShort',
+      'navMoney',
+      'navMoneyShort',
+      'navSettings',
+      'navProfileShort',
     ]) {
       expect(deKeys, `de fehlt ${key}`).toContain(key);
       expect(enKeys, `en fehlt ${key}`).toContain(key);
@@ -2836,7 +3329,9 @@ describe('Übersetzungskataloge', () => {
   });
 
   it('übernimmt Stichproben wortgleich aus Ralia_Opus', () => {
-    expect((de as Record<string, string>).appSubtitle).toBe('Teile Deine Tage gemeinsam');
+    expect((de as Record<string, string>).appSubtitle).toBe(
+      'Teile Deine Tage gemeinsam',
+    );
     expect((de as Record<string, string>).loginButton).toBe('Anmelden');
   });
 });
@@ -2864,8 +3359,11 @@ Handarbeit ist ausgeschlossen. Das Skript liest das Objektliteral und wertet es 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-const DEFAULT_SOURCE = 'N:/Programme/EigeneProjekte/Ralia_Opus/public/js/i18n.js';
-const OUT_DIR = fileURLToPath(new URL('../apps/app/src/i18n/', import.meta.url));
+const DEFAULT_SOURCE =
+  'N:/Programme/EigeneProjekte/Ralia_Opus/public/js/i18n.js';
+const OUT_DIR = fileURLToPath(
+  new URL('../apps/app/src/i18n/', import.meta.url),
+);
 const ADDITIONS = `${OUT_DIR}additions.json`;
 
 const args = process.argv.slice(2);
@@ -2880,10 +3378,22 @@ function matchBrace(src, start) {
   let escaped = false;
   for (let i = start; i < src.length; i += 1) {
     const ch = src[i];
-    if (escaped) { escaped = false; continue; }
-    if (ch === '\\') { escaped = true; continue; }
-    if (quote) { if (ch === quote) quote = null; continue; }
-    if (ch === "'" || ch === '"' || ch === '`') { quote = ch; continue; }
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (quote) {
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === '`') {
+      quote = ch;
+      continue;
+    }
     if (ch === '{') depth += 1;
     else if (ch === '}') {
       depth -= 1;
@@ -2933,7 +3443,9 @@ const { value, literal } = readTranslations(src);
 for (const lang of ['de', 'en']) {
   const dupes = findDuplicates(literal, lang);
   if (dupes.length > 0) {
-    console.warn(`[${lang}] ${dupes.length} doppelte Schlüssel, letzter gewinnt: ${dupes.join(', ')}`);
+    console.warn(
+      `[${lang}] ${dupes.length} doppelte Schlüssel, letzter gewinnt: ${dupes.join(', ')}`,
+    );
   }
 }
 
@@ -2948,7 +3460,9 @@ const enKeys = Object.keys(merged.en).sort();
 const onlyDe = deKeys.filter((k) => !(k in merged.en));
 const onlyEn = enKeys.filter((k) => !(k in merged.de));
 if (onlyDe.length > 0 || onlyEn.length > 0) {
-  console.error(`Schlüsselmengen weichen ab.\n  nur de: ${onlyDe.join(', ')}\n  nur en: ${onlyEn.join(', ')}`);
+  console.error(
+    `Schlüsselmengen weichen ab.\n  nur de: ${onlyDe.join(', ')}\n  nur en: ${onlyEn.join(', ')}`,
+  );
   process.exit(1);
 }
 
@@ -2959,7 +3473,9 @@ for (const lang of ['de', 'en']) {
   if (check) {
     const current = readFileSync(target, 'utf8');
     if (current !== next) {
-      console.error(`${lang}.json ist nicht aktuell — führe \`npm run i18n:extract\` aus`);
+      console.error(
+        `${lang}.json ist nicht aktuell — führe \`npm run i18n:extract\` aus`,
+      );
       failed = true;
     }
   } else {
@@ -2968,7 +3484,9 @@ for (const lang of ['de', 'en']) {
 }
 if (failed) process.exit(1);
 
-console.log(`${deKeys.length} Schlüssel je Sprache${check ? ' geprüft' : ' geschrieben'}`);
+console.log(
+  `${deKeys.length} Schlüssel je Sprache${check ? ' geprüft' : ' geschrieben'}`,
+);
 ```
 
 - [x] **Step 4: `additions.json` schreiben**
@@ -3038,7 +3556,10 @@ export function isLang(value: unknown): value is Lang {
 }
 
 /** Gespeicherte Wahl → Browsersprache → Deutsch. */
-export function detectLang(stored: string | null, navigatorLang: string | undefined): Lang {
+export function detectLang(
+  stored: string | null,
+  navigatorLang: string | undefined,
+): Lang {
   if (isLang(stored)) return stored;
   return navigatorLang?.toLowerCase().startsWith('en') ? 'en' : 'de';
 }
@@ -3077,13 +3598,21 @@ beforeEach(() => localStorage.clear());
 
 describe('I18nProvider', () => {
   it('startet auf Deutsch, wenn nichts gespeichert ist', () => {
-    render(<I18nProvider><Probe /></I18nProvider>);
+    render(
+      <I18nProvider>
+        <Probe />
+      </I18nProvider>,
+    );
     expect(screen.getByTestId('lang')).toHaveTextContent('de');
     expect(screen.getByTestId('text')).toHaveTextContent('Anmelden');
   });
 
   it('wechselt die Sprache und speichert sie', async () => {
-    render(<I18nProvider><Probe /></I18nProvider>);
+    render(
+      <I18nProvider>
+        <Probe />
+      </I18nProvider>,
+    );
     await userEvent.click(screen.getByRole('button', { name: 'en' }));
     expect(screen.getByTestId('lang')).toHaveTextContent('en');
     expect(localStorage.getItem(LANG_STORAGE_KEY)).toBe('en');
@@ -3091,17 +3620,29 @@ describe('I18nProvider', () => {
 
   it('stellt eine gespeicherte Sprache wieder her', () => {
     localStorage.setItem(LANG_STORAGE_KEY, 'en');
-    render(<I18nProvider><Probe /></I18nProvider>);
+    render(
+      <I18nProvider>
+        <Probe />
+      </I18nProvider>,
+    );
     expect(screen.getByTestId('lang')).toHaveTextContent('en');
   });
 
   it('gibt bei unbekanntem Schlüssel den Schlüssel zurück', () => {
-    render(<I18nProvider><Probe /></I18nProvider>);
+    render(
+      <I18nProvider>
+        <Probe />
+      </I18nProvider>,
+    );
     expect(screen.getByTestId('fallback')).toHaveTextContent('gibtsNichtInDe');
   });
 
   it('setzt das lang-Attribut am Dokument', () => {
-    render(<I18nProvider><Probe /></I18nProvider>);
+    render(
+      <I18nProvider>
+        <Probe />
+      </I18nProvider>,
+    );
     expect(document.documentElement.lang).toBe('de');
   });
 });
@@ -3114,7 +3655,10 @@ describe('I18nProvider', () => {
 ```tsx
 const { t } = useT();
 const labels = Object.fromEntries(
-  TABS.map((tab) => [tab.id, { sidebar: t(tab.sidebarLabelKey), bottom: t(tab.bottomLabelKey) }]),
+  TABS.map((tab) => [
+    tab.id,
+    { sidebar: t(tab.sidebarLabelKey), bottom: t(tab.bottomLabelKey) },
+  ]),
 ) as Record<TabId, { sidebar: string; bottom: string }>;
 ```
 
@@ -3140,12 +3684,14 @@ auseinanderlaufen. --check belegt Reproduzierbarkeit."
 ## Task 14: Boot-Sequenz
 
 **Files:**
+
 - Create: `apps/app/src/boot/bootstrap.ts`
 - Create: `apps/app/src/boot/BootGate.tsx`
 - Create: `apps/app/src/boot/bootstrap.test.ts`
 - Modify: `apps/app/src/App.tsx`
 
 **Interfaces:**
+
 - Consumes: `@ralia/data` (`loadRuntimeConfig`, `mergeRuntimeConfig`, `getSupabaseClient`, `resetSupabaseClient`), `@ralia/core` (`importLegacyOutbox`, `Outbox`, `bindLifecycle`, `openRaliaDB`)
 - Produces:
   - `type BootState = { phase: 'pending' } | { phase: 'ready'; config: RuntimeConfig; warnings: string[] } | { phase: 'failed'; error: Error }`
@@ -3168,7 +3714,9 @@ function memoryStorage(initial: Record<string, string> = {}) {
     setItem: (k: string, v: string) => void map.set(k, v),
     removeItem: (k: string) => void map.delete(k),
     key: (i: number) => [...map.keys()][i] ?? null,
-    get length() { return map.size; },
+    get length() {
+      return map.size;
+    },
     clear: () => map.clear(),
     snapshot: () => Object.fromEntries(map),
   };
@@ -3196,7 +3744,9 @@ describe('runBoot', () => {
   it('bootet trotz fehlgeschlagenem /config und meldet eine Warnung', async () => {
     const result = await runBoot({
       storage: memoryStorage(),
-      loadRuntimeConfig: async () => { throw new Error('offline'); },
+      loadRuntimeConfig: async () => {
+        throw new Error('offline');
+      },
     });
     expect(result.phase).toBe('ready');
     if (result.phase !== 'ready') return;
@@ -3212,7 +3762,10 @@ describe('runBoot', () => {
       ]),
       appLanguage: 'de',
     });
-    const result = await runBoot({ storage, loadRuntimeConfig: async () => okConfig });
+    const result = await runBoot({
+      storage,
+      loadRuntimeConfig: async () => okConfig,
+    });
     expect(result.phase).toBe('ready');
     const after = storage.snapshot();
     expect(after['ralia:event-queue:abc_def']).toBeUndefined();
@@ -3227,10 +3780,19 @@ describe('runBoot', () => {
         { id: 'm1', type: 'insert', payload: {} },
       ]),
     });
-    const first = await runBoot({ storage, loadRuntimeConfig: async () => okConfig });
+    const first = await runBoot({
+      storage,
+      loadRuntimeConfig: async () => okConfig,
+    });
     const marker = storage.snapshot()[LEGACY_MIGRATION_META_KEY];
-    storage.setItem('ralia:event-queue:xyz', JSON.stringify([{ id: 'm2', type: 'insert', payload: {} }]));
-    const second = await runBoot({ storage, loadRuntimeConfig: async () => okConfig });
+    storage.setItem(
+      'ralia:event-queue:xyz',
+      JSON.stringify([{ id: 'm2', type: 'insert', payload: {} }]),
+    );
+    const second = await runBoot({
+      storage,
+      loadRuntimeConfig: async () => okConfig,
+    });
     expect(first.phase).toBe('ready');
     expect(second.phase).toBe('ready');
     // Marker unverändert: der zweite Lauf hat nicht migriert.
@@ -3245,7 +3807,10 @@ describe('runBoot', () => {
       storage: memoryStorage(),
       loadRuntimeConfig: async () => okConfig,
       serviceWorker: { getRegistrations: async () => [{ unregister }] },
-      caches: { keys: async () => ['ralia-static-v3', 'fremd-cache'], delete: deleteCache },
+      caches: {
+        keys: async () => ['ralia-static-v3', 'fremd-cache'],
+        delete: deleteCache,
+      },
     });
     expect(unregister).toHaveBeenCalledOnce();
     expect(deleteCache).toHaveBeenCalledWith('ralia-static-v3');
@@ -3277,8 +3842,12 @@ Die Reihenfolge ist zwingend und im Code zu kommentieren. Alle Außenkanten komm
 export interface BootDeps {
   storage?: Storage;
   loadRuntimeConfig?: () => Promise<Partial<RuntimeConfig>>;
-  serviceWorker?: { getRegistrations(): Promise<{ unregister(): Promise<boolean> }[]> } | undefined;
-  caches?: { keys(): Promise<string[]>; delete(key: string): Promise<boolean> } | undefined;
+  serviceWorker?:
+    | { getRegistrations(): Promise<{ unregister(): Promise<boolean> }[]> }
+    | undefined;
+  caches?:
+    | { keys(): Promise<string[]>; delete(key: string): Promise<boolean> }
+    | undefined;
 }
 ```
 
@@ -3327,10 +3896,12 @@ Ein fehlgeschlagenes /config wird zur Warnung, nicht zum Abbruch."
 ## Task 15: Demo-Daten
 
 **Files:**
+
 - Create: `apps/app/src/mock/fixtures.ts`
 - Create: `apps/app/src/mock/fixtures.test.ts`
 
 **Interfaces:**
+
 - Consumes: Task 3 (`PersonSlot`)
 - Produces:
   - `const MOCK_TODAY = '2026-07-29'`
@@ -3346,7 +3917,12 @@ Ein fehlgeschlagenes /config wird zur Warnung, nicht zum Abbruch."
 ```ts
 import { describe, expect, it } from 'vitest';
 import {
-  MOCK_CATEGORIES, MOCK_EVENTS, MOCK_EXPENSES, MOCK_PLANNER, MOCK_TODAY, MOCK_TODOS,
+  MOCK_CATEGORIES,
+  MOCK_EVENTS,
+  MOCK_EXPENSES,
+  MOCK_PLANNER,
+  MOCK_TODAY,
+  MOCK_TODOS,
 } from './fixtures.js';
 
 describe('Demo-Daten', () => {
@@ -3380,7 +3956,8 @@ describe('Demo-Daten', () => {
 
   it('verteilt Kategorieanteile auf u1, u2 und both', () => {
     for (const category of MOCK_CATEGORIES) {
-      const sum = category.shares.u1 + category.shares.u2 + category.shares.both;
+      const sum =
+        category.shares.u1 + category.shares.u2 + category.shares.both;
       expect(sum).toBeGreaterThan(0);
     }
   });
@@ -3426,6 +4003,7 @@ git commit -m "feat(app): Demo-Daten der Vorlage als SP0-Platzhalter"
 ## Task 16: Kalender — Monatsansicht
 
 **Files:**
+
 - Create: `apps/app/src/screens/calendar/CalendarScreen.tsx`
 - Create: `apps/app/src/screens/calendar/MonthView.tsx` + `.module.css`
 - Create: `apps/app/src/screens/calendar/use-element-height.ts`
@@ -3435,6 +4013,7 @@ git commit -m "feat(app): Demo-Daten der Vorlage als SP0-Platzhalter"
 - Modify: `apps/app/src/i18n/additions.json`
 
 **Interfaces:**
+
 - Consumes: Task 5 (`monthDensity`, `monthGridCells`), Task 8 (Primitive), Task 11 (`AppHeader`, `Fab`), Task 15 (`MOCK_EVENTS`)
 - Produces:
   - `function useElementHeight(): [ref: (node: HTMLElement | null) => void, height: number]` — `ResizeObserver`, 0 bis zur ersten Messung
@@ -3452,14 +4031,25 @@ import { MonthView } from './MonthView.js';
 
 /** jsdom hat kein ResizeObserver und meldet immer Höhe 0. */
 function stubResizeObserver(height: number) {
-  vi.stubGlobal('ResizeObserver', class {
-    constructor(private cb: ResizeObserverCallback) {}
-    observe(target: Element) {
-      this.cb([{ target, contentRect: { height } } as unknown as ResizeObserverEntry], this as never);
-    }
-    unobserve() {}
-    disconnect() {}
-  });
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      constructor(private cb: ResizeObserverCallback) {}
+      observe(target: Element) {
+        this.cb(
+          [
+            {
+              target,
+              contentRect: { height },
+            } as unknown as ResizeObserverEntry,
+          ],
+          this as never,
+        );
+      }
+      unobserve() {}
+      disconnect() {}
+    },
+  );
 }
 
 function renderMonth(gridHeight: number, onSelectDay = vi.fn()) {
@@ -3492,7 +4082,10 @@ describe('MonthView', () => {
 
   it('markiert heute', () => {
     renderMonth(600);
-    expect(screen.getByRole('button', { name: /29\. Juli/ })).toHaveAttribute('aria-current', 'date');
+    expect(screen.getByRole('button', { name: /29\. Juli/ })).toHaveAttribute(
+      'aria-current',
+      'date',
+    );
   });
 
   it('meldet den angetippten Tag als ISO-Datum', async () => {
@@ -3515,21 +4108,30 @@ describe('MonthView', () => {
   it('nennt die Zahl der Termine im Namen der Zelle', () => {
     renderMonth(900);
     // Der 29. Juli hat drei Termine.
-    expect(screen.getByRole('button', { name: /29\. Juli.*3 Termine/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /29\. Juli.*3 Termine/ }),
+    ).toBeInTheDocument();
   });
 
   it('kennzeichnet Tage außerhalb des Monats', () => {
     renderMonth(600);
     // 29. Juni liegt vor dem Monat.
-    expect(screen.getByRole('button', { name: /29\. Juni/ })).toHaveAttribute('data-outside', 'true');
+    expect(screen.getByRole('button', { name: /29\. Juni/ })).toHaveAttribute(
+      'data-outside',
+      'true',
+    );
   });
 
   it('folgt dem Wochenstart Sonntag', () => {
     stubResizeObserver(600);
     render(
       <MonthView
-        year={2026} monthIndex={6} weekStart="so" today={MOCK_TODAY}
-        events={MOCK_EVENTS} onSelectDay={() => {}}
+        year={2026}
+        monthIndex={6}
+        weekStart="so"
+        today={MOCK_TODAY}
+        events={MOCK_EVENTS}
+        onSelectDay={() => {}}
       />,
     );
     const heads = screen.getAllByTestId('weekday-head');
@@ -3554,7 +4156,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  * Ersetzt die Prototyp-Rechnung der Vorlage, die aus `window.innerHeight - 90`
  * auf die Rasterhöhe schloss — die 90 px waren deren eigene Kopfleiste.
  */
-export function useElementHeight(): [(node: HTMLElement | null) => void, number] {
+export function useElementHeight(): [
+  (node: HTMLElement | null) => void,
+  number,
+] {
   const [height, setHeight] = useState(0);
   const observer = useRef<ResizeObserver | null>(null);
 
@@ -3636,12 +4241,14 @@ Namen mit Terminzahl - die Vorlage liest dort nur eine Zahl vor."
 ## Task 17: Kalender — Wochenansicht
 
 **Files:**
+
 - Create: `apps/app/src/screens/calendar/WeekView.tsx` + `.module.css`
 - Create: `apps/app/src/screens/calendar/WeekView.test.tsx`
 - Modify: `apps/app/src/screens/calendar/CalendarScreen.tsx`
 - Modify: `apps/app/src/i18n/additions.json`
 
 **Interfaces:**
+
 - Consumes: Task 5 (`weekEventGeometry`, `parseTimeToMinutes`, `WEEK_HOUR_HEIGHT_PX`, `WEEK_DEFAULT_START_HOUR`, `WEEK_EXPANDED_START_HOUR`), Task 15
 - Produces:
   - `function WeekView(props: { weekStartIso: string; today: string; events: readonly MockEvent[]; nightExpanded: boolean; onToggleNight(): void; onSelectDay(iso: string): void })`
@@ -3657,7 +4264,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { MOCK_EVENTS, MOCK_TODAY } from '../../mock/fixtures.js';
 import { WeekView } from './WeekView.js';
 
-function renderWeek(nightExpanded = false, onToggleNight = vi.fn(), onSelectDay = vi.fn()) {
+function renderWeek(
+  nightExpanded = false,
+  onToggleNight = vi.fn(),
+  onSelectDay = vi.fn(),
+) {
   render(
     <WeekView
       weekStartIso="2026-07-27"
@@ -3717,13 +4328,17 @@ describe('WeekView', () => {
   it('markiert die heutige Spalte', () => {
     renderWeek();
     const heads = screen.getAllByTestId('week-day-head');
-    const today = heads.filter((h) => h.getAttribute('aria-current') === 'date');
+    const today = heads.filter(
+      (h) => h.getAttribute('aria-current') === 'date',
+    );
     expect(today).toHaveLength(1);
   });
 
   it('nennt Titel und Zeitraum im Namen eines Termins', () => {
     renderWeek(false);
-    expect(screen.getAllByRole('button', { name: 'Zahnarzt, 09:00–10:00' }).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole('button', { name: 'Zahnarzt, 09:00–10:00' }).length,
+    ).toBeGreaterThan(0);
   });
 
   it('meldet den angetippten Termin mit dem ISO-Datum seines Tages', async () => {
@@ -3778,11 +4393,13 @@ git commit -m "feat(app): Wochenansicht als Timeline mit einklappbaren Nachtstun
 ## Task 18: Wochenplaner
 
 **Files:**
+
 - Create: `apps/app/src/screens/planner/PlannerScreen.tsx` + `.module.css`
 - Create: `apps/app/src/screens/planner/PlannerScreen.test.tsx`
 - Modify: `apps/app/src/routes/router.tsx`, `apps/app/src/i18n/additions.json`
 
 **Interfaces:**
+
 - Consumes: Task 8 (`Card`, `Button`), Task 6 (`Icon` mit `meal`/`task`), Task 15 (`MOCK_PLANNER`)
 - Produces: `function PlannerScreen(): React.JSX.Element`
 
@@ -3803,7 +4420,8 @@ describe('PlannerScreen', () => {
   it('klappt vergangene Tage zu und künftige auf', () => {
     render(<PlannerScreen />);
     // Fiktives Heute ist der 29. (Index 2) — davor zwei zugeklappte Tage.
-    const collapsed = screen.getAllByTestId('planner-day')
+    const collapsed = screen
+      .getAllByTestId('planner-day')
       .filter((d) => d.querySelector('[aria-expanded="false"]'));
     expect(collapsed).toHaveLength(2);
   });
@@ -3882,6 +4500,7 @@ Optik, aber der Zustand ist fuer Screenreader lesbar."
 ## Task 19: Todos — Übersicht und Detail
 
 **Files:**
+
 - Create: `apps/app/src/screens/todos/TodoOverview.tsx` + `.module.css`
 - Create: `apps/app/src/screens/todos/TodoDetail.tsx` + `.module.css`
 - Create: `apps/app/src/screens/todos/todo-store.ts`
@@ -3890,6 +4509,7 @@ Optik, aber der Zustand ist fuer Screenreader lesbar."
 - Modify: `apps/app/src/routes/router.tsx`, `apps/app/src/i18n/additions.json`
 
 **Interfaces:**
+
 - Consumes: Task 8 (`Card`, `ProgressBar`, `Avatar`, `SectionLabel`), Task 7 (`Chip`), Task 15
 - Produces:
   - `function TodoOverview(): React.JSX.Element` — Kachelraster, Klick navigiert auf `/todos/:listId`
@@ -3906,26 +4526,38 @@ import { describe, expect, it } from 'vitest';
 import { routes } from '../../routes/router.js';
 
 function renderAt(path: string) {
-  return render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
+  return render(
+    <RouterProvider
+      router={createMemoryRouter(routes, { initialEntries: [path] })}
+    />,
+  );
 }
 
 describe('TodoOverview', () => {
   it('zeigt eine Kachel je Liste plus die Anlegen-Kachel', async () => {
     renderAt('/todos');
     expect(await screen.findAllByTestId('todo-list-card')).toHaveLength(3);
-    expect(screen.getByRole('button', { name: /Neue Liste/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Neue Liste/ }),
+    ).toBeInTheDocument();
   });
 
   it('nennt die Zahl der offenen Einträge', async () => {
     renderAt('/todos');
     // einkauf: 5 Einträge, 1 erledigt → 4 offen
-    expect(await screen.findByRole('button', { name: /Einkauf.*4 offen/ })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: /Einkauf.*4 offen/ }),
+    ).toBeInTheDocument();
   });
 
   it('öffnet eine Liste', async () => {
     renderAt('/todos');
-    await userEvent.click(await screen.findByRole('button', { name: /Einkauf/ }));
-    expect(await screen.findByRole('button', { name: 'Zurück' })).toBeInTheDocument();
+    await userEvent.click(
+      await screen.findByRole('button', { name: /Einkauf/ }),
+    );
+    expect(
+      await screen.findByRole('button', { name: 'Zurück' }),
+    ).toBeInTheDocument();
   });
 
   it('zeigt den Fortschritt als Messwert', async () => {
@@ -3947,21 +4579,33 @@ import { routes } from '../../routes/router.js';
 
 function renderDetail() {
   return render(
-    <RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/todos/einkauf'] })} />,
+    <RouterProvider
+      router={createMemoryRouter(routes, {
+        initialEntries: ['/todos/einkauf'],
+      })}
+    />,
   );
 }
 
 describe('TodoDetail', () => {
   it('zeigt die offenen Einträge der Liste', async () => {
     renderDetail();
-    expect(await screen.findByRole('checkbox', { name: /Haferflocken/ })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('checkbox', { name: /Haferflocken/ }),
+    ).toBeInTheDocument();
   });
 
   it('hält Erledigtes hinter einem Aufklapper', async () => {
     renderDetail();
-    expect(screen.queryByRole('checkbox', { name: /Spülmaschinentabs/ })).toBeNull();
-    await userEvent.click(await screen.findByRole('button', { name: /Erledigt/ }));
-    expect(await screen.findByRole('checkbox', { name: /Spülmaschinentabs/ })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('checkbox', { name: /Spülmaschinentabs/ }),
+    ).toBeNull();
+    await userEvent.click(
+      await screen.findByRole('button', { name: /Erledigt/ }),
+    );
+    expect(
+      await screen.findByRole('checkbox', { name: /Spülmaschinentabs/ }),
+    ).toBeInTheDocument();
   });
 
   it('hakt einen Eintrag ab und verschiebt ihn nach Erledigt', async () => {
@@ -3970,28 +4614,45 @@ describe('TodoDetail', () => {
     await userEvent.click(item);
     expect(screen.queryByRole('checkbox', { name: /Haferflocken/ })).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: /Erledigt · 2/ }));
-    expect(await screen.findByRole('checkbox', { name: /Haferflocken/ })).toBeChecked();
+    expect(
+      await screen.findByRole('checkbox', { name: /Haferflocken/ }),
+    ).toBeChecked();
   });
 
   it('filtert nach Person', async () => {
     renderDetail();
     await userEvent.click(await screen.findByRole('button', { name: 'Jonas' }));
     expect(screen.queryByRole('checkbox', { name: /Haferflocken/ })).toBeNull();
-    expect(screen.getByRole('checkbox', { name: /Tomaten & Basilikum/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole('checkbox', { name: /Tomaten & Basilikum/ }),
+    ).toBeInTheDocument();
   });
 
   it('zeigt bei leerer Auswahl den Hinweis der Vorlage', async () => {
     renderDetail();
-    for (const name of ['Haferflocken', 'Tomaten & Basilikum', 'Kaffeebohnen', 'Hafermilch']) {
-      await userEvent.click(await screen.findByRole('checkbox', { name: new RegExp(name) }));
+    for (const name of [
+      'Haferflocken',
+      'Tomaten & Basilikum',
+      'Kaffeebohnen',
+      'Hafermilch',
+    ]) {
+      await userEvent.click(
+        await screen.findByRole('checkbox', { name: new RegExp(name) }),
+      );
     }
-    expect(await screen.findByText('Nichts offen – alles abgehakt')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Nichts offen – alles abgehakt'),
+    ).toBeInTheDocument();
   });
 
   it('kehrt über Zurück zur Übersicht', async () => {
     renderDetail();
-    await userEvent.click(await screen.findByRole('button', { name: 'Zurück' }));
-    expect(await screen.findByRole('button', { name: /Neue Liste/ })).toBeInTheDocument();
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Zurück' }),
+    );
+    expect(
+      await screen.findByRole('button', { name: /Neue Liste/ }),
+    ).toBeInTheDocument();
   });
 
   it('zeigt die Notiz eines Eintrags', async () => {
@@ -4048,6 +4709,7 @@ Zurueckgehen erhalten bleibt."
 ## Task 20: Geld
 
 **Files:**
+
 - Create: `apps/app/src/screens/money/MoneyScreen.tsx` + `.module.css`
 - Create: `apps/app/src/screens/money/money-math.ts`
 - Create: `apps/app/src/screens/money/money-math.test.ts`
@@ -4055,6 +4717,7 @@ Zurueckgehen erhalten bleibt."
 - Modify: `apps/app/src/routes/router.tsx`, `apps/app/src/i18n/additions.json`
 
 **Interfaces:**
+
 - Consumes: Task 8 (`Card`, `ProgressBar`, `SectionLabel`), Task 15
 - Produces:
   - `function formatEur(value: number, lang: Lang): string` — `de-DE` bzw. `en-GB`, immer zwei Dezimalstellen
@@ -4110,12 +4773,16 @@ describe('categoryTotals', () => {
   });
 
   it('deckelt bei Überschreitung auf 100 Prozent', () => {
-    const over = [{ name: 'X', limit: 100, shares: { u1: 150, u2: 0, both: 0 } }] as const;
+    const over = [
+      { name: 'X', limit: 100, shares: { u1: 150, u2: 0, both: 0 } },
+    ] as const;
     expect(categoryTotals(over)[0]?.pct).toBe(100);
   });
 
   it('kommt mit Limit null ohne Division durch null zurecht', () => {
-    const zero = [{ name: 'X', limit: 0, shares: { u1: 10, u2: 0, both: 0 } }] as const;
+    const zero = [
+      { name: 'X', limit: 0, shares: { u1: 10, u2: 0, both: 0 } },
+    ] as const;
     expect(categoryTotals(zero)[0]?.pct).toBe(100);
   });
 });
@@ -4145,7 +4812,9 @@ import { MoneyScreen } from './MoneyScreen.js';
 describe('MoneyScreen', () => {
   it('zeigt das Budget mit Fortschritt', () => {
     render(<MoneyScreen />);
-    expect(screen.getByRole('progressbar', { name: /Budget/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole('progressbar', { name: /Budget/ }),
+    ).toBeInTheDocument();
   });
 
   it('zeigt fünf Kategorien mit segmentiertem Balken', () => {
@@ -4163,7 +4832,9 @@ describe('MoneyScreen', () => {
     render(<MoneyScreen />);
     const button = screen.getByRole('button', { name: 'Ausgleich buchen' });
     await userEvent.click(button);
-    expect(screen.getByRole('button', { name: /Ausgleich notiert/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Ausgleich notiert/ }),
+    ).toBeInTheDocument();
   });
 
   it('listet die letzten Ausgaben', () => {
@@ -4191,6 +4862,7 @@ Regel aus Vorlage Z. 1413–1458. Segmentfarben über `personTokens`, nie als Li
 - [x] **Step 5: `MoneyScreen` implementieren**
 
 Vorlage Z. 360–439, vier Blöcke:
+
 1. Budgetkarte: `SectionLabel` „Budget <Monat>", Betrag `font-size:27px` mit `letter-spacing:-.5px`, `ProgressBar height={9}`, Restzeile `font-size:11.5px`
 2. Kategorien: Legende mit drei Punkten, je Kategorie eine Karte Radius 15 mit Name/Betrag/Limit und `ProgressBar height={7}` mit Segmenten
 3. Bilanz: `Card tone="brand"` mit zwei Personenkarten (Radius 14) und der Schuldzeile, darunter der Ausgleichsknopf
@@ -4216,11 +4888,13 @@ inklusive Division durch null und Ueberschreitung des Limits."
 Der erste Screen, der echte Funktion trägt: hier hängen Theme- und Sprachumschaltung, also zwei der Abnahmekriterien.
 
 **Files:**
+
 - Create: `apps/app/src/screens/settings/SettingsScreen.tsx` + `.module.css`
 - Create: `apps/app/src/screens/settings/SettingsScreen.test.tsx`
 - Modify: `apps/app/src/routes/router.tsx`, `apps/app/src/i18n/additions.json`
 
 **Interfaces:**
+
 - Consumes: Task 4 (`useTheme`), Task 7 (`Toggle`, `SegmentSwitch`, `Button`), Task 8 (`Card`, `ListRow`, `Avatar`, `SectionLabel`), Task 9 (`useToast`), Task 13 (`useT`)
 - Produces: `function SettingsScreen(): React.JSX.Element`
 
@@ -4229,7 +4903,12 @@ Der erste Screen, der echte Funktion trägt: hier hängen Theme- und Sprachumsch
 ```tsx
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { THEME_ATTRIBUTE, THEME_STORAGE_KEY, ThemeProvider, ToastProvider } from '@ralia/ui';
+import {
+  THEME_ATTRIBUTE,
+  THEME_STORAGE_KEY,
+  ThemeProvider,
+  ToastProvider,
+} from '@ralia/ui';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../../i18n/I18nProvider.js';
@@ -4238,7 +4917,10 @@ import { SettingsScreen } from './SettingsScreen.js';
 
 function renderScreen() {
   vi.stubGlobal('matchMedia', () => ({
-    matches: false, media: '', addEventListener() {}, removeEventListener() {},
+    matches: false,
+    media: '',
+    addEventListener() {},
+    removeEventListener() {},
   }));
   return render(
     <MemoryRouter>
@@ -4315,7 +4997,9 @@ describe('SettingsScreen', () => {
 
   it('führt zur Sync-Unterseite', () => {
     renderScreen();
-    expect(screen.getByRole('button', { name: /Kalender & Konflikte verwalten/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Kalender & Konflikte verwalten/ }),
+    ).toBeInTheDocument();
   });
 });
 ```
@@ -4333,10 +5017,7 @@ Vorlage Z. 443–563, sechs Blöcke:
 2. **Partner** (Z. 469–495): Partnerzeile mit „verbunden seit …" in `--ok` und „Trennen" als `Button variant="danger"`; darunter der Einladungscode `font-size:21px`, `letter-spacing:4px`, `font-variant-numeric:tabular-nums` in `--brand-600`, daneben der QR-Platzhalter 66×66 mit `border:1px dashed`; drei Knöpfe Kopieren/Teilen/Neuer Code.
 3. **Persönlich** (Z. 497–533): `ListRow` für Geburtstag; `ListRow` mit `Toggle` für Dark Mode, beschriftet nach `useTheme().resolved`; `ListRow` mit `Toggle` für Push-Erinnerungen; `ListRow` mit `SegmentSwitch` `Mo | So` für den Wochenstart.
 
-Jede Abschnittsüberschrift braucht einen i18n-Schlüssel in `additions.json` — die Vorlage hat sie nur deutsch hartcodiert. Mindestens: `settingsPartner` (Partner / Partner), `settingsPersonal` (Persönlich / Personal), `settingsGoogle` (Google Kalender / Google Calendar), `settingsLanguage` (Sprache / Language). Der Test in Step 1 prüft den Wechsel an `settingsPersonal`, weil der Screen-Titel im `AppHeader` liegt und hier nicht mitgerendert wird.
-4. **Sprache** — in der Vorlage nicht vorhanden, aus der Sprache abgeleitet: eine `ListRow` mit `SegmentSwitch` `DE | EN`, gebaut wie der Wochenstart-Schalter. Abnahmekriterium 7 verlangt eine erreichbare Umschaltung.
-5. **Google Kalender** (Z. 535–560): Zeile „Verbunden" mit `Toggle`, zwei Knöpfe Importieren/Exportieren, darunter die klickbare `ListRow` „Kalender & Konflikte verwalten", die auf `/profil/sync` navigiert.
-6. **Fußzeile** (Z. 562): `font-size:10.5px`, zentriert, `--ink-400`.
+Jede Abschnittsüberschrift braucht einen i18n-Schlüssel in `additions.json` — die Vorlage hat sie nur deutsch hartcodiert. Mindestens: `settingsPartner` (Partner / Partner), `settingsPersonal` (Persönlich / Personal), `settingsGoogle` (Google Kalender / Google Calendar), `settingsLanguage` (Sprache / Language). Der Test in Step 1 prüft den Wechsel an `settingsPersonal`, weil der Screen-Titel im `AppHeader` liegt und hier nicht mitgerendert wird. 4. **Sprache** — in der Vorlage nicht vorhanden, aus der Sprache abgeleitet: eine `ListRow` mit `SegmentSwitch` `DE | EN`, gebaut wie der Wochenstart-Schalter. Abnahmekriterium 7 verlangt eine erreichbare Umschaltung. 5. **Google Kalender** (Z. 535–560): Zeile „Verbunden" mit `Toggle`, zwei Knöpfe Importieren/Exportieren, darunter die klickbare `ListRow` „Kalender & Konflikte verwalten", die auf `/profil/sync` navigiert. 6. **Fußzeile** (Z. 562): `font-size:10.5px`, zentriert, `--ink-400`.
 
 Der Dark-Mode-`Toggle` bildet `resolved === 'dark'` ab und setzt beim Umschalten explizit `'dark'` bzw. `'light'` — nicht `'system'`. Wer `system` will, hat es als Ausgangszustand; ein Dreizustands-Schalter ist in der Vorlage nicht vorgesehen und wäre eine Design-Erfindung.
 
@@ -4360,11 +5041,13 @@ abgeleitet - Abnahmekriterium 7 verlangt sie erreichbar."
 ## Task 22: Google-Sync-Unterseite
 
 **Files:**
+
 - Create: `apps/app/src/screens/settings/SyncScreen.tsx` + `.module.css`
 - Create: `apps/app/src/screens/settings/SyncScreen.test.tsx`
 - Modify: `apps/app/src/routes/router.tsx`, `apps/app/src/i18n/additions.json`
 
 **Interfaces:**
+
 - Consumes: Task 7, Task 8, Task 11 (`AppHeader` mit `onBack`)
 - Produces: `function SyncScreen(): React.JSX.Element`
 
@@ -4379,7 +5062,9 @@ import { routes } from '../../routes/router.js';
 
 function renderSync() {
   return render(
-    <RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/profil/sync'] })} />,
+    <RouterProvider
+      router={createMemoryRouter(routes, { initialEntries: ['/profil/sync'] })}
+    />,
   );
 }
 
@@ -4413,33 +5098,49 @@ describe('SyncScreen', () => {
   it('wechselt die Sync-Richtung mit den Pfeiltasten', async () => {
     renderSync();
     const group = await screen.findByRole('radiogroup', { name: 'Richtung' });
-    const checked = within(group).getAllByRole('radio').find((r) => r.getAttribute('aria-checked') === 'true');
+    const checked = within(group)
+      .getAllByRole('radio')
+      .find((r) => r.getAttribute('aria-checked') === 'true');
     checked!.focus();
     await userEvent.keyboard('{ArrowDown}');
-    const nowChecked = within(group).getAllByRole('radio').filter((r) => r.getAttribute('aria-checked') === 'true');
+    const nowChecked = within(group)
+      .getAllByRole('radio')
+      .filter((r) => r.getAttribute('aria-checked') === 'true');
     expect(nowChecked).toHaveLength(1);
     expect(nowChecked[0]).not.toBe(checked);
   });
 
   it('zeigt den offenen Konflikt mit beiden Fassungen', async () => {
     renderSync();
-    expect(await screen.findByText(/auf beiden Seiten geändert/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/auf beiden Seiten geändert/),
+    ).toBeInTheDocument();
     expect(screen.getByText('09:00 – 10:00')).toBeInTheDocument();
     expect(screen.getByText('09:30 – 10:30')).toBeInTheDocument();
   });
 
   it('löst den Konflikt und zeigt die Bestätigung mit Rückgängig', async () => {
     renderSync();
-    await userEvent.click(await screen.findByRole('button', { name: 'Ralia behalten' }));
-    expect(await screen.findByRole('button', { name: 'Rückgängig' })).toBeInTheDocument();
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Ralia behalten' }),
+    );
+    expect(
+      await screen.findByRole('button', { name: 'Rückgängig' }),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/auf beiden Seiten geändert/)).toBeNull();
   });
 
   it('nimmt die Konfliktlösung zurück', async () => {
     renderSync();
-    await userEvent.click(await screen.findByRole('button', { name: 'Google übernehmen' }));
-    await userEvent.click(await screen.findByRole('button', { name: 'Rückgängig' }));
-    expect(await screen.findByText(/auf beiden Seiten geändert/)).toBeInTheDocument();
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Google übernehmen' }),
+    );
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Rückgängig' }),
+    );
+    expect(
+      await screen.findByText(/auf beiden Seiten geändert/),
+    ).toBeInTheDocument();
   });
 
   it('zeigt das Protokoll', async () => {
@@ -4449,7 +5150,9 @@ describe('SyncScreen', () => {
 
   it('kehrt über Zurück zu den Einstellungen', async () => {
     renderSync();
-    await userEvent.click(await screen.findByRole('button', { name: 'Zurück' }));
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Zurück' }),
+    );
     expect(await screen.findByText('Jonas Berger')).toBeInTheDocument();
   });
 });
@@ -4490,6 +5193,7 @@ gleiche Optik, aber mit Pfeiltasten bedienbar."
 Drei Sheets: `day`, `new`, `event`. Sie hängen zusammen — aus dem Tages-Sheet führt langes Drücken ins Event-Sheet, und der FAB öffnet das Neu-Sheet mit dem gewählten Tag.
 
 **Files:**
+
 - Create: `apps/app/src/sheets/DaySheet.tsx`
 - Create: `apps/app/src/sheets/NewEventSheet.tsx`
 - Create: `apps/app/src/sheets/EventSheet.tsx`
@@ -4499,6 +5203,7 @@ Drei Sheets: `day`, `new`, `event`. Sie hängen zusammen — aus dem Tages-Sheet
 - Modify: `apps/app/src/screens/calendar/CalendarScreen.tsx`
 
 **Interfaces:**
+
 - Consumes: Task 10 (`BottomSheet`), Task 7/8 (Primitive), Task 15
 - Produces:
   - `function useLongPress(onLongPress: () => void, delayMs?: number): { onPointerDown; onPointerUp; onPointerLeave; onClickCapture }` — Standard 480 ms wie in der Vorlage (Z. 1194)
@@ -4521,26 +5226,46 @@ import { NewEventSheet } from './NewEventSheet.js';
 describe('DaySheet', () => {
   it('listet die Termine des Tages nach Zeit', () => {
     render(
-      <DaySheet open iso={MOCK_TODAY} events={MOCK_EVENTS}
-        onClose={() => {}} onEdit={() => {}} onAdd={() => {}} />,
+      <DaySheet
+        open
+        iso={MOCK_TODAY}
+        events={MOCK_EVENTS}
+        onClose={() => {}}
+        onEdit={() => {}}
+        onAdd={() => {}}
+      />,
     );
-    const titles = screen.getAllByTestId('day-event').map((el) => el.textContent ?? '');
+    const titles = screen
+      .getAllByTestId('day-event')
+      .map((el) => el.textContent ?? '');
     expect(titles[0]).toContain('Zahnarzt');
     expect(titles[2]).toContain('Abendessen Marco');
   });
 
   it('nennt heute im Kicker', () => {
     render(
-      <DaySheet open iso={MOCK_TODAY} events={MOCK_EVENTS}
-        onClose={() => {}} onEdit={() => {}} onAdd={() => {}} />,
+      <DaySheet
+        open
+        iso={MOCK_TODAY}
+        events={MOCK_EVENTS}
+        onClose={() => {}}
+        onEdit={() => {}}
+        onAdd={() => {}}
+      />,
     );
     expect(screen.getByText('Heute')).toBeInTheDocument();
   });
 
   it('zeigt an einem leeren Tag den Hinweis der Vorlage', () => {
     render(
-      <DaySheet open iso="2026-07-02" events={MOCK_EVENTS}
-        onClose={() => {}} onEdit={() => {}} onAdd={() => {}} />,
+      <DaySheet
+        open
+        iso="2026-07-02"
+        events={MOCK_EVENTS}
+        onClose={() => {}}
+        onEdit={() => {}}
+        onAdd={() => {}}
+      />,
     );
     expect(screen.getByText('Keine Termine an diesem Tag')).toBeInTheDocument();
   });
@@ -4550,8 +5275,14 @@ describe('DaySheet', () => {
     const onEdit = vi.fn();
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(
-      <DaySheet open iso={MOCK_TODAY} events={MOCK_EVENTS}
-        onClose={() => {}} onEdit={onEdit} onAdd={() => {}} />,
+      <DaySheet
+        open
+        iso={MOCK_TODAY}
+        events={MOCK_EVENTS}
+        onClose={() => {}}
+        onEdit={onEdit}
+        onAdd={() => {}}
+      />,
     );
     const [first] = screen.getAllByTestId('day-event');
     await user.pointer({ target: first!, keys: '[MouseLeft>]' });
@@ -4565,8 +5296,14 @@ describe('DaySheet', () => {
     const onEdit = vi.fn();
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(
-      <DaySheet open iso={MOCK_TODAY} events={MOCK_EVENTS}
-        onClose={() => {}} onEdit={onEdit} onAdd={() => {}} />,
+      <DaySheet
+        open
+        iso={MOCK_TODAY}
+        events={MOCK_EVENTS}
+        onClose={() => {}}
+        onEdit={onEdit}
+        onAdd={() => {}}
+      />,
     );
     await user.click(screen.getAllByTestId('day-event')[0]!);
     expect(onEdit).not.toHaveBeenCalled();
@@ -4576,23 +5313,45 @@ describe('DaySheet', () => {
   it('meldet Termin hinzufügen', async () => {
     const onAdd = vi.fn();
     render(
-      <DaySheet open iso={MOCK_TODAY} events={MOCK_EVENTS}
-        onClose={() => {}} onEdit={() => {}} onAdd={onAdd} />,
+      <DaySheet
+        open
+        iso={MOCK_TODAY}
+        events={MOCK_EVENTS}
+        onClose={() => {}}
+        onEdit={() => {}}
+        onAdd={onAdd}
+      />,
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Termin hinzufügen' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Termin hinzufügen' }),
+    );
     expect(onAdd).toHaveBeenCalledOnce();
   });
 });
 
 describe('NewEventSheet', () => {
   it('übernimmt den gewählten Tag als Vorgabe', () => {
-    render(<NewEventSheet open defaultIso="2026-07-31" onClose={() => {}} onSave={() => {}} />);
+    render(
+      <NewEventSheet
+        open
+        defaultIso="2026-07-31"
+        onClose={() => {}}
+        onSave={() => {}}
+      />,
+    );
     expect(screen.getByLabelText('Datum')).toHaveValue('2026-07-31');
   });
 
   it('sammelt Titel, Zeit, Zuordnung und Google-Schalter', async () => {
     const onSave = vi.fn();
-    render(<NewEventSheet open defaultIso="2026-07-31" onClose={() => {}} onSave={onSave} />);
+    render(
+      <NewEventSheet
+        open
+        defaultIso="2026-07-31"
+        onClose={() => {}}
+        onSave={onSave}
+      />,
+    );
     await userEvent.type(screen.getByLabelText('Titel'), 'Kino');
     await userEvent.click(screen.getByRole('button', { name: 'Beide' }));
     await userEvent.click(screen.getByRole('switch', { name: /Google/ }));
@@ -4604,14 +5363,30 @@ describe('NewEventSheet', () => {
 
   it('speichert nicht ohne Titel', async () => {
     const onSave = vi.fn();
-    render(<NewEventSheet open defaultIso="2026-07-31" onClose={() => {}} onSave={onSave} />);
+    render(
+      <NewEventSheet
+        open
+        defaultIso="2026-07-31"
+        onClose={() => {}}
+        onSave={onSave}
+      />,
+    );
     await userEvent.click(screen.getByRole('button', { name: 'Speichern' }));
     expect(onSave).not.toHaveBeenCalled();
-    expect(screen.getByLabelText('Titel')).toHaveAccessibleDescription(/Titel/i);
+    expect(screen.getByLabelText('Titel')).toHaveAccessibleDescription(
+      /Titel/i,
+    );
   });
 
   it('hat genau eine Zuordnung gleichzeitig gedrückt', async () => {
-    render(<NewEventSheet open defaultIso="2026-07-31" onClose={() => {}} onSave={() => {}} />);
+    render(
+      <NewEventSheet
+        open
+        defaultIso="2026-07-31"
+        onClose={() => {}}
+        onSave={() => {}}
+      />,
+    );
     await userEvent.click(screen.getByRole('button', { name: 'Jonas' }));
     const pressed = ['Jonas', 'Lena', 'Beide']
       .map((n) => screen.getByRole('button', { name: n }))
@@ -4709,11 +5484,13 @@ Speichern; die Vorlage schrieb dort still den alten Titel zurueck."
 Fünf Sheets: `todo`, `item`, `plan`, `expense`, `profile`.
 
 **Files:**
+
 - Create: `apps/app/src/sheets/TodoSheet.tsx`, `ItemSheet.tsx`, `PlanSheet.tsx`, `ExpenseSheet.tsx`, `ProfileSheet.tsx`
 - Create: `apps/app/src/sheets/organizer-sheets.test.tsx`
 - Modify: `apps/app/src/screens/todos/TodoDetail.tsx`, `apps/app/src/screens/planner/PlannerScreen.tsx`, `apps/app/src/screens/money/MoneyScreen.tsx`, `apps/app/src/screens/settings/SettingsScreen.tsx`
 
 **Interfaces:**
+
 - Consumes: Task 10, Task 23 (`useLongPress`, `sheets.module.css`)
 - Produces:
   - `function TodoSheet(props: { open: boolean; lists; defaultListId: string; existing: readonly MockTodoItem[]; onClose(); onSave(draft) })` — mit Duplikatwarnung
@@ -4728,15 +5505,25 @@ Fünf Sheets: `todo`, `item`, `plan`, `expense`, `profile`.
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { MOCK_CATEGORIES, MOCK_TODOS, MOCK_TODO_LISTS } from '../mock/fixtures.js';
+import {
+  MOCK_CATEGORIES,
+  MOCK_TODOS,
+  MOCK_TODO_LISTS,
+} from '../mock/fixtures.js';
 import { ExpenseSheet } from './ExpenseSheet.js';
 import { PlanSheet } from './PlanSheet.js';
 import { TodoSheet } from './TodoSheet.js';
 
 function renderTodoSheet(onSave = vi.fn()) {
   render(
-    <TodoSheet open lists={MOCK_TODO_LISTS} defaultListId="einkauf"
-      existing={MOCK_TODOS} onClose={() => {}} onSave={onSave} />,
+    <TodoSheet
+      open
+      lists={MOCK_TODO_LISTS}
+      defaultListId="einkauf"
+      existing={MOCK_TODOS}
+      onClose={() => {}}
+      onSave={onSave}
+    />,
   );
   return onSave;
 }
@@ -4751,14 +5538,18 @@ describe('TodoSheet', () => {
     renderTodoSheet();
     await userEvent.type(screen.getByLabelText('Eintrag'), 'Haferflocken');
     expect(screen.getByRole('alert')).toHaveTextContent(/steht schon offen/);
-    expect(screen.getByRole('button', { name: 'Vorhandenen Eintrag anzeigen' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Vorhandenen Eintrag anzeigen' }),
+    ).toBeInTheDocument();
   });
 
   it('warnt bei einem erledigten Duplikat mit anderem Text', async () => {
     renderTodoSheet();
     await userEvent.type(screen.getByLabelText('Eintrag'), 'Spülmaschinentabs');
     expect(screen.getByRole('alert')).toHaveTextContent(/bereits erledigt/);
-    expect(screen.getByRole('button', { name: 'Eintrag wieder öffnen' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Eintrag wieder öffnen' }),
+    ).toBeInTheDocument();
   });
 
   it('erkennt Duplikate unabhängig von Groß- und Kleinschreibung', async () => {
@@ -4771,9 +5562,15 @@ describe('TodoSheet', () => {
     const onSave = renderTodoSheet();
     await userEvent.type(screen.getByLabelText('Eintrag'), 'Olivenöl');
     await userEvent.type(screen.getByLabelText('Notiz'), '1 l');
-    await userEvent.click(screen.getByRole('button', { name: 'Zur Liste hinzufügen' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Zur Liste hinzufügen' }),
+    );
     expect(onSave).toHaveBeenCalledWith(
-      expect.objectContaining({ text: 'Olivenöl', note: '1 l', listId: 'einkauf' }),
+      expect.objectContaining({
+        text: 'Olivenöl',
+        note: '1 l',
+        listId: 'einkauf',
+      }),
     );
   });
 });
@@ -4795,32 +5592,55 @@ describe('PlanSheet', () => {
 describe('ExpenseSheet', () => {
   it('bietet Kategorien, Zahler und Aufteilung an', () => {
     render(
-      <ExpenseSheet open categories={MOCK_CATEGORIES} onClose={() => {}} onSave={() => {}} />,
+      <ExpenseSheet
+        open
+        categories={MOCK_CATEGORIES}
+        onClose={() => {}}
+        onSave={() => {}}
+      />,
     );
     expect(screen.getAllByTestId('category-chip')).toHaveLength(5);
-    expect(screen.getByRole('button', { name: 'Gem. Konto' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Gem. Konto' }),
+    ).toBeInTheDocument();
     expect(screen.getAllByTestId('split-chip')).toHaveLength(3);
   });
 
   it('speichert nicht ohne Betrag', async () => {
     const onSave = vi.fn();
     render(
-      <ExpenseSheet open categories={MOCK_CATEGORIES} onClose={() => {}} onSave={onSave} />,
+      <ExpenseSheet
+        open
+        categories={MOCK_CATEGORIES}
+        onClose={() => {}}
+        onSave={onSave}
+      />,
     );
     await userEvent.type(screen.getByLabelText('Beschreibung'), 'Rewe');
-    await userEvent.click(screen.getByRole('button', { name: 'Ausgabe speichern' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Ausgabe speichern' }),
+    );
     expect(onSave).not.toHaveBeenCalled();
   });
 
   it('speichert mit Beschreibung und Betrag', async () => {
     const onSave = vi.fn();
     render(
-      <ExpenseSheet open categories={MOCK_CATEGORIES} onClose={() => {}} onSave={onSave} />,
+      <ExpenseSheet
+        open
+        categories={MOCK_CATEGORIES}
+        onClose={() => {}}
+        onSave={onSave}
+      />,
     );
     await userEvent.type(screen.getByLabelText('Beschreibung'), 'Rewe');
     await userEvent.type(screen.getByLabelText(/Betrag/), '42.50');
-    await userEvent.click(screen.getByRole('button', { name: 'Ausgabe speichern' }));
-    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ amount: 42.5 }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Ausgabe speichern' }),
+    );
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: 42.5 }),
+    );
   });
 });
 ```
@@ -4882,6 +5702,7 @@ nicht ankuendigen."
 ## Task 25: Playwright
 
 **Files:**
+
 - Create: `playwright.config.ts`
 - Create: `e2e/smoke.spec.ts`
 - Modify: `package.json` — Skripte `e2e` und `e2e:install`
@@ -4889,6 +5710,7 @@ nicht ankuendigen."
 - Modify: `eslint.config.js` — `e2e/**` mit Node-Globals
 
 **Interfaces:**
+
 - Consumes: alle vorigen Tasks
 - Produces: `npm run e2e` startet den Vite-Preview-Server und prüft zwei Abläufe in Chromium
 
@@ -4911,7 +5733,8 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: 'npm run build --workspace @ralia/app && npm run preview --workspace @ralia/app -- --port 4173 --strictPort',
+    command:
+      'npm run build --workspace @ralia/app && npm run preview --workspace @ralia/app -- --port 4173 --strictPort',
     url: `http://localhost:${PORT}/app/`,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
@@ -4964,10 +5787,16 @@ test('Theme-Wahl übersteht einen Reload', async ({ page }) => {
   await page.goto('./profil');
   const toggle = page.getByRole('switch', { name: /Dark Mode/ });
   await toggle.click();
-  await expect(page.locator('html')).toHaveAttribute('data-ralia-theme', 'dark');
+  await expect(page.locator('html')).toHaveAttribute(
+    'data-ralia-theme',
+    'dark',
+  );
 
   await page.reload();
-  await expect(page.locator('html')).toHaveAttribute('data-ralia-theme', 'dark');
+  await expect(page.locator('html')).toHaveAttribute(
+    'data-ralia-theme',
+    'dark',
+  );
 
   // Kein Hell-Blitz: das Attribut steht schon vor dem ersten Frame.
   const beforeHydration = await page.evaluate(() =>
@@ -4979,7 +5808,10 @@ test('Theme-Wahl übersteht einen Reload', async ({ page }) => {
 test('alle fünf Tabs sind erreichbar', async ({ page }) => {
   await page.goto('./');
   for (const [label, path] of [
-    ['Planer', 'planer'], ['Todos', 'todos'], ['Geld', 'geld'], ['Profil', 'profil'],
+    ['Planer', 'planer'],
+    ['Todos', 'todos'],
+    ['Geld', 'geld'],
+    ['Profil', 'profil'],
     ['Kalender', 'kalender'],
   ] as const) {
     await page.getByRole('button', { name: label }).first().click();
@@ -4990,8 +5822,10 @@ test('alle fünf Tabs sind erreichbar', async ({ page }) => {
 test('mobil gibt es keine waagerechte Scrollleiste', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('./');
-  const overflows = await page.evaluate(() =>
-    document.documentElement.scrollWidth > document.documentElement.clientWidth,
+  const overflows = await page.evaluate(
+    () =>
+      document.documentElement.scrollWidth >
+      document.documentElement.clientWidth,
   );
   expect(overflows).toBe(false);
 });
@@ -5016,9 +5850,11 @@ git commit -m "test: Playwright-Geruest mit vier Smoke-Tests gegen den Preview-B
 Kein neuer Code — ein Durchgang durch die zehn Abnahmekriterien des Specs mit Belegen. Ergebnis ist ein Abnahmeprotokoll im Repo.
 
 **Files:**
+
 - Create: `docs/superpowers/plans/2026-08-03-sp0-abnahme.md`
 
 **Interfaces:**
+
 - Consumes: alle vorigen Tasks
 - Produces: Abnahmeprotokoll mit einer Zeile je Kriterium: erfüllt / nicht erfüllt, mit Befehl und Beobachtung
 
@@ -5056,6 +5892,7 @@ DE und EN umschalten; Navigation, Kopfzeilen und Screens auf Übersetzung prüfe
 ```bash
 node -e "const d=require('./apps/app/src/i18n/de.json'),e=require('./apps/app/src/i18n/en.json');console.log(Object.keys(d).length,Object.keys(e).length)"
 ```
+
 Erwartung: zwei gleiche Zahlen, mindestens 546.
 
 - [x] **Step 8: Kriterium 8 — `/config`**
@@ -5085,30 +5922,29 @@ git commit -m "docs: Abnahmeprotokoll SP0 gegen die zehn Kriterien des Specs"
 
 **Spec-Abdeckung.** Jeder Abschnitt des Specs hat eine Task:
 
-| Spec-Abschnitt | Task |
-|---|---|
-| Aufräumen (24 Typecheck-, 3 Lint-Fehler) | 1 |
-| Tokens sichtbar + verdeckt, Paritätstest | 3 |
-| `reset.css`, Fokus-Zustand, `100dvh` | 3 |
-| `fonts.css` über `@fontsource` | 2, 3 |
-| ThemeProvider | 4 |
-| Monatsraster-Heuristik, Wochen-Geometrie | 5 |
-| Icons | 6 |
-| Primitive (alle 20) | 7, 8, 9 |
-| `BottomSheet`, `Modal`, `ConfirmDialog` | 10 |
-| AppShell, Prototyp-Gerüst nicht übernehmen | 11 |
-| `apps/app`, Routing, Basispfad `/app/` | 12 |
-| i18n mit 546 Schlüsseln, Skript | 13 |
-| Boot-Reihenfolge, Legacy-Migration | 14 |
-| Demo-Daten | 15 |
-| Die acht Ansichten | 16, 17, 18, 19, 20, 21, 22 |
-| Die acht Sheets | 23, 24 |
-| Playwright | 25 |
-| Die zehn Abnahmekriterien | 26 |
+| Spec-Abschnitt                             | Task                       |
+| ------------------------------------------ | -------------------------- |
+| Aufräumen (24 Typecheck-, 3 Lint-Fehler)   | 1                          |
+| Tokens sichtbar + verdeckt, Paritätstest   | 3                          |
+| `reset.css`, Fokus-Zustand, `100dvh`       | 3                          |
+| `fonts.css` über `@fontsource`             | 2, 3                       |
+| ThemeProvider                              | 4                          |
+| Monatsraster-Heuristik, Wochen-Geometrie   | 5                          |
+| Icons                                      | 6                          |
+| Primitive (alle 20)                        | 7, 8, 9                    |
+| `BottomSheet`, `Modal`, `ConfirmDialog`    | 10                         |
+| AppShell, Prototyp-Gerüst nicht übernehmen | 11                         |
+| `apps/app`, Routing, Basispfad `/app/`     | 12                         |
+| i18n mit 546 Schlüsseln, Skript            | 13                         |
+| Boot-Reihenfolge, Legacy-Migration         | 14                         |
+| Demo-Daten                                 | 15                         |
+| Die acht Ansichten                         | 16, 17, 18, 19, 20, 21, 22 |
+| Die acht Sheets                            | 23, 24                     |
+| Playwright                                 | 25                         |
+| Die zehn Abnahmekriterien                  | 26                         |
 
 **Namenskonsistenz geprüft.** `PersonSlot` und `personTokens` durchgehend aus Task 3. `monthDensity`/`monthGridCells`/`weekEventGeometry` aus Task 5, in Tasks 16 und 17 unverändert benutzt. `TabId`/`TABS` aus Task 11, in Task 12 und 13 unverändert. `Lang`/`LANG_STORAGE_KEY`/`useT` aus Task 13, in Tasks 20 und 21 unverändert. `useLongPress` aus Task 23, in Task 24 wiederverwendet. `MockEvent`/`MOCK_EVENTS` aus Task 15 in allen Screen-Tasks.
 
 **Zwei bewusste Abweichungen von der Vorlage**, beide im Spec begründet und in den Tasks erneut vermerkt: das Prototyp-Gerüst entfällt (Task 11), und Zustände, die die Vorlage nicht kennt — Fokus, `aria-*`, `disabled`, Pflichtfeldprüfung — werden ergänzt (Tasks 3, 7, 10, 18, 22, 23, 24).
 
 **Reihenfolge.** Tasks 1–2 sind Voraussetzung für alles. 3–11 bauen `packages/ui` von unten auf. 12–15 stellen die App auf die Beine. 16–24 füllen sie. 25–26 sichern ab. Innerhalb von 16–22 sind die Screens unabhängig und könnten parallel laufen; 23 muss vor 24 kommen, weil `useLongPress` und `sheets.module.css` dort entstehen.
-

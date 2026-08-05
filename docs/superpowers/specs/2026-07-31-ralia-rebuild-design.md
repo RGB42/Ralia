@@ -5,19 +5,19 @@
 
 ## Ziel
 
-Ralia_Opus vollständig nachbauen als eine Codebasis, die als **native Android-App**, **native iOS-App** und **Webversion mit Marketing-Homepage** ausgeliefert wird. Das Frontend übernimmt das Design der Vorlage *„Paar-Kalender und Organizer App"*. Das bestehende Supabase-Backend (`nyvripddydrzvfuateea`) bleibt **unverändert und kompatibel**.
+Ralia_Opus vollständig nachbauen als eine Codebasis, die als **native Android-App**, **native iOS-App** und **Webversion mit Marketing-Homepage** ausgeliefert wird. Das Frontend übernimmt das Design der Vorlage _„Paar-Kalender und Organizer App"_. Das bestehende Supabase-Backend (`nyvripddydrzvfuateea`) bleibt **unverändert und kompatibel**.
 
 ## Ausgangslage
 
 ### Ralia_Opus (Ist)
 
-| Artefakt | Umfang |
-|---|---|
-| `public/js/*.js` | 14.618 Zeilen, 25 Module (globaler `window.*`-Namespace, kein Bundler) |
-| `public/index.html` | 2.203 Zeilen (gesamtes Markup inline) |
-| `public/css/styles.css` | 4.078 Zeilen + 51 KB generiertes Tailwind |
-| `server.js` | 1.490 Zeilen Express — **Legacy, nicht mehr im Datenpfad** |
-| `migrations/*.sql` | 25 Migrationen |
+| Artefakt                | Umfang                                                                 |
+| ----------------------- | ---------------------------------------------------------------------- |
+| `public/js/*.js`        | 14.618 Zeilen, 25 Module (globaler `window.*`-Namespace, kein Bundler) |
+| `public/index.html`     | 2.203 Zeilen (gesamtes Markup inline)                                  |
+| `public/css/styles.css` | 4.078 Zeilen + 51 KB generiertes Tailwind                              |
+| `server.js`             | 1.490 Zeilen Express — **Legacy, nicht mehr im Datenpfad**             |
+| `migrations/*.sql`      | 25 Migrationen                                                         |
 
 Größte Module: `todo-notes.js` (2.950), `events.js` (2.253), `i18n.js` (1.207), `google-sync.js` (756), `week-planner.js` (725).
 
@@ -51,13 +51,13 @@ Deckt die Design-**Sprache** ab, nicht alle App-Screens. Fehlende Oberflächen (
 
 ## Getroffene Entscheidungen
 
-| Frage | Entscheidung | Konsequenz |
-|---|---|---|
-| Was heißt „native"? | **Capacitor** (React + TS + Vite in nativer Shell) | Ein UI-Code für Web/iOS/Android; Vorlagen-Design 1:1 umsetzbar, weil CSS-basiert; Android-Projekt existiert bereits |
-| Homepage-Umfang | **Volle Marketing-Site** | Landing, `/features/*`, `/preise`, `/hilfe/*`, `/blog`, Legal — eigenes Sub-Projekt (SP8) |
-| Rollout | **Ersetzt Ralia komplett** | App-ID `com.ralia.twa` bleibt, Keystore `ralia-release-key.keystore` wiederverwenden, gleiche Domain; Service-Worker-Ersetzung und localStorage-Migration sind Pflicht; Feature-Parität vor Go-Live |
-| Wiederkehrende Aufgaben in der 5-Tab-Nav | **Segment-Tab in „Todos"** (`Listen | Routinen`) | Nav bleibt bei 5 Punkten wie in der Vorlage; nutzt den Segment-Switch-Baustein der Vorlage |
-| Offline-Schicht | **IndexedDB + Legacy-Import** | Neuer typisierter Outbox-Store; einmaliger Import der alten `localStorage`-Queues beim Erststart, Alt-Keys erst danach löschen — kein Datenverlust |
+| Frage                                    | Entscheidung                                       | Konsequenz                                                                                                                                                                                          |
+| ---------------------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Was heißt „native"?                      | **Capacitor** (React + TS + Vite in nativer Shell) | Ein UI-Code für Web/iOS/Android; Vorlagen-Design 1:1 umsetzbar, weil CSS-basiert; Android-Projekt existiert bereits                                                                                 |
+| Homepage-Umfang                          | **Volle Marketing-Site**                           | Landing, `/features/*`, `/preise`, `/hilfe/*`, `/blog`, Legal — eigenes Sub-Projekt (SP8)                                                                                                           |
+| Rollout                                  | **Ersetzt Ralia komplett**                         | App-ID `com.ralia.twa` bleibt, Keystore `ralia-release-key.keystore` wiederverwenden, gleiche Domain; Service-Worker-Ersetzung und localStorage-Migration sind Pflicht; Feature-Parität vor Go-Live |
+| Wiederkehrende Aufgaben in der 5-Tab-Nav | **Segment-Tab in „Todos"** (`Listen                | Routinen`)                                                                                                                                                                                          | Nav bleibt bei 5 Punkten wie in der Vorlage; nutzt den Segment-Switch-Baustein der Vorlage |
+| Offline-Schicht                          | **IndexedDB + Legacy-Import**                      | Neuer typisierter Outbox-Store; einmaliger Import der alten `localStorage`-Queues beim Erststart, Alt-Keys erst danach löschen — kein Datenverlust                                                  |
 
 ## Architektur
 
@@ -91,18 +91,18 @@ ralia/
 
 Jedes Sub-Projekt bekommt seinen eigenen Spec→Plan→Implementierungs-Zyklus.
 
-| # | Sub-Projekt | Inhalt | Abhängig von |
-|---|---|---|---|
-| 0 | **Fundament & Design-System** | Monorepo, TS strict, Vitest/Playwright, Design-Tokens + Komponenten, AppShell, Light+Dark, i18n DE/EN, Routing, Supabase-Client, Legacy-Migration | — |
-| 1 | **Auth & Partner** | Login/Signup/Google/Passwort-Reset, `recovery`/`signup`-URL-Abfang, Invite-Code, `connect_partner`/`disconnect_partner`, Jahrestag | 0 |
-| 2 | **Kalender-Kern** | Event-CRUD, Serien-Engine + Exceptions + Future-Split, Monat (Swipe-Slider), Woche (Timeline), Tages-Sheet, Event-Sheet, Scope-Modal, Feiertage, Outbox + Realtime | 0, 1 |
-| 3 | **Organizer** | Todos/Notizen (Gruppen, Einkaufsfelder, Zuweisung, Workflow-Status, Drag-Reorder), Routinen als Segment-Tab, Wochenplaner | 0, 1 |
-| 4 | **Geld** | `shared_expenses`, Kategorien, Budgets, Split-Typen, Ausgleich/Saldo | 0, 1 |
-| 5 | **Reminder & Integrationen** | Reminder-UI + `event_reminder_jobs`, Push-Abstraktion (Web-Push ↔ Capacitor-Push), Google-Calendar-Sync, ICS Import/Export/Feed | 0, 2 |
-| 6 | **Premium, Account, Admin** | Gating + Upgrade-Modal, LemonSqueezy, Account-Modal, Admin-Tools | 0, 1 |
-| 7 | **Native Shells** | Capacitor iOS neu + Android portiert, Safe Areas, Statusbar, Splash, Deep Links, Store-Assets, Build-Pipeline | 2, 3, 4, 5 |
-| 8 | **Marketing-Site** | Landing, Features, Preise, Hilfe, Blog, Legal, SEO/OG/Sitemap, DE/EN | 0 |
-| 9 | **Cutover** | Render-Build auf `dist`, Redirects, PWA/SW-Ersetzung, Parity-Checkliste, Rollback | alle |
+| #   | Sub-Projekt                   | Inhalt                                                                                                                                                             | Abhängig von |
+| --- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------ |
+| 0   | **Fundament & Design-System** | Monorepo, TS strict, Vitest/Playwright, Design-Tokens + Komponenten, AppShell, Light+Dark, i18n DE/EN, Routing, Supabase-Client, Legacy-Migration                  | —            |
+| 1   | **Auth & Partner**            | Login/Signup/Google/Passwort-Reset, `recovery`/`signup`-URL-Abfang, Invite-Code, `connect_partner`/`disconnect_partner`, Jahrestag                                 | 0            |
+| 2   | **Kalender-Kern**             | Event-CRUD, Serien-Engine + Exceptions + Future-Split, Monat (Swipe-Slider), Woche (Timeline), Tages-Sheet, Event-Sheet, Scope-Modal, Feiertage, Outbox + Realtime | 0, 1         |
+| 3   | **Organizer**                 | Todos/Notizen (Gruppen, Einkaufsfelder, Zuweisung, Workflow-Status, Drag-Reorder), Routinen als Segment-Tab, Wochenplaner                                          | 0, 1         |
+| 4   | **Geld**                      | `shared_expenses`, Kategorien, Budgets, Split-Typen, Ausgleich/Saldo                                                                                               | 0, 1         |
+| 5   | **Reminder & Integrationen**  | Reminder-UI + `event_reminder_jobs`, Push-Abstraktion (Web-Push ↔ Capacitor-Push), Google-Calendar-Sync, ICS Import/Export/Feed                                    | 0, 2         |
+| 6   | **Premium, Account, Admin**   | Gating + Upgrade-Modal, LemonSqueezy, Account-Modal, Admin-Tools                                                                                                   | 0, 1         |
+| 7   | **Native Shells**             | Capacitor iOS neu + Android portiert, Safe Areas, Statusbar, Splash, Deep Links, Store-Assets, Build-Pipeline                                                      | 2, 3, 4, 5   |
+| 8   | **Marketing-Site**            | Landing, Features, Preise, Hilfe, Blog, Legal, SEO/OG/Sitemap, DE/EN                                                                                               | 0            |
+| 9   | **Cutover**                   | Render-Build auf `dist`, Redirects, PWA/SW-Ersetzung, Parity-Checkliste, Rollback                                                                                  | alle         |
 
 Offene Technologiefrage in SP8: **Astro** (echtes SSG, Markdown-Content-Collections für Blog/Hilfe, bessere Core Web Vitals) gegen React + `vite-plugin-ssg` (ein Framework weniger). Entscheidung gehört in SP8.
 
@@ -198,10 +198,10 @@ Reihenfolge ist zwingend: Alt-Keys erst löschen, **nachdem** der Import committ
 
 ## Risiken
 
-| Risiko | Umgang |
-|---|---|
-| Edge-Function-Quellcode nicht einsehbar | Als externe Vertragsgrenze behandeln; Route-Liste aus `server.js` als Referenz; jede Route vor Nutzung live verifizieren |
-| `sb_publishable_…`-Key aus `/config` weicht vom eingebauten JWT-Key ab | Client mit eingebautem Key booten, nach `/config` mit dem Runtime-Key neu erzeugen; beide Pfade testen |
-| Alt-Clients halten den alten Service Worker fest | `registration.unregister()` + Cache-Löschung + `skipWaiting`/`clients.claim` im neuen SW; in SP9 verifizieren |
-| Vorlage deckt nur 6 von ~40 Oberflächen | Design-Sprache in SP0 als Komponenten fixieren, damit spätere Screens nicht driften |
-| 14.618 Zeilen Portierung, Verhaltensregressionen | Domain-Logik zuerst mit Tests nach `core`, dann UI darauf; `Ralia_Opus` bleibt als Referenz-Implementierung erhalten |
+| Risiko                                                                 | Umgang                                                                                                                   |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Edge-Function-Quellcode nicht einsehbar                                | Als externe Vertragsgrenze behandeln; Route-Liste aus `server.js` als Referenz; jede Route vor Nutzung live verifizieren |
+| `sb_publishable_…`-Key aus `/config` weicht vom eingebauten JWT-Key ab | Client mit eingebautem Key booten, nach `/config` mit dem Runtime-Key neu erzeugen; beide Pfade testen                   |
+| Alt-Clients halten den alten Service Worker fest                       | `registration.unregister()` + Cache-Löschung + `skipWaiting`/`clients.claim` im neuen SW; in SP9 verifizieren            |
+| Vorlage deckt nur 6 von ~40 Oberflächen                                | Design-Sprache in SP0 als Komponenten fixieren, damit spätere Screens nicht driften                                      |
+| 14.618 Zeilen Portierung, Verhaltensregressionen                       | Domain-Logik zuerst mit Tests nach `core`, dann UI darauf; `Ralia_Opus` bleibt als Referenz-Implementierung erhalten     |

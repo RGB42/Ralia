@@ -4,7 +4,9 @@ Teile Deine Tage gemeinsam — Kalender, Organizer und Haushaltskasse für Paare
 
 Eine Codebasis für **Android**, **iOS** und **Web** mit Marketing-Homepage.
 
-> **Status: SP0 abgeschlossen.** `npm run dev` startet die App unter `/app/`. Alle acht Ansichten und alle acht Bottom Sheets stehen, gefüllt mit den Demo-Daten der Design-Vorlage — noch ohne Anmeldung und ohne Live-Daten. Was daran geprüft ist, steht im [Abnahmeprotokoll](docs/superpowers/plans/2026-08-03-sp0-abnahme.md).
+> **Status: SP0 abgeschlossen, SP1 umgesetzt.** `npm run dev` startet die App unter `/app/`. Alle acht Ansichten und alle acht Bottom Sheets stehen; seit SP1 liegen sie hinter einer echten Anmeldung, und Identität, Einladungscode, Partner-Verbindung und Jahrestag kommen aus der Datenbank. Die Inhalte der Screens — Termine, Todos, Geld — sind weiter die Demo-Daten der Design-Vorlage; sie folgen in SP2 bis SP4.
+>
+> [SP0-Abnahmeprotokoll](docs/superpowers/plans/2026-08-03-sp0-abnahme.md) · [SP1-Spec](docs/superpowers/specs/2026-08-05-sp1-auth-partner-design.md) · [SP1-Plan](docs/superpowers/plans/2026-08-05-sp1-auth-partner.md) · [SP1-Abnahme](docs/superpowers/plans/2026-08-05-sp1-abnahme.md)
 
 ## Architektur
 
@@ -20,7 +22,8 @@ apps/
             boot/      Boot-Reihenfolge, Legacy-Migration, Ladezustand
             i18n/      Kataloge und Provider, DE und EN
             routes/    Router und die Naht zur AppShell
-            screens/   Kalender, Planer, Todos, Geld, Einstellungen, Sync
+            auth/      Sitzungszustand, Routenwache
+            screens/   Kalender, Planer, Todos, Geld, Einstellungen, Sync, Anmeldung
             sheets/    die acht Bottom Sheets
             mock/      Demo-Daten der Vorlage (SP0-Platzhalter)
 e2e/        Playwright-Smoke-Tests gegen den Preview-Build
@@ -39,12 +42,18 @@ Der Quellcode der Edge Function liegt nicht in diesem Repo. Wir konsumieren sie,
 ```bash
 npm install
 npm run dev       # Vite, http://localhost:5173/app/
-npm test          # Vitest — 363 Tests
+npm test          # Vitest — 504 Tests
 npm run typecheck # tsc --noEmit, strict
 npm run lint      # ESLint
 npm run verify    # typecheck + lint + test + build
 npm run e2e       # Playwright gegen den Preview-Build
+npm run e2e:live  # zusätzlich die Tests, die das echte Backend brauchen
 ```
+
+`e2e:live` setzt `RALIA_LIVE=1` und lässt damit
+[`config-live.spec.ts`](e2e/config-live.spec.ts) mitlaufen — die Tests gegen den
+echten `/config`-Endpunkt. Ohne die Variable werden sie übersprungen statt rot,
+damit eine Umgebung ohne Netzzugang nicht falsch Alarm schlägt.
 
 Die Übersetzungen werden nicht getippt, sondern aus Ralia_Opus extrahiert:
 
@@ -61,13 +70,13 @@ Das Design stammt aus einem Claude-Design-Prototypen, der versioniert unter [`do
 
 ## Dokumentation
 
-| Pfad | Inhalt |
-|---|---|
-| [`docs/superpowers/specs/`](docs/superpowers/specs/) | Programm-Design und Sub-Projekt-Spezifikationen |
-| [`docs/superpowers/plans/`](docs/superpowers/plans/) | Implementierungspläne |
-| [`docs/design-reference/`](docs/design-reference/) | Design-Vorlage, Quelle aller Tokens |
-| [`docs/superpowers/plans/2026-08-03-sp0-abnahme.md`](docs/superpowers/plans/2026-08-03-sp0-abnahme.md) | Abnahmeprotokoll SP0 gegen die zehn Kriterien des Specs |
-| [`docs/native-rebuild-reference/`](docs/native-rebuild-reference/) | Quellstand des vorherigen Expo-Anlaufs, als Referenz aufgehoben |
+| Pfad                                                                                                   | Inhalt                                                          |
+| ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| [`docs/superpowers/specs/`](docs/superpowers/specs/)                                                   | Programm-Design und Sub-Projekt-Spezifikationen                 |
+| [`docs/superpowers/plans/`](docs/superpowers/plans/)                                                   | Implementierungspläne                                           |
+| [`docs/design-reference/`](docs/design-reference/)                                                     | Design-Vorlage, Quelle aller Tokens                             |
+| [`docs/superpowers/plans/2026-08-03-sp0-abnahme.md`](docs/superpowers/plans/2026-08-03-sp0-abnahme.md) | Abnahmeprotokoll SP0 gegen die zehn Kriterien des Specs         |
+| [`docs/native-rebuild-reference/`](docs/native-rebuild-reference/)                                     | Quellstand des vorherigen Expo-Anlaufs, als Referenz aufgehoben |
 
 ## Lizenz
 

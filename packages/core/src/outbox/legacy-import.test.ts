@@ -60,12 +60,7 @@ describe('collectLegacyQueues', () => {
 
     const { queues } = collectLegacyQueues(storage);
 
-    expect(queues.map((q) => q.domain).sort()).toEqual([
-      'events',
-      'expenses',
-      'todos',
-      'weekplan',
-    ]);
+    expect(queues.map((q) => q.domain).sort()).toEqual(['events', 'expenses', 'todos', 'weekplan']);
     expect(queues.every((q) => q.calendarId === 'u1_u2')).toBe(true);
   });
 
@@ -95,7 +90,10 @@ describe('collectLegacyQueues', () => {
     const { queues, malformedKeys } = collectLegacyQueues(storage);
 
     expect(queues).toHaveLength(1);
-    expect(malformedKeys.sort()).toEqual(['ralia:event-queue:broken', 'ralia:todo-queue:wrong-shape']);
+    expect(malformedKeys.sort()).toEqual([
+      'ralia:event-queue:broken',
+      'ralia:todo-queue:wrong-shape',
+    ]);
   });
 });
 

@@ -3,6 +3,8 @@ import {
   Avatar,
   Button,
   Card,
+  ConfirmDialog,
+  Input,
   ListRow,
   SectionLabel,
   SegmentSwitch,
@@ -12,6 +14,7 @@ import {
 } from '@ralia/ui';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
+import { useAuth } from '../../auth/useAuth.js';
 import type { Lang } from '../../i18n/catalog.js';
 import { useT } from '../../i18n/useT.js';
 import { MOCK_CALENDARS, MOCK_PROFILE } from '../../mock/fixtures.js';
@@ -26,23 +29,56 @@ export function SettingsScreen(): React.JSX.Element {
   const { resolved, setChoice } = useTheme();
   const { show } = useToast();
   const navigate = useNavigate();
+  const { session, signOut, disconnectPartner, setAnniversary } = useAuth();
 
   const [pushOn, setPushOn] = useState(true);
   const [googleOn, setGoogleOn] = useState(true);
   const [weekStart, setWeekStart] = useState<WeekStartChoice>('mo');
   const [profileOpen, setProfileOpen] = useState(false);
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
 
   const activeCalendars = MOCK_CALENDARS.filter((cal) => cal.on).length;
 
+  /*
+   * Identitaet und Partner kommen ab SP1 aus der Sitzung. Die uebrigen Werte
+   * dieses Screens — Statistik, Kalenderzahl, Geburtstag — haengen weiter an den
+   * Fixtures; sie gehoeren zu SP2 bis SP4.
+   */
+  const identity = session.status === 'signed-in' ? session.identity : null;
+  const inviteCode = identity?.profile.invite_code ?? MOCK_PROFILE.inviteCode;
+  const [anniversary, setAnniversaryValue] = useState(identity?.profile.anniversary_date ?? '');
+
   const copyCode = async () => {
     try {
-      await navigator.clipboard.writeText(MOCK_PROFILE.inviteCode);
+      await navigator.clipboard.writeText(inviteCode);
       show(t('settingsCodeCopied'), 'ok');
     } catch {
       // Kein Clipboard-Zugriff (aelterer WebView, verweigerte Berechtigung):
       // der Code steht sichtbar da, also bleibt Abschreiben der Weg.
       show(t('settingsCodeCopyFailed'), 'info');
     }
+  };
+
+  const saveAnniversary = async (next: string) => {
+    setAnniversaryValue(next);
+    // Leeres Feld heisst „kein Jahrestag" — die RPC nimmt dafuer null.
+    const result = await setAnniversary(next === '' ? null : next);
+    show(result.ok ? t('anniversaryUpdated') : t(result.messageKey), result.ok ? 'ok' : 'info');
+  };
+
+  const doDisconnect = async () => {
+    setConfirmDisconnect(false);
+    const result = await disconnectPartner();
+    show(
+      result.ok ? t('disconnectedFromPartner') : t(result.messageKey),
+      result.ok ? 'ok' : 'info',
+    );
+  };
+
+  const doSignOut = async () => {
+    await signOut();
+    show(t('authSignedOut'), 'info');
+    void navigate('/anmelden', { replace: true });
   };
 
   return (
@@ -100,14 +136,14 @@ export function SettingsScreen(): React.JSX.Element {
                   {t('settingsAllShared')}
                 </div>
               </div>
-              <Button variant="danger" onClick={() => undefined}>
+              <Button variant="danger" onClick={() => setConfirmDisconnect(true)}>
                 {t('settingsDisconnect')}
               </Button>
             </div>
             <div className={styles.codeRow}>
               <div className={styles.codeText}>
                 <div className={styles.codeLabel}>{t('settingsInviteCode')}</div>
-                <div className={styles.code}>{MOCK_PROFILE.inviteCode}</div>
+                <div className={styles.code}>{inviteCode}</div>
                 <div className={styles.codeHint}>{t('settingsInviteHint')}</div>
               </div>
               <div className={styles.qr} aria-hidden="true">
@@ -135,6 +171,20 @@ export function SettingsScreen(): React.JSX.Element {
             </div>
             <ListRow title={t('settingsBirthday')} hint={t('settingsBirthdayHint')}>
               <span className={styles.value}>{MOCK_PROFILE.me.birthday}</span>
+            </ListRow>
+            {/*
+             * Der Jahrestag steht hier und nicht im Verbinden-Screen: er gilt
+             * fuer beide Profile (`set_shared_anniversary` schreibt beide) und
+             * ist auch ohne Partner zulaessig.
+             */}
+            <ListRow title={t('settingsAnniversary')} hint={t('settingsAnniversaryHint')}>
+              <Input
+                type="date"
+                value={anniversary}
+                onChange={(next) => void saveAnniversary(next)}
+                /* Der Zeilentitel ist die Beschriftung, steht aber als Text daneben. */
+                ariaLabel={t('settingsAnniversary')}
+              />
             </ListRow>
             <ListRow
               title={t('settingsDarkMode')}
@@ -217,6 +267,17 @@ export function SettingsScreen(): React.JSX.Element {
             />
           </Card>
 
+          {/*
+           * Die Vorlage hat „Abmelden" als Teil einer Textzeile
+           * („Ralia 2.0 · Datenschutz · Abmelden"). Ein Abmelden, das man nur
+           * treffen kann, wenn man den richtigen Teil einer Zeile antippt, ist
+           * kein Bedienelement — hier steht ein Knopf.
+           */}
+          <div className={styles.rowActions}>
+            <Button variant="ghost" fullWidth onClick={() => void doSignOut()}>
+              {t('authSignOut')}
+            </Button>
+          </div>
           <div className={styles.footer}>{t('settingsFooter')}</div>
         </div>
       </div>
@@ -227,6 +288,17 @@ export function SettingsScreen(): React.JSX.Element {
         profile={MOCK_PROFILE.me}
         onClose={() => setProfileOpen(false)}
         onSave={() => setProfileOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={confirmDisconnect}
+        title={t('settingsDisconnect')}
+        message={t('disconnectConfirm')}
+        confirmLabel={t('settingsDisconnect')}
+        cancelLabel={t('back')}
+        tone="danger"
+        onConfirm={() => void doDisconnect()}
+        onCancel={() => setConfirmDisconnect(false)}
       />
     </div>
   );

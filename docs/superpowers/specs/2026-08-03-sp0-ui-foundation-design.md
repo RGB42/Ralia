@@ -29,24 +29,24 @@ Danach ist die App vollständig sichtbar und beurteilbar, und alle folgenden Sub
 
 ## Getroffene Entscheidungen
 
-| Frage | Entscheidung | Begründung |
-|---|---|---|
-| Design-Treue | Vorlage 1:1; die rund 30 nicht abgedeckten Oberflächen strikt aus derselben Sprache extrapoliert | Kein eigener Stil; maximale Konsistenz über alle späteren Screens |
-| Prototyp-Gerüst der Vorlage | **Nicht übernehmen** (siehe unten) | Würde eine Telefon-Attrappe auf einem echten Telefon erzeugen |
-| Routing | `react-router` ab `^8.3.0` | Android-Hardware-Back und Deep Links (SP7) müssten sonst nachgebaut werden. Ursprünglich war `react-router-dom@^7` vorgesehen; nach Task 2 zeigte `npm audit` GHSA-qwww-vcr4-c8h2 für `react-router >=7.12.0 <8.3.0`, und der 7.x-Zweig hat keine gepatchte Version. In v8 ist `react-router-dom` aufgelöst, `react-router` ist das einzige Paket. Details in der Plan-Constraint |
-| Poppins | `@fontsource/poppins` (400/500/600/700) | Normales npm-Paket mit woff2; selbst gehostet, offline- und Capacitor-fähig, kein Laufzeit-Abruf bei Google |
-| Werttreue-Absicherung | Mechanischer Token-Paritätstest gegen die Vorlage | Transkription per Hand ist nicht überprüfbar; ein Test ist es |
-| Demo-Daten | Fixtures der Vorlage portieren, als SP0-Platzhalter markiert | Screens sind nur gefüllt beurteilbar; Entfernung in SP2–SP4 |
+| Frage                       | Entscheidung                                                                                     | Begründung                                                                                                                                                                                                                                                                                                                                                                        |
+| --------------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Design-Treue                | Vorlage 1:1; die rund 30 nicht abgedeckten Oberflächen strikt aus derselben Sprache extrapoliert | Kein eigener Stil; maximale Konsistenz über alle späteren Screens                                                                                                                                                                                                                                                                                                                 |
+| Prototyp-Gerüst der Vorlage | **Nicht übernehmen** (siehe unten)                                                               | Würde eine Telefon-Attrappe auf einem echten Telefon erzeugen                                                                                                                                                                                                                                                                                                                     |
+| Routing                     | `react-router` ab `^8.3.0`                                                                       | Android-Hardware-Back und Deep Links (SP7) müssten sonst nachgebaut werden. Ursprünglich war `react-router-dom@^7` vorgesehen; nach Task 2 zeigte `npm audit` GHSA-qwww-vcr4-c8h2 für `react-router >=7.12.0 <8.3.0`, und der 7.x-Zweig hat keine gepatchte Version. In v8 ist `react-router-dom` aufgelöst, `react-router` ist das einzige Paket. Details in der Plan-Constraint |
+| Poppins                     | `@fontsource/poppins` (400/500/600/700)                                                          | Normales npm-Paket mit woff2; selbst gehostet, offline- und Capacitor-fähig, kein Laufzeit-Abruf bei Google                                                                                                                                                                                                                                                                       |
+| Werttreue-Absicherung       | Mechanischer Token-Paritätstest gegen die Vorlage                                                | Transkription per Hand ist nicht überprüfbar; ein Test ist es                                                                                                                                                                                                                                                                                                                     |
+| Demo-Daten                  | Fixtures der Vorlage portieren, als SP0-Platzhalter markiert                                     | Screens sind nur gefüllt beurteilbar; Entfernung in SP2–SP4                                                                                                                                                                                                                                                                                                                       |
 
 ## Was aus der Vorlage nicht übernommen wird
 
 Die Vorlage ist ein Prototyp in einem Browser-Rahmen: sie zeichnet ein Telefon-Mock in eine Seite. Drei Bestandteile sind Prototyp-Bedienung, nicht Design.
 
-| In der Vorlage | Ersatz in der App |
-|---|---|
-| Kopfleiste „Ralia · Paar-Organizer · Prototyp" mit `Mobil\|Desktop`-Umschalter und Theme-Knopf | entfällt. Viewport kommt vom Gerät; die Theme-Umschaltung existiert bereits in Einstellungen |
+| In der Vorlage                                                                                                                                                          | Ersatz in der App                                                                                 |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Kopfleiste „Ralia · Paar-Organizer · Prototyp" mit `Mobil\|Desktop`-Umschalter und Theme-Knopf                                                                          | entfällt. Viewport kommt vom Gerät; die Theme-Umschaltung existiert bereits in Einstellungen      |
 | `appMax:430px`, `appHeight:clamp(560px, calc(100vh - 90px), 860px)`, äußere Karte `border-radius:28px` + `box-shadow:var(--shadow-md)` + `border:1px solid var(--line)` | Mobil: randlos über den ganzen Viewport, `100dvh`, Safe-Area-Insets über `env(safe-area-inset-*)` |
-| `shellMax:470px` im Mobil-Modus | entfällt (nur Desktop behält `shellMax:1180px`) |
+| `shellMax:470px` im Mobil-Modus                                                                                                                                         | entfällt (nur Desktop behält `shellMax:1180px`)                                                   |
 
 Auf Desktop (≥1024 px) bleibt die entworfene Struktur unverändert: Sidebar 236 px sticky + Inhaltsspalte `max-width:900px`, Shell `max-width:1180px`, zentriert, `gap:26px`.
 
@@ -64,15 +64,15 @@ Alle übrigen Werte — Radien, Abstände, Typo-Skala, Farben, Schatten, Überg�
 
 Ein Teil der Farbwerte steht in der Vorlage nicht in `:root`, sondern hartcodiert in der Logik (`colors(who)`, `track()`, Heute-Markierungen). Diese werden zu echten Custom Properties. **Die Optik ändert sich dadurch nicht** — aber sie wird prüfbar und für die extrapolierten Screens überhaupt erst verwendbar.
 
-| Neues Token | Light | Dark | Quelle in der Vorlage |
-|---|---|---|---|
-| `--u1-bg` / `--u1-fg` | `#eff6ff` / `#1d4ed8` | `rgba(59,130,246,.17)` / `#93c5fd` | `colors('u1')` |
-| `--u2-bg` / `--u2-fg` | `#fdf2f8` / `#be185d` | `rgba(236,72,153,.17)` / `#f9a8d4` | `colors('u2')` |
-| `--both-bg` / `--both-fg` | `#f5f3ff` / `#6d28d9` | `rgba(139,92,246,.19)` / `#c4b5fd` | `colors('both')` |
-| `--bday-bg` / `--bday-fg` | `#fff7ed` / `#c2410c` | `rgba(249,115,22,.17)` / `#fdba74` | `colors('bday')` |
-| `--track-off` | `#cbd5e1` | `#3a3450` | `track(false)` |
-| `--today-line` | `#ddd0fb` | `#3d3555` | Monatszelle/Wochenkopf „heute" |
-| `--today-col` | `rgba(124,58,237,.035)` | `rgba(167,139,250,.06)` | Wochenspalte „heute" |
+| Neues Token               | Light                   | Dark                               | Quelle in der Vorlage          |
+| ------------------------- | ----------------------- | ---------------------------------- | ------------------------------ |
+| `--u1-bg` / `--u1-fg`     | `#eff6ff` / `#1d4ed8`   | `rgba(59,130,246,.17)` / `#93c5fd` | `colors('u1')`                 |
+| `--u2-bg` / `--u2-fg`     | `#fdf2f8` / `#be185d`   | `rgba(236,72,153,.17)` / `#f9a8d4` | `colors('u2')`                 |
+| `--both-bg` / `--both-fg` | `#f5f3ff` / `#6d28d9`   | `rgba(139,92,246,.19)` / `#c4b5fd` | `colors('both')`               |
+| `--bday-bg` / `--bday-fg` | `#fff7ed` / `#c2410c`   | `rgba(249,115,22,.17)` / `#fdba74` | `colors('bday')`               |
+| `--track-off`             | `#cbd5e1`               | `#3a3450`                          | `track(false)`                 |
+| `--today-line`            | `#ddd0fb`               | `#3d3555`                          | Monatszelle/Wochenkopf „heute" |
+| `--today-col`             | `rgba(124,58,237,.035)` | `rgba(167,139,250,.06)`            | Wochenspalte „heute"           |
 
 `--brand-fill:#7c3aed` bleibt in beiden Themes identisch (die Vorlage nutzt `fill` themenunabhängig für gefüllte Flächen — Primary-Button, FAB, aktives Segment, aktiver Toggle).
 
@@ -210,17 +210,17 @@ Schritt 4 darf den Boot nicht blockieren: schlägt `/config` fehl, läuft die Ap
 
 ## Teststrategie
 
-| Ebene | Umfang |
-|---|---|
-| Token-Parität | `tokens.css` gegen die Vorlage, sichtbare + verdeckte Tokens |
-| Primitive | Rendering, Varianten, `disabled`, Tastaturbedienung, `:focus-visible` |
-| `BottomSheet` | Fokus-Falle, Escape schließt, Scroll-Lock setzt und räumt auf, Backdrop-Klick |
-| `ThemeProvider` | `system` folgt `prefers-color-scheme`, manuelle Wahl übersteht Reload, `data-ralia-theme` korrekt |
-| i18n | DE und EN haben identische Schlüsselmengen; Skript ist idempotent |
-| Monatsraster | Chip/Punkt-Umschaltung an den Schwellwerten (gemockte Rasterhöhe) |
-| Wochen-Timeline | `top`/`height` für bekannte Zeitpaare |
-| Boot | `/config`-Fehler blockiert nicht; Legacy-Migration läuft genau einmal |
-| E2E (Playwright) | App bootet und zeigt Kalender; alle 5 Tabs navigierbar; Theme übersteht Reload |
+| Ebene            | Umfang                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------- |
+| Token-Parität    | `tokens.css` gegen die Vorlage, sichtbare + verdeckte Tokens                                      |
+| Primitive        | Rendering, Varianten, `disabled`, Tastaturbedienung, `:focus-visible`                             |
+| `BottomSheet`    | Fokus-Falle, Escape schließt, Scroll-Lock setzt und räumt auf, Backdrop-Klick                     |
+| `ThemeProvider`  | `system` folgt `prefers-color-scheme`, manuelle Wahl übersteht Reload, `data-ralia-theme` korrekt |
+| i18n             | DE und EN haben identische Schlüsselmengen; Skript ist idempotent                                 |
+| Monatsraster     | Chip/Punkt-Umschaltung an den Schwellwerten (gemockte Rasterhöhe)                                 |
+| Wochen-Timeline  | `top`/`height` für bekannte Zeitpaare                                                             |
+| Boot             | `/config`-Fehler blockiert nicht; Legacy-Migration läuft genau einmal                             |
+| E2E (Playwright) | App bootet und zeigt Kalender; alle 5 Tabs navigierbar; Theme übersteht Reload                    |
 
 Die bestehenden 103 Tests bleiben grün.
 
@@ -246,13 +246,13 @@ Danach läuft `npm run verify` (typecheck + lint + test + build) durchgehend gr�
 
 ## Risiken
 
-| Risiko | Umgang |
-|---|---|
-| Vorlage geht wieder verloren | Liegt jetzt unter `docs/design-reference/` im Repo; der Paritätstest liest sie und schlägt fehl, wenn sie fehlt |
-| Handübersetzung driftet von der Vorlage ab | Paritätstest für Tokens; Primitive 1:1 aus den Helferfunktionen abgeleitet |
-| Monatsraster-Heuristik verhält sich nach der Umstellung auf Messung anders | Schwellwerte per Test gegen gemockte Rasterhöhen fixiert |
-| `dvh` und Safe-Area in der Capacitor-WebView | In SP7 auf echten Geräten verifizieren; `100dvh` mit `100vh`-Fallback |
-| Nur 8 von ~40 Ansichten abgedeckt — spätere Screens driften | Design-System ist die einzige Quelle für Maße und Farben; extrapolierte Screens dürfen keine Rohwerte enthalten |
+| Risiko                                                                     | Umgang                                                                                                          |
+| -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Vorlage geht wieder verloren                                               | Liegt jetzt unter `docs/design-reference/` im Repo; der Paritätstest liest sie und schlägt fehl, wenn sie fehlt |
+| Handübersetzung driftet von der Vorlage ab                                 | Paritätstest für Tokens; Primitive 1:1 aus den Helferfunktionen abgeleitet                                      |
+| Monatsraster-Heuristik verhält sich nach der Umstellung auf Messung anders | Schwellwerte per Test gegen gemockte Rasterhöhen fixiert                                                        |
+| `dvh` und Safe-Area in der Capacitor-WebView                               | In SP7 auf echten Geräten verifizieren; `100dvh` mit `100vh`-Fallback                                           |
+| Nur 8 von ~40 Ansichten abgedeckt — spätere Screens driften                | Design-System ist die einzige Quelle für Maße und Farben; extrapolierte Screens dürfen keine Rohwerte enthalten |
 
 ## Nicht in Scope
 

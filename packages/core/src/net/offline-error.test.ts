@@ -26,12 +26,12 @@ describe('isOfflineSyncError', () => {
   });
 
   it('does not mistake a rejected request for a transport failure', () => {
-    expect(isOfflineSyncError(new Error('duplicate key value violates unique constraint'), online)).toBe(
-      false,
-    );
-    expect(isOfflineSyncError(new Error('new row violates row-level security policy'), online)).toBe(
-      false,
-    );
+    expect(
+      isOfflineSyncError(new Error('duplicate key value violates unique constraint'), online),
+    ).toBe(false);
+    expect(
+      isOfflineSyncError(new Error('new row violates row-level security policy'), online),
+    ).toBe(false);
   });
 
   it('accepts strings and plain objects carrying a message', () => {

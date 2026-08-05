@@ -2,6 +2,7 @@ import { EmptyState, Skeleton, useToast } from '@ralia/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useT } from '../i18n/useT.js';
+import { BootContext } from './BootContext.js';
 import styles from './BootGate.module.css';
 import { runBoot, type BootState } from './bootstrap.js';
 
@@ -86,5 +87,15 @@ export function BootGate({ children, boot = runBoot }: BootGateProps): React.JSX
     );
   }
 
-  return <>{children}</>;
+  /*
+   * Erst hier steht `config` fest — mit dem Runtime-Schluessel aus /config,
+   * wenn er zu holen war, sonst mit dem eingebauten. Alles, was Supabase
+   * anspricht, haengt darunter und kann deshalb nicht versehentlich zu frueh
+   * mit dem falschen Schluessel starten.
+   */
+  return (
+    <BootContext.Provider value={{ config: state.config, outbox: state.outbox }}>
+      {children}
+    </BootContext.Provider>
+  );
 }
