@@ -1,0 +1,86 @@
+/* Vorlage Z. 108–142. Der +-Knopf im Header fehlt bewusst: showHeaderAdd:false (Z. 1527). */
+
+.header {
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--surface);
+  position: relative;
+  z-index: 20;
+  /* Safe-Area oben: Statusleiste auf iOS. */
+  padding-top: calc(18px + env(safe-area-inset-top));
+}
+
+@media (min-width: 1024px) {
+  .header {
+    padding-top: 18px;
+  }
+}
+
+/* Vorlage Z. 109. */
+.top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Vorlage Z. 113. */
+.titles {
+  min-width: 0;
+  flex: 1;
+}
+
+/* Vorlage Z. 114. */
+.kicker {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: var(--ink-400);
+}
+
+/* Vorlage Z. 115. */
+.title {
+  font-size: 21px;
+  font-weight: 600;
+  color: var(--ink-900);
+  letter-spacing: -0.3px;
+  margin: 2px 0 0;
+}
+
+.range {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+/* Vorlage Z. 120: derselbe Rahmen wie ein IconButton, nur breiter. */
+.today {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 11px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-700);
+  cursor: pointer;
+  font-size: 11.5px;
+  font-weight: 600;
+  transition:
+    background-color 0.14s ease,
+    border-color 0.14s ease,
+    color 0.14s ease;
+}
+
+.today:hover {
+  background: var(--hov-surf);
+  border-color: var(--hov-ring);
+  color: var(--brand-600);
+}
+
+.extra {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}

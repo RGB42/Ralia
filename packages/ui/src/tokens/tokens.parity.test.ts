@@ -4,7 +4,9 @@ import { describe, expect, it } from 'vitest';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const templateSrc = readFileSync(
-  fileURLToPath(new URL('../../../../docs/design-reference/Ralia-Organizer.dc.html', import.meta.url)),
+  fileURLToPath(
+    new URL('../../../../docs/design-reference/Ralia-Organizer.dc.html', import.meta.url),
+  ),
   'utf8',
 );
 const tokensSrc = readFileSync(`${here}tokens.css`, 'utf8');
@@ -27,14 +29,24 @@ function customProps(css: string, selector: string): Map<string, string> {
     if (colon === -1) continue;
     const prop = decl.slice(0, colon).trim();
     if (!prop.startsWith('--')) continue;
-    out.set(prop, decl.slice(colon + 1).trim().replace(/\s+/g, ' '));
+    out.set(
+      prop,
+      decl
+        .slice(colon + 1)
+        .trim()
+        .replace(/\s+/g, ' '),
+    );
   }
   return out;
 }
 
 /** Liest einen Eintrag der colors()-Map aus der Logik der Vorlage. */
 function templatePersonColors(slot: string): {
-  bar: string; bgDark: string; bgLight: string; fgDark: string; fgLight: string;
+  bar: string;
+  bgDark: string;
+  bgLight: string;
+  fgDark: string;
+  fgLight: string;
 } {
   const re = new RegExp(
     `${slot}\\s*:\\s*\\{\\s*bar\\s*:\\s*'([^']+)'\\s*,\\s*` +
@@ -77,27 +89,39 @@ describe('Token-Parität mit der Design-Vorlage', () => {
   });
 
   it('hebt den ausgeschalteten Toggle-Track in Tokens', () => {
-    const m = /const track = \(on\) => on \? fill : \(s\.dark \? '([^']+)' : '([^']+)'\)/.exec(templateSrc);
+    const m = /const track = \(on\) => on \? fill : \(s\.dark \? '([^']+)' : '([^']+)'\)/.exec(
+      templateSrc,
+    );
     expect(m, 'track()-Definition fehlt in der Vorlage').not.toBeNull();
     expect(customProps(tokensSrc, ':root').get('--track-off')).toBe(m![2]);
     expect(customProps(tokensSrc, ':root[data-ralia-theme="dark"]').get('--track-off')).toBe(m![1]);
   });
 
   it('hebt die Heute-Markierungen in Tokens', () => {
-    const border = /border: isToday \? \(s\.dark \? '([^']+)' : '([^']+)'\) : line/.exec(templateSrc);
+    const border = /border: isToday \? \(s\.dark \? '([^']+)' : '([^']+)'\) : line/.exec(
+      templateSrc,
+    );
     expect(border, 'Heute-Rand fehlt in der Vorlage').not.toBeNull();
     expect(customProps(tokensSrc, ':root').get('--today-line')).toBe(border![2]);
-    expect(customProps(tokensSrc, ':root[data-ralia-theme="dark"]').get('--today-line')).toBe(border![1]);
+    expect(customProps(tokensSrc, ':root[data-ralia-theme="dark"]').get('--today-line')).toBe(
+      border![1],
+    );
 
-    const col = /colBg: isToday \? \(s\.dark \? '([^']+)' : '([^']+)'\) : 'transparent'/.exec(templateSrc);
+    const col = /colBg: isToday \? \(s\.dark \? '([^']+)' : '([^']+)'\) : 'transparent'/.exec(
+      templateSrc,
+    );
     expect(col, 'Heute-Spaltenhintergrund fehlt in der Vorlage').not.toBeNull();
     expect(customProps(tokensSrc, ':root').get('--today-col')).toBe(col![2]);
-    expect(customProps(tokensSrc, ':root[data-ralia-theme="dark"]').get('--today-col')).toBe(col![1]);
+    expect(customProps(tokensSrc, ':root[data-ralia-theme="dark"]').get('--today-col')).toBe(
+      col![1],
+    );
   });
 
   it('setzt --brand-fill themenunabhängig', () => {
     expect(customProps(tokensSrc, ':root').get('--brand-fill')).toBe('#7c3aed');
-    expect(customProps(tokensSrc, ':root[data-ralia-theme="dark"]').has('--brand-fill')).toBe(false);
+    expect(customProps(tokensSrc, ':root[data-ralia-theme="dark"]').has('--brand-fill')).toBe(
+      false,
+    );
   });
 
   it('liest Properties auch mit Kommentaren im Block', () => {

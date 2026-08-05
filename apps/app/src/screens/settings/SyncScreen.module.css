@@ -1,0 +1,362 @@
+/* Vorlage Z. 567–678. */
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.badge {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--brand-line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--brand-600);
+}
+
+.statusText {
+  flex: 1;
+  min-width: 0;
+}
+
+.statusTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brand-600);
+}
+
+.statusNote {
+  font-size: 11px;
+  color: var(--ink-500);
+  margin-top: 2px;
+}
+
+.sectionHead {
+  padding: 13px 15px 6px;
+}
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 15px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.accountText {
+  flex: 1;
+  min-width: 0;
+}
+
+.accountMail {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.accountMeta {
+  font-size: 10.5px;
+  color: var(--ink-400);
+  margin-top: 1px;
+}
+
+.accountStatus {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ok);
+  flex: none;
+}
+
+.accountDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ok);
+}
+
+.addRow {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: var(--brand);
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 13px 15px;
+  transition: background-color 0.14s ease;
+}
+
+.addRow:hover {
+  background: var(--hov-tint);
+}
+
+.calendar {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 15px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.calendarSwatch {
+  width: 11px;
+  height: 11px;
+  flex: none;
+  border-radius: 4px;
+}
+
+.calendarText {
+  flex: 1;
+  min-width: 0;
+}
+
+.calendarName {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-900);
+}
+
+.calendarMeta {
+  font-size: 10.5px;
+  color: var(--ink-400);
+  margin-top: 1px;
+}
+
+.note {
+  padding: 11px 15px 13px;
+  font-size: 10.5px;
+  color: var(--ink-400);
+  line-height: 1.5;
+}
+
+.directions {
+  padding: 0 15px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/*
+ * Die Vorlage baut das als Knopfliste mit Punktmarkierung. Hier ist es eine
+ * echte Radiogruppe - gleiche Optik, aber mit Pfeiltasten bedienbar.
+ */
+.direction {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  border: 1.5px solid var(--line);
+  background: transparent;
+  border-radius: 14px;
+  padding: 11px 12px;
+  transition:
+    border-color 0.14s ease,
+    background-color 0.14s ease;
+}
+
+.direction:hover {
+  border-color: var(--hov-ring);
+}
+
+.directionActive {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.radioDot {
+  width: 19px;
+  height: 19px;
+  flex: none;
+  border-radius: 50%;
+  border: 1.5px solid var(--track-off);
+  background: transparent;
+  color: #fff;
+  font-size: 10px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.directionActive .radioDot {
+  border-color: var(--brand);
+  background: var(--brand-fill);
+}
+
+.directionText {
+  flex: 1;
+  min-width: 0;
+}
+
+.directionLabel {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-700);
+}
+
+.directionActive .directionLabel {
+  color: var(--brand-600);
+}
+
+.directionHint {
+  display: block;
+  font-size: 10.5px;
+  color: var(--ink-400);
+  margin-top: 2px;
+}
+
+.conflictHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.conflictCount {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--warn-fg);
+}
+
+.conflictDate {
+  font-size: 10.5px;
+  color: var(--warn-fg);
+}
+
+.conflictTitle {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-900);
+  margin-top: 8px;
+}
+
+.versions {
+  display: flex;
+  gap: 9px;
+  margin-top: 11px;
+}
+
+.version {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  padding: 10px 11px;
+}
+
+.versionLabel {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--ink-500);
+}
+
+.versionLabelRalia {
+  color: var(--brand-600);
+}
+
+.versionTime {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-900);
+  margin-top: 5px;
+}
+
+.versionPlace {
+  font-size: 10.5px;
+  color: var(--ink-400);
+  margin-top: 2px;
+}
+
+.conflictActions {
+  display: flex;
+  gap: 9px;
+  margin-top: 11px;
+}
+
+.resolved {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+  padding: 14px;
+}
+
+.resolvedMark {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--ok);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.resolvedText {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--ink-700);
+  line-height: 1.45;
+}
+
+.undo {
+  flex: none;
+  border: none;
+  background: transparent;
+  color: var(--brand);
+  cursor: pointer;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 0;
+}
+
+.logRow {
+  display: flex;
+  gap: 11px;
+  padding: 10px 15px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.logWhen {
+  flex: none;
+  min-width: 80px;
+  font-size: 10.5px;
+  color: var(--ink-400);
+  font-variant-numeric: tabular-nums;
+}
+
+.logText {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--ink-700);
+  line-height: 1.4;
+}

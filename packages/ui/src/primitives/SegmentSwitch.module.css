@@ -1,0 +1,33 @@
+/* Huelle Vorlage Z. 131, Knoepfe Z. 132–133, Zustand aus pill() (Z. 1241). */
+
+.group {
+  display: flex;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.segment {
+  border: none;
+  cursor: pointer;
+  padding: 6px 15px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--ink-500);
+  transition:
+    background-color 0.14s ease,
+    color 0.14s ease;
+}
+
+.segment:hover:not(.active) {
+  color: var(--brand-600);
+}
+
+.active {
+  background: var(--brand-fill);
+  color: #fff;
+}

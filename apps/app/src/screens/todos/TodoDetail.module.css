@@ -1,0 +1,149 @@
+/* Vorlage Z. 315–356. */
+
+.filters {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 15px;
+  border-bottom: 1px solid var(--line-soft);
+  transition: background-color 0.14s ease;
+}
+
+.row:hover {
+  background: var(--hov-tint);
+}
+
+.rowDone {
+  padding: 12px 15px;
+}
+
+/* Echte Checkbox, Optik der Vorlage (Z. 322). */
+.box {
+  appearance: none;
+  margin: 0;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 8px;
+  border: 1.5px solid var(--track-off);
+  background: transparent;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.box:checked {
+  border-color: var(--brand-fill);
+  background: var(--brand-fill);
+}
+
+.box:checked::after {
+  content: '✓';
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  color: var(--ink-700);
+  cursor: pointer;
+}
+
+.textDone {
+  font-size: 13.5px;
+  color: var(--ink-500);
+  text-decoration: line-through;
+}
+
+.note {
+  font-size: 10.5px;
+  color: var(--ink-400);
+  white-space: nowrap;
+}
+
+.avatar {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.addRow {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: var(--brand);
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 14px 15px;
+}
+
+.addRow:hover {
+  color: var(--brand-600);
+}
+
+/* Erledigt-Aufklapper, Vorlage Z. 340–342. */
+.doneCard {
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.doneToggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  padding: 13px 15px;
+}
+
+.doneLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--ink-400);
+  flex: 1;
+}
+
+.doneAction {
+  font-size: 11px;
+  color: var(--brand);
+  font-weight: 600;
+}
+
+.doneList {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line-soft);
+}
+
+.metaLine {
+  font-size: 11.5px;
+  color: var(--ink-400);
+  padding-left: 2px;
+}

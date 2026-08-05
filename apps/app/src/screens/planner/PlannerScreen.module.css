@@ -1,0 +1,283 @@
+/* Vorlage Z. 221–276. */
+
+.summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.summaryText {
+  flex: 1;
+  min-width: 0;
+}
+
+.summaryTitle {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--brand-600);
+}
+
+.summaryHint {
+  font-size: 11px;
+  color: var(--ink-500);
+  margin-top: 2px;
+}
+
+.day {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.dayToday {
+  border-color: var(--today-line);
+  background: var(--brand-soft);
+}
+
+.dayHead {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+  border: none;
+  border-bottom: 1px solid var(--line-soft);
+  background: transparent;
+  padding: 11px 14px 9px;
+  transition: background-color 0.14s ease;
+}
+
+.dayHead:hover {
+  background: var(--hov-tint);
+}
+
+.dayHeadCollapsed {
+  border-bottom-color: transparent;
+}
+
+/* Datumsplakette, Vorlage Z. 232. */
+.badge {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--ink-700);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.05;
+}
+
+.dayToday .badge {
+  background: var(--brand-fill);
+  color: #fff;
+}
+
+.badgeWeekday {
+  display: block;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badgeNumber {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.dayTitles {
+  flex: 1;
+  min-width: 0;
+}
+
+/*
+ * display:block bei den Textspans: ein <button> darf keine <div> enthalten,
+ * also sind es <span> - und die liefen ohne das in einer Zeile zusammen.
+ */
+
+.dayWeekday {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-500);
+}
+
+.dayPreview {
+  display: block;
+  font-size: 11.5px;
+  color: var(--ink-400);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.daySummary {
+  flex: none;
+  font-size: 10.5px;
+  color: var(--ink-400);
+}
+
+.chevron {
+  flex: none;
+  font-size: 11px;
+  color: var(--ink-400);
+  width: 12px;
+  text-align: center;
+}
+
+.panes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pane {
+  padding: 11px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.paneMeal {
+  border-right: 1px solid var(--line-soft);
+}
+
+.paneHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/*
+ * Die Vorlage codiert hier stroke="#f97316" und stroke="#3b82f6" hart. Die
+ * Farbe steht jetzt am Elternelement, das Icon erbt sie ueber currentColor —
+ * dieselben Werte, aber themenfaehig.
+ */
+.paneIconMeal {
+  color: var(--bday);
+  display: flex;
+}
+
+.paneIconTask {
+  color: var(--u1);
+  display: flex;
+}
+
+.paneLabel {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ink-400);
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+}
+
+.paneAction {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: var(--brand);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0;
+}
+
+.meal {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-900);
+  line-height: 1.4;
+  text-wrap: pretty;
+}
+
+.mealEmpty {
+  color: var(--ink-400);
+}
+
+.task {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  cursor: pointer;
+  transition: opacity 0.14s ease;
+}
+
+.task:hover {
+  opacity: 0.62;
+}
+
+/*
+ * Echte Checkbox statt Knopf mit Haken-Zeichen: gleiche Optik, aber der
+ * Zustand ist fuer Screenreader lesbar. Das Kaestchen ist das Kind, die
+ * Eingabe selbst liegt darunter und bleibt fokussierbar.
+ */
+.box {
+  appearance: none;
+  margin: 0;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border-radius: 5px;
+  border: 1.5px solid var(--track-off);
+  background: transparent;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.box:checked {
+  border-color: var(--brand-fill);
+  background: var(--brand-fill);
+}
+
+.box:checked::after {
+  content: '✓';
+  color: #fff;
+  font-size: 9.5px;
+  line-height: 1;
+}
+
+.taskText {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--ink-700);
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.taskDone {
+  color: var(--ink-500);
+  text-decoration: line-through;
+}
+
+.taskDot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 2px;
+}
+
+.noTasks {
+  font-size: 12px;
+  color: var(--ink-400);
+}
+
+.addTask {
+  align-self: flex-start;
+  margin-top: auto;
+  border: none;
+  background: transparent;
+  color: var(--brand);
+  cursor: pointer;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px 0 0;
+}

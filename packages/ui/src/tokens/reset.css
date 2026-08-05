@@ -37,7 +37,7 @@ select {
 }
 
 * {
-  scrollbar-color: rgba(124,58,237,.35) transparent;
+  scrollbar-color: rgba(124, 58, 237, 0.35) transparent;
   scrollbar-width: thin;
 }
 
@@ -52,7 +52,7 @@ select {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(124,58,237,.28);
+  background: rgba(124, 58, 237, 0.28);
   border-radius: 8px;
 }
 
@@ -73,6 +73,21 @@ select {
   }
   to {
     opacity: 1;
+  }
+}
+
+/*
+ * Nicht in der Vorlage: Puls fuer Skeleton-Platzhalter. Die Vorlage kennt
+ * keinen Ladezustand, weil sie feste Demo-Daten zeigt. Abgeschaltet bei
+ * prefers-reduced-motion (im Modul der Komponente).
+ */
+@keyframes ral-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
   }
 }
 

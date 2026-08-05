@@ -1,0 +1,155 @@
+/* Vorlage Z. 280–310. */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  text-align: left;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 14px;
+  min-height: 152px;
+  gap: 8px;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--hov-shadow);
+  border-color: var(--hov-ring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+
+  .card:hover {
+    transform: none;
+  }
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.initial {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.count {
+  margin-left: auto;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.countDone {
+  color: var(--ink-500);
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-900);
+  line-height: 1.25;
+  margin-top: 2px;
+}
+
+.meta {
+  font-size: 11px;
+  color: var(--ink-500);
+}
+
+.footer {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bar {
+  flex: 1;
+}
+
+.avatars {
+  display: flex;
+}
+
+/* Vorlage Z. 296: 20px, 1.5px Rand, -5px Ueberlappung. */
+.avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--surface);
+  margin-left: -5px;
+}
+
+.newCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  cursor: pointer;
+  border: 1.5px dashed var(--line);
+  background: transparent;
+  border-radius: 20px;
+  padding: 14px;
+  min-height: 152px;
+  color: var(--ink-400);
+  transition:
+    border-color 0.16s ease,
+    color 0.16s ease;
+}
+
+.newCard:hover {
+  border-color: var(--brand);
+  color: var(--brand-600);
+}
+
+.newPlus {
+  font-size: 22px;
+  line-height: 1;
+  color: var(--brand);
+}
+
+.newLabel {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.recent {
+  font-size: 12.5px;
+  color: var(--ink-500);
+  margin-top: 7px;
+  line-height: 1.6;
+}

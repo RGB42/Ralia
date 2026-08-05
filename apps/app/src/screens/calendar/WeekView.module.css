@@ -1,0 +1,178 @@
+/*
+ * Vorlage Z. 178–217. weekGridMin bleibt wie dort: 640px mobil, 100% ab
+ * Sidebar-Breite. Die Mindestbreite ist kein Prototyp-Artefakt — Zeitspalte
+ * plus sieben Tagesspalten brauchen sie, darunter scrollt es waagerecht.
+ */
+
+.week {
+  padding: 0 0 10px;
+  overflow-x: auto;
+}
+
+.inner {
+  min-width: 640px;
+}
+
+@media (min-width: 1024px) {
+  .inner {
+    min-width: 100%;
+  }
+}
+
+.headRow {
+  display: flex;
+  padding: 10px 0 8px;
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 5;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+/* Platzhalter ueber der Zeitspalte. */
+.timeGutter {
+  width: 42px;
+  flex: none;
+}
+
+.dayHead {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  padding: 6px 2px;
+  border-radius: 11px;
+  border: 1px solid transparent;
+  margin: 0 2px;
+}
+
+.dayHeadToday {
+  background: var(--brand-soft);
+  border-color: var(--today-line);
+}
+
+.dayHeadWeekday {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--ink-400);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dayHeadNumber {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-900);
+  margin-top: 1px;
+}
+
+.dayHeadToday .dayHeadNumber {
+  color: var(--brand);
+}
+
+/* Vorlage Z. 190. */
+.nightToggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--surface-2);
+  color: var(--brand);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 8px 14px;
+  text-align: left;
+}
+
+.nightToggle:hover {
+  color: var(--brand-600);
+}
+
+.body {
+  display: flex;
+  padding: 10px 0 14px;
+}
+
+.hours {
+  width: 42px;
+  flex: none;
+  border-right: 1px solid var(--line-soft);
+}
+
+.hour {
+  height: 52px;
+  position: relative;
+}
+
+/* Vorlage Z. 198–200: Zusatzmarke nach der letzten Stunde. */
+.hourEnd {
+  height: 0;
+  position: relative;
+}
+
+.hourLabel {
+  position: absolute;
+  top: -6px;
+  right: 6px;
+  font-size: 9.5px;
+  color: var(--ink-400);
+  font-variant-numeric: tabular-nums;
+}
+
+.column {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  border-right: 1px solid var(--line-soft);
+}
+
+.columnToday {
+  background: var(--today-col);
+}
+
+.slot {
+  height: 52px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.event {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  border: none;
+  border-left-width: 3px;
+  border-left-style: solid;
+  border-radius: 7px;
+  cursor: pointer;
+  text-align: left;
+  padding: 4px 5px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  transition:
+    filter 0.14s ease,
+    box-shadow 0.14s ease;
+}
+
+.event:hover {
+  filter: brightness(0.96);
+  box-shadow: var(--hov-shadow);
+  z-index: 3;
+}
+
+.eventTitle {
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.25;
+}
+
+.eventRange {
+  font-size: 9px;
+  opacity: 0.75;
+}

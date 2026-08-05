@@ -4,7 +4,7 @@ Teile Deine Tage gemeinsam — Kalender, Organizer und Haushaltskasse für Paare
 
 Eine Codebasis für **Android**, **iOS** und **Web** mit Marketing-Homepage.
 
-> **Status: im Aufbau.** Dieser Branch ist ein Neubau. `npm run dev` startet noch nicht — die SPA entsteht in Task 12 des laufenden Sub-Projekts. Was heute steht, ist das Fundament: Datenschicht, Offline-Queue und Design-System.
+> **Status: SP0 abgeschlossen.** `npm run dev` startet die App unter `/app/`. Alle acht Ansichten und alle acht Bottom Sheets stehen, gefüllt mit den Demo-Daten der Design-Vorlage — noch ohne Anmeldung und ohne Live-Daten. Was daran geprüft ist, steht im [Abnahmeprotokoll](docs/superpowers/plans/2026-08-03-sp0-abnahme.md).
 
 ## Architektur
 
@@ -17,6 +17,13 @@ packages/
   ui/       Design-System: Tokens, Primitive, Overlays, AppShell
 apps/
   app/      React + Vite SPA — Web /app/* und Capacitor-Webroot
+            boot/      Boot-Reihenfolge, Legacy-Migration, Ladezustand
+            i18n/      Kataloge und Provider, DE und EN
+            routes/    Router und die Naht zur AppShell
+            screens/   Kalender, Planer, Todos, Geld, Einstellungen, Sync
+            sheets/    die acht Bottom Sheets
+            mock/      Demo-Daten der Vorlage (SP0-Platzhalter)
+e2e/        Playwright-Smoke-Tests gegen den Preview-Build
 ```
 
 `packages/core` darf React, DOM und Supabase nicht kennen. Diese Grenze ist der Grund, warum die schwierigen Teile — Serien-Expansion, Offline-Queue, Split-Arithmetik — als reine Funktionen testbar sind. In der Vorgängerversion lagen sie als globale Funktionen neben DOM-Code und waren es nicht.
@@ -31,11 +38,22 @@ Der Quellcode der Edge Function liegt nicht in diesem Repo. Wir konsumieren sie,
 
 ```bash
 npm install
-npm test          # Vitest
+npm run dev       # Vite, http://localhost:5173/app/
+npm test          # Vitest — 363 Tests
 npm run typecheck # tsc --noEmit, strict
 npm run lint      # ESLint
-npm run verify    # alles zusammen
+npm run verify    # typecheck + lint + test + build
+npm run e2e       # Playwright gegen den Preview-Build
 ```
+
+Die Übersetzungen werden nicht getippt, sondern aus Ralia_Opus extrahiert:
+
+```bash
+npm run i18n:extract              # de.json und en.json neu schreiben
+node scripts/extract-i18n.mjs --check   # nur prüfen, für CI
+```
+
+Das Skript erwartet `Ralia_Opus` als Schwesterverzeichnis; ein anderer Ort geht über `--source`.
 
 ## Design
 
@@ -48,6 +66,7 @@ Das Design stammt aus einem Claude-Design-Prototypen, der versioniert unter [`do
 | [`docs/superpowers/specs/`](docs/superpowers/specs/) | Programm-Design und Sub-Projekt-Spezifikationen |
 | [`docs/superpowers/plans/`](docs/superpowers/plans/) | Implementierungspläne |
 | [`docs/design-reference/`](docs/design-reference/) | Design-Vorlage, Quelle aller Tokens |
+| [`docs/superpowers/plans/2026-08-03-sp0-abnahme.md`](docs/superpowers/plans/2026-08-03-sp0-abnahme.md) | Abnahmeprotokoll SP0 gegen die zehn Kriterien des Specs |
 | [`docs/native-rebuild-reference/`](docs/native-rebuild-reference/) | Quellstand des vorherigen Expo-Anlaufs, als Referenz aufgehoben |
 
 ## Lizenz

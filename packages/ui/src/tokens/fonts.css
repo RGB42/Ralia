@@ -5,8 +5,14 @@
  * funktioniert offline und in der Capacitor-WebView nicht - deshalb hosten wir
  * die vier verwendeten Gewichte (400/500/600/700, siehe Google-Fonts-URL der
  * Vorlage: wght@400;500;600;700) selbst.
+ *
+ * Nur die latin-Subsets. Die Sammeldateien (400.css usw.) ziehen zusaetzlich
+ * devanagari und latin-ext mit - pro Gewicht drei @font-face statt einem, in
+ * Summe rund 350 kB Glyphen, die eine deutsch/englische App nie zeichnet.
+ * Kommt eine Sprache dazu, die latin-ext braucht (Polnisch, Tschechisch),
+ * gehoeren die latin-ext-Zeilen hier ergaenzt.
  */
-@import '@fontsource/poppins/400.css';
-@import '@fontsource/poppins/500.css';
-@import '@fontsource/poppins/600.css';
-@import '@fontsource/poppins/700.css';
+@import '@fontsource/poppins/latin-400.css';
+@import '@fontsource/poppins/latin-500.css';
+@import '@fontsource/poppins/latin-600.css';
+@import '@fontsource/poppins/latin-700.css';

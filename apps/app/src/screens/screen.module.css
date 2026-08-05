@@ -1,0 +1,54 @@
+/*
+ * Gemeinsames Gerüst aller Screens: Kopfzeile oben, darunter der Inhalt.
+ *
+ * Die Vorlage hatte dafuer die Telefon-Attrappe mit fester Hoehe (Z. 106).
+ * Hier fuellt der Screen, was die Inhaltsspalte der AppShell hergibt —
+ * mobil den Viewport, ab Sidebar-Breite die Spaltenhoehe.
+ */
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  flex: 1;
+}
+
+/* Der Bereich unter der Kopfzeile. `min-height:0` erlaubt Kindern zu schrumpfen. */
+.body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Inhalt in Karten, mit Abstand und Polster — die Nicht-Kalender-Screens. */
+.stack {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* Platz fuer den FAB, damit er die letzte Karte nicht verdeckt. */
+  padding-bottom: 88px;
+}
+
+/* Legende der Personenfarben, Vorlage Z. 135–139. */
+.legend {
+  display: flex;
+  gap: 12px;
+  margin-left: auto;
+  font-size: 10.5px;
+  color: var(--ink-500);
+  align-items: center;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legendSwatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+}

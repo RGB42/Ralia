@@ -1,0 +1,10 @@
+/* Vorlage Z. 683–704, plus Safe-Area-Polster unten. */
+
+.bottomNav {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 7px 8px calc(9px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}

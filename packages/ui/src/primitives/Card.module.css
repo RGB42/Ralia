@@ -1,0 +1,29 @@
+/* Vorlage: surface Z. 361, brand Z. 404, warn Z. 636, flush Z. 426. */
+
+.card {
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  padding: 16px;
+}
+
+.surface {
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.brand {
+  border-color: var(--brand-line);
+  background: var(--brand-soft);
+}
+
+.warn {
+  border-color: var(--warn-line);
+  background: var(--warn-soft);
+  padding: 14px;
+}
+
+/* Karten, deren Kinder eigene Zeilen mit Trennlinien sind (Z. 426). */
+.flush {
+  padding: 0;
+  overflow: hidden;
+}

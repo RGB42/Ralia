@@ -1,0 +1,31 @@
+/*
+ * Vorlage Z. 752. `outline:none` bleibt: der Fokusring kommt aus reset.css
+ * ueber :focus-visible und box-shadow, damit er nur bei Tastaturnutzung erscheint.
+ */
+
+.field {
+  width: 100%;
+  margin-top: 6px;
+  padding: 12px;
+  border-radius: 13px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink-900);
+  font-size: 13.5px;
+  outline: none;
+}
+
+/* Datum und Zeit sind in der Vorlage einen halben Punkt kleiner (Z. 757). */
+.compact {
+  font-size: 13px;
+}
+
+.textarea {
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.select {
+  appearance: none;
+  cursor: pointer;
+}

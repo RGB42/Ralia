@@ -1,0 +1,21 @@
+/* Vorlage Z. 74 (rund, 30px) und Z. 285 (abgerundet, Radius 10). */
+
+.avatar {
+  flex: none;
+  color: #fff;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.pair {
+  display: flex;
+}
+
+/* Vorlage Z. 75: der zweite Avatar schiebt sich unter den ersten. */
+.second {
+  margin-left: -9px;
+  border: 2px solid var(--surface);
+}

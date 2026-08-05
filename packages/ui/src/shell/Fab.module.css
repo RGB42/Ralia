@@ -1,0 +1,45 @@
+/* Vorlage Z. 708, fabBottom aus Z. 1528 (74px mobil, 20px ab Sidebar-Breite). */
+
+.fab {
+  position: fixed;
+  right: 16px;
+  bottom: calc(74px + env(safe-area-inset-bottom));
+  width: 54px;
+  height: 54px;
+  border-radius: 19px;
+  border: none;
+  background: var(--brand-fill);
+  color: #fff;
+  font-size: 25px;
+  font-weight: 400;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(124, 58, 237, 0.42);
+  z-index: 40;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.fab:hover {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 16px 32px rgba(124, 58, 237, 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fab {
+    transition: none;
+  }
+
+  .fab:hover {
+    transform: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .fab {
+    /* Ab hier sitzt der FAB in der Inhaltsspalte, nicht am Fensterrand. */
+    position: absolute;
+    bottom: 20px;
+  }
+}

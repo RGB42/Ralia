@@ -1,12 +1,17 @@
 # SP0 UI-Fundament — Implementierungsplan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Die sichtbare Hälfte von SP0 bauen — ein Design-System, das die Vorlage wertgenau abbildet, und eine lauffähige React-SPA mit allen 8 Ansichten und 8 Bottom Sheets, gefüllt mit Demo-Daten.
 
 **Architecture:** `packages/ui` liefert Tokens, Primitive und AppShell als CSS-Modules-Komponenten; die Primitive werden 1:1 aus den Helferfunktionen der Vorlage abgeleitet. `apps/app` ist eine Vite-SPA, die diese Komponenten zu den Screens der Vorlage zusammensetzt. Reine Geometrie- und Dichte-Logik (Monatsraster, Wochen-Timeline) liegt in `packages/core`, damit sie ohne DOM testbar ist.
 
 **Tech Stack:** TypeScript strict, React 19, Vite 7, CSS Modules, react-router 8, Vitest 3 + Testing Library, Playwright, `@fontsource/poppins`.
+
+> **Stand 2026-08-04: alle 26 Tasks umgesetzt.** Die Haken unten sind gesetzt.
+> Wo die Umsetzung vom Plan abweicht, steht der Grund im jeweiligen Commit;
+> das Ergebnis gegen die zehn Abnahmekriterien steht in
+> [2026-08-03-sp0-abnahme.md](2026-08-03-sp0-abnahme.md).
 
 **Spec:** [../specs/2026-08-03-sp0-ui-foundation-design.md](../specs/2026-08-03-sp0-ui-foundation-design.md)
 **Design-Vorlage:** [../../design-reference/Ralia-Organizer.dc.html](../../design-reference/Ralia-Organizer.dc.html)
@@ -71,12 +76,12 @@ Vor dem ersten neuen Code muss `npm run verify` eine verlässliche Aussage liefe
 - Consumes: nichts
 - Produces: `npm run verify` läuft durch — Voraussetzung für jede folgende Task
 
-- [ ] **Step 1: Fehlerbild festhalten**
+- [x] **Step 1: Fehlerbild festhalten**
 
 Run: `npm run typecheck 2>&1 | grep -c "error TS"` → erwartet `24`
 Run: `npm run lint 2>&1 | grep -c "error"` → erwartet `4` (3 Fehler + Summenzeile)
 
-- [ ] **Step 2: `fetch`-Mocks auf die Vitest-3-Signatur umstellen**
+- [x] **Step 2: `fetch`-Mocks auf die Vitest-3-Signatur umstellen**
 
 Ursache: die Tests nutzen die Vitest-2-Form mit zwei Typargumenten. Vitest 3 erwartet den Funktionstyp.
 
@@ -91,7 +96,7 @@ const fetchImpl = vi.fn<typeof fetch>(async () => …);
 
 Das behebt zugleich die `TS2339`-Folgefehler (`Property 'headers' does not exist on type 'never'`): sobald der Mock korrekt typisiert ist, hat `fetchImpl.mock.calls[0]` den Typ `[input: RequestInfo | URL, init?: RequestInit]` statt `never`.
 
-- [ ] **Step 3: Executor-Mock in `outbox.test.ts:102` umstellen**
+- [x] **Step 3: Executor-Mock in `outbox.test.ts:102` umstellen**
 
 ```ts
 // vorher
@@ -102,23 +107,23 @@ const executor = vi.fn<OutboxExecutor<TestMutation>>(async () => {});
 
 `OutboxExecutor` ist bereits aus `./types.js` importiert oder muss als `import type` ergänzt werden.
 
-- [ ] **Step 4: Typecheck prüfen**
+- [x] **Step 4: Typecheck prüfen**
 
 Run: `npm run typecheck`
 Expected: keine Ausgabe, Exit 0
 
-- [ ] **Step 5: Die drei Lint-Fehler beheben**
+- [x] **Step 5: Die drei Lint-Fehler beheben**
 
 1. `packages/core/src/outbox/outbox.test.ts:77` — `let clock` → `const clock` (`prefer-const`)
 2. `packages/core/src/outbox/outbox.ts:253` — Inline-`import()`-Typannotation auflösen: den Typ oben als `import type { X } from '…'` importieren und an der Stelle direkt verwenden
 3. `packages/data/src/config.ts:1` — `import { … }` → `import type { … }`
 
-- [ ] **Step 6: Lint und Gesamtlauf prüfen**
+- [x] **Step 6: Lint und Gesamtlauf prüfen**
 
 Run: `npm run lint` → Exit 0, keine Ausgabe
 Run: `npm test` → 103 Tests grün, 8 Dateien
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add packages/core packages/data
@@ -140,14 +145,14 @@ git commit -m "fix: Vitest-3-Mock-Signaturen und drei Lint-Verstoesse"
 - Consumes: Task 1 (grüne Baseline)
 - Produces: Workspaces `@ralia/ui` und `@ralia/app` existieren; `react@19`, `react-dom@19`, `react-router@8`, `@fontsource/poppins`, `@playwright/test` sind installiert
 
-- [ ] **Step 1: Ausgangslage bestätigen**
+- [x] **Step 1: Ausgangslage bestätigen**
 
 ```bash
 node -e "const p=require('./package.json');const a={...p.dependencies,...p.devDependencies};for(const k of ['react','react-dom','react-router','@fontsource/poppins','@playwright/test'])console.log((a[k]||'NOT DECLARED').padEnd(16),k)"
 ```
 Expected: alle fünf `NOT DECLARED`
 
-- [ ] **Step 2: `packages/ui/package.json` anlegen**
+- [x] **Step 2: `packages/ui/package.json` anlegen**
 
 Vorbild ist `packages/core/package.json` (gleiche Felder, gleiche `exports`-Form). React ist `peerDependency`, damit es genau eine React-Instanz gibt.
 
@@ -172,7 +177,7 @@ Vorbild ist `packages/core/package.json` (gleiche Felder, gleiche `exports`-Form
 }
 ```
 
-- [ ] **Step 3: `apps/app/package.json` anlegen**
+- [x] **Step 3: `apps/app/package.json` anlegen**
 
 ```json
 {
@@ -197,7 +202,7 @@ Vorbild ist `packages/core/package.json` (gleiche Felder, gleiche `exports`-Form
 }
 ```
 
-- [ ] **Step 4: `@playwright/test` als Root-devDependency ergänzen**
+- [x] **Step 4: `@playwright/test` als Root-devDependency ergänzen**
 
 In der Wurzel-`package.json` unter `devDependencies` einsortieren (alphabetisch, direkt vor `@types/react`):
 
@@ -205,12 +210,12 @@ In der Wurzel-`package.json` unter `devDependencies` einsortieren (alphabetisch,
 "@playwright/test": "^1.56.1",
 ```
 
-- [ ] **Step 5: Installieren**
+- [x] **Step 5: Installieren**
 
 Run: `npm install`
 Expected: Exit 0. `react`, `react-dom` erscheinen jetzt als reguläre (nicht-dev) Einträge im Lockfile.
 
-- [ ] **Step 6: Auflösung prüfen**
+- [x] **Step 6: Auflösung prüfen**
 
 ```bash
 node -e "console.log(require('react/package.json').version, require('react-router/package.json').version)"
@@ -218,7 +223,7 @@ npm run typecheck
 ```
 Expected: `19.2.x 7.x.x`, Typecheck Exit 0
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add package.json package-lock.json packages/ui/package.json apps/app/package.json
@@ -247,7 +252,7 @@ Das Herzstück. Der Test macht „wertgenau" zu einer geprüften Eigenschaft sta
   - `export type PersonSlot = 'u1' | 'u2' | 'both' | 'bday'`
   - `export function personTokens(slot: PersonSlot): { bar: string; bg: string; fg: string }` — liefert `var(--…)`-Referenzen, keine Literale
 
-- [ ] **Step 1: Vitest-Node-Projekt für `packages/ui` öffnen**
+- [x] **Step 1: Vitest-Node-Projekt für `packages/ui` öffnen**
 
 Der Paritätstest ist reine Dateiarbeit ohne DOM. Aktuell erfasst das `node`-Projekt nur `core` und `data`, das `dom`-Projekt nur `*.test.tsx` — eine `packages/ui/src/**/*.test.ts` liefe in keinem der beiden.
 
@@ -261,7 +266,7 @@ include: [
 ],
 ```
 
-- [ ] **Step 2: Den Paritätstest schreiben — er muss zuerst fehlschlagen**
+- [x] **Step 2: Den Paritätstest schreiben — er muss zuerst fehlschlagen**
 
 Create `packages/ui/src/tokens/tokens.parity.test.ts`:
 
@@ -364,12 +369,12 @@ describe('Token-Parität mit der Design-Vorlage', () => {
 });
 ```
 
-- [ ] **Step 3: Test laufen lassen — er muss fehlschlagen**
+- [x] **Step 3: Test laufen lassen — er muss fehlschlagen**
 
 Run: `npx vitest run packages/ui/src/tokens/tokens.parity.test.ts`
 Expected: FAIL — `ENOENT` auf `tokens.css`
 
-- [ ] **Step 4: `tokens.css` schreiben**
+- [x] **Step 4: `tokens.css` schreiben**
 
 Quelle: Vorlage Z. 16–35 (`:root` und `:root[data-ralia-theme="dark"]`), **wertgenau übernehmen**. Danach die verdeckten Tokens ergänzen — Werte aus der Tabelle „Verdeckte Tokens" im Spec, hergeleitet aus Vorlage Z. 1172–1181 (`colors()`), Z. 1243 (`track()`), Z. 1282 (`border: isToday …`, dieselben Werte erneut auf Z. 1337 für den Wochenkopf) und Z. 1317 (`colBg: isToday …`).
 
@@ -410,12 +415,12 @@ Struktur:
 
 Zwei Fallen: der Test normalisiert Mehrfach-Whitespace, aber **nicht** Kommata — `rgba(15,23,42,.07)` und `rgba(15, 23, 42, .07)` sind für ihn verschieden. Und der Selektor muss exakt `:root[data-ralia-theme="dark"]` lauten; bei einfachen Anführungszeichen im CSS findet der Test den Block nicht. Beides: genau wie die Vorlage schreiben.
 
-- [ ] **Step 5: Test laufen lassen — er muss bestehen**
+- [x] **Step 5: Test laufen lassen — er muss bestehen**
 
 Run: `npx vitest run packages/ui/src/tokens/tokens.parity.test.ts`
 Expected: PASS, 8 Tests
 
-- [ ] **Step 6: `reset.css` schreiben**
+- [x] **Step 6: `reset.css` schreiben**
 
 Quelle: Vorlage Z. 36–47 — `*{box-sizing}`, `body`, `a`/`a:hover`, `button`, `input,textarea,select`, Scrollbar-Regeln, `@keyframes ral-up`, `@keyframes ral-fade`.
 
@@ -438,7 +443,7 @@ body { min-height: 100dvh; }
 
 `font-family` in `body` bleibt `'Poppins', system-ui, sans-serif` wie in der Vorlage.
 
-- [ ] **Step 7: `fonts.css` schreiben**
+- [x] **Step 7: `fonts.css` schreiben**
 
 ```css
 @import '@fontsource/poppins/400.css';
@@ -449,7 +454,7 @@ body { min-height: 100dvh; }
 
 Kein Google-Fonts-`<link>` — die Vorlage lädt Poppins von Google (Z. 12–14), das funktioniert offline und in der Capacitor-WebView nicht.
 
-- [ ] **Step 8: `person.ts` schreiben**
+- [x] **Step 8: `person.ts` schreiben**
 
 ```ts
 /**
@@ -480,7 +485,7 @@ export function personTokens(slot: PersonSlot): PersonTokens {
 }
 ```
 
-- [ ] **Step 9: `index.ts` anlegen**
+- [x] **Step 9: `index.ts` anlegen**
 
 ```ts
 /**
@@ -493,12 +498,12 @@ export function personTokens(slot: PersonSlot): PersonTokens {
 export { PERSON_SLOTS, personTokens, type PersonSlot, type PersonTokens } from './person.js';
 ```
 
-- [ ] **Step 10: Gesamtlauf prüfen**
+- [x] **Step 10: Gesamtlauf prüfen**
 
 Run: `npm run typecheck && npm run lint && npm test`
 Expected: alles Exit 0; Testzahl 103 + 8 = 111
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add vitest.config.ts packages/ui
@@ -532,7 +537,7 @@ Eigenschaft."
   - `function readStoredChoice(storage?: Pick<Storage, 'getItem'>): ThemeChoice`
   - `function themeBootScript(): string` — der Inline-Schnipsel gegen den Flash, von Task 11 in `index.html` eingesetzt
 
-- [ ] **Step 1: Tests schreiben**
+- [x] **Step 1: Tests schreiben**
 
 Create `packages/ui/src/theme/ThemeProvider.test.tsx`:
 
@@ -627,12 +632,12 @@ describe('ThemeProvider', () => {
 });
 ```
 
-- [ ] **Step 2: Tests laufen lassen — sie müssen fehlschlagen**
+- [x] **Step 2: Tests laufen lassen — sie müssen fehlschlagen**
 
 Run: `npx vitest run packages/ui/src/theme/ThemeProvider.test.tsx`
 Expected: FAIL — Modul `./ThemeProvider.js` nicht auflösbar
 
-- [ ] **Step 3: `theme-storage.ts` implementieren**
+- [x] **Step 3: `theme-storage.ts` implementieren**
 
 ```ts
 export const THEME_STORAGE_KEY = 'ralia.theme';
@@ -693,7 +698,7 @@ export function themeBootScript(): string {
 }
 ```
 
-- [ ] **Step 4: `ThemeProvider.tsx` implementieren**
+- [x] **Step 4: `ThemeProvider.tsx` implementieren**
 
 Kernpunkte: Kontext mit `choice`/`resolved`/`setChoice`; Startwert aus `readStoredChoice()`; `matchMedia`-Abo nur wenn `choice === 'system'`; `applyTheme` in einem `useEffect` auf `document.documentElement`; `matchMedia` defensiv behandeln (in älteren WebViews fehlt `addEventListener`).
 
@@ -753,7 +758,7 @@ export function ThemeProvider({ children }: { children: ReactNode }): React.JSX.
 }
 ```
 
-- [ ] **Step 5: `useTheme.ts` implementieren**
+- [x] **Step 5: `useTheme.ts` implementieren**
 
 ```ts
 import { useContext } from 'react';
@@ -766,12 +771,12 @@ export function useTheme(): ThemeContextValue {
 }
 ```
 
-- [ ] **Step 6: Tests laufen lassen**
+- [x] **Step 6: Tests laufen lassen**
 
 Run: `npx vitest run packages/ui/src/theme/ThemeProvider.test.tsx`
 Expected: PASS, 6 Tests
 
-- [ ] **Step 7: Aus `index.ts` exportieren**
+- [x] **Step 7: Aus `index.ts` exportieren**
 
 ```ts
 export {
@@ -782,7 +787,7 @@ export { readStoredChoice, themeBootScript } from './theme/theme-storage.js';
 export { useTheme } from './theme/useTheme.js';
 ```
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add packages/ui
@@ -813,7 +818,7 @@ Reine Arithmetik, ohne DOM testbar. Sie ersetzt die Prototyp-Rechnung der Vorlag
   - `function monthGridCells(year: number, monthIndex: number, weekStart: 'mo' | 'so'): MonthGridCell[]` mit `MonthGridCell = { iso: string; dayOfMonth: number; inMonth: boolean }`
   - Konstanten `WEEK_HOUR_HEIGHT_PX = 52`, `MONTH_MAX_CHIPS = 3`, `MONTH_MAX_DOTS = 5`
 
-- [ ] **Step 1: Test für `month-density` schreiben**
+- [x] **Step 1: Test für `month-density` schreiben**
 
 Die Schwellwerte der Vorlage (Z. 1256–1260): Chiphöhe 19 px (16 px Chip + 3 px Abstand), Zellen-Innenmaß 35 px (12 Padding + 20 Tagesnummer + 3 Abstand), höchstens 3 Chips, sonst höchstens 5 Punkte.
 
@@ -854,12 +859,12 @@ describe('monthDensity', () => {
 });
 ```
 
-- [ ] **Step 2: Test laufen lassen — er muss fehlschlagen**
+- [x] **Step 2: Test laufen lassen — er muss fehlschlagen**
 
 Run: `npx vitest run packages/core/src/calendar/month-density.test.ts`
 Expected: FAIL — Modul nicht gefunden
 
-- [ ] **Step 3: `month-density.ts` implementieren**
+- [x] **Step 3: `month-density.ts` implementieren**
 
 ```ts
 /**
@@ -895,12 +900,12 @@ export function monthDensity(gridHeightPx: number): MonthDensity {
 }
 ```
 
-- [ ] **Step 4: Test laufen lassen**
+- [x] **Step 4: Test laufen lassen**
 
 Run: `npx vitest run packages/core/src/calendar/month-density.test.ts`
 Expected: PASS, 6 Tests
 
-- [ ] **Step 5: Test für `week-geometry` schreiben**
+- [x] **Step 5: Test für `week-geometry` schreiben**
 
 Werte aus Vorlage Z. 1297–1305: Stundenhöhe 52 px, `top = max(0, startMin - startH*60)/60*52`, `height = max(26, dauer/60*52 - 3)`.
 
@@ -953,12 +958,12 @@ describe('weekEventGeometry', () => {
 });
 ```
 
-- [ ] **Step 6: Test laufen lassen — er muss fehlschlagen**
+- [x] **Step 6: Test laufen lassen — er muss fehlschlagen**
 
 Run: `npx vitest run packages/core/src/calendar/week-geometry.test.ts`
 Expected: FAIL
 
-- [ ] **Step 7: `week-geometry.ts` implementieren**
+- [x] **Step 7: `week-geometry.ts` implementieren**
 
 ```ts
 /** Geometrie der Wochen-Timeline. Werte wertgenau aus der Vorlage (Z. 1297–1305). */
@@ -1000,7 +1005,7 @@ export function weekEventGeometry(
 }
 ```
 
-- [ ] **Step 8: Test für `month-grid` schreiben**
+- [x] **Step 8: Test für `month-grid` schreiben**
 
 Regel aus Vorlage Z. 1261–1268: 42 Zellen, Start je Wochenstart verschoben, UTC-Arithmetik.
 
@@ -1052,12 +1057,12 @@ describe('monthGridCells', () => {
 });
 ```
 
-- [ ] **Step 9: Test laufen lassen — er muss fehlschlagen**
+- [x] **Step 9: Test laufen lassen — er muss fehlschlagen**
 
 Run: `npx vitest run packages/core/src/calendar/month-grid.test.ts`
 Expected: FAIL
 
-- [ ] **Step 10: `month-grid.ts` implementieren**
+- [x] **Step 10: `month-grid.ts` implementieren**
 
 ```ts
 /**
@@ -1108,12 +1113,12 @@ export function monthGridCells(
 }
 ```
 
-- [ ] **Step 11: Alle drei Testdateien laufen lassen**
+- [x] **Step 11: Alle drei Testdateien laufen lassen**
 
 Run: `npx vitest run packages/core/src/calendar`
 Expected: PASS, 19 Tests
 
-- [ ] **Step 12: Aus `packages/core/src/index.ts` exportieren**
+- [x] **Step 12: Aus `packages/core/src/index.ts` exportieren**
 
 Am Ende der Datei, alphabetisch vor den Outbox-Exporten einsortiert:
 
@@ -1134,7 +1139,7 @@ export {
 } from './calendar/week-geometry.js';
 ```
 
-- [ ] **Step 13: Gesamtlauf und Commit**
+- [x] **Step 13: Gesamtlauf und Commit**
 
 Run: `npm run typecheck && npm run lint && npm test`
 Expected: alles grün, 111 + 19 = 130 Tests
@@ -1165,7 +1170,7 @@ per Test fixiert."
   - `type IconName = 'calendar' | 'planner' | 'todos' | 'money' | 'settings' | 'meal' | 'task'`
   - `function Icon(props: { name: IconName; size?: number; title?: string }): React.JSX.Element` — Standardgröße 17, `stroke="currentColor"`, `strokeWidth={1.6}`, `viewBox="0 0 20 20"`; ohne `title` ist das SVG `aria-hidden`
 
-- [ ] **Step 1: Test schreiben**
+- [x] **Step 1: Test schreiben**
 
 ```tsx
 import { render } from '@testing-library/react';
@@ -1201,12 +1206,12 @@ describe('Icon', () => {
 });
 ```
 
-- [ ] **Step 2: Test laufen lassen — er muss fehlschlagen**
+- [x] **Step 2: Test laufen lassen — er muss fehlschlagen**
 
 Run: `npx vitest run packages/ui/src/icons/Icon.test.tsx`
 Expected: FAIL
 
-- [ ] **Step 3: `paths.tsx` schreiben**
+- [x] **Step 3: `paths.tsx` schreiben**
 
 Die Pfade **wörtlich** aus der Vorlage übernehmen:
 
@@ -1241,7 +1246,7 @@ export const ICON_DEFS: Record<IconName, IconDef> = {
 };
 ```
 
-- [ ] **Step 4: `Icon.tsx` schreiben**
+- [x] **Step 4: `Icon.tsx` schreiben**
 
 ```tsx
 import { ICON_DEFS, ICON_NAMES, type IconName } from './paths.js';
@@ -1279,12 +1284,12 @@ export function Icon({ name, size = 17, title }: IconProps): React.JSX.Element {
 
 `exactOptionalPropertyTypes` ist aktiv — deshalb die Spread-Form statt `strokeLinecap={def.linecap}`.
 
-- [ ] **Step 5: Test laufen lassen**
+- [x] **Step 5: Test laufen lassen**
 
 Run: `npx vitest run packages/ui/src/icons/Icon.test.tsx`
 Expected: PASS, 10 Tests
 
-- [ ] **Step 6: Export und Commit**
+- [x] **Step 6: Export und Commit**
 
 In `packages/ui/src/index.ts`:
 
@@ -1325,7 +1330,7 @@ Sieben Komponenten, jede aus genau einer Helferfunktion der Vorlage abgeleitet. 
   - `function PersonChip(props: { slot: PersonSlot; active: boolean; label: string; onClick(): void })`
   - `function Toggle(props: { checked: boolean; onChange(next: boolean): void; label: string })`
 
-- [ ] **Step 1: Tests schreiben**
+- [x] **Step 1: Tests schreiben**
 
 Create `packages/ui/src/primitives/interactive.test.tsx`:
 
@@ -1477,12 +1482,12 @@ describe('Toggle', () => {
 });
 ```
 
-- [ ] **Step 2: Tests laufen lassen — sie müssen fehlschlagen**
+- [x] **Step 2: Tests laufen lassen — sie müssen fehlschlagen**
 
 Run: `npx vitest run packages/ui/src/primitives/interactive.test.tsx`
 Expected: FAIL — keines der Module existiert
 
-- [ ] **Step 3: `Button` implementieren**
+- [x] **Step 3: `Button` implementieren**
 
 Vier Varianten, alle in der Vorlage vorhanden:
 
@@ -1497,13 +1502,13 @@ Die `style-hover`-Angaben der Vorlage werden zu echten `:hover`-Regeln im CSS-Mo
 
 `type` standardmäßig `'button'`.
 
-- [ ] **Step 4: `IconButton` implementieren**
+- [x] **Step 4: `IconButton` implementieren**
 
 Vorlage Z. 111 und 119–121: 34×34, Radius 11, `border:1px solid var(--line)`, `background:var(--surface)`, `color:var(--ink-700)`, `font-size:15px`, `line-height:1`. Hover wie `secondary`. Das `label` wird `aria-label`; der Inhalt (`‹`, `›`, `✕`) ist `aria-hidden`, damit Screenreader nicht das Zeichen vorlesen.
 
 Die Schließen-Variante der Sheets ist 32×32 (Z. 719) — über `size?: 32 | 34` mit Standard 34.
 
-- [ ] **Step 5: `SegmentSwitch` implementieren**
+- [x] **Step 5: `SegmentSwitch` implementieren**
 
 Hülle: Vorlage Z. 131 — `background:var(--surface-2)`, `border:1px solid var(--line)`, Radius 11, `padding:3px`, `gap:3px`. Knöpfe: `padding:6px 15px`, Radius 9, `font-size:12px`, `font-weight:600`. Zustand aus `pill()` (Z. 1241): aktiv `background:var(--brand-fill)` + `color:#fff`, sonst `background:transparent` + `color:var(--ink-500)`.
 
@@ -1517,7 +1522,7 @@ const move = (delta: number) => {
 };
 ```
 
-- [ ] **Step 6: `NavItem` implementieren**
+- [x] **Step 6: `NavItem` implementieren**
 
 Zwei Layouts aus derselben Zustandsfunktion `navItem()` (Z. 1242): aktiv `background:var(--brand-soft)` + `color:var(--brand)`, sonst transparent + `color:var(--ink-500)`. Hover in beiden: `background:var(--hov-tint)` + `color:var(--brand-600)`.
 
@@ -1526,7 +1531,7 @@ Zwei Layouts aus derselben Zustandsfunktion `navItem()` (Z. 1242): aktiv `backgr
 
 `aria-current="page"` nur wenn aktiv — mit `exactOptionalPropertyTypes` als Spread schreiben.
 
-- [ ] **Step 7: `Chip` und `PersonChip` implementieren**
+- [x] **Step 7: `Chip` und `PersonChip` implementieren**
 
 `Chip` aus `chip()` (Z. 1244) und Z. 318: `border:1px solid`, Radius 999, `padding:7px 13px`, `font-size:11.5px`. Aktiv: `border-color:var(--brand)`, `background:var(--brand-soft)`, `color:var(--brand)`.
 
@@ -1543,18 +1548,18 @@ const style = active
 
 `aria-pressed={active}` auf beiden.
 
-- [ ] **Step 8: `Toggle` implementieren**
+- [x] **Step 8: `Toggle` implementieren**
 
 Vorlage Z. 511–513: Bahn 46×27, Radius 999; Knopf 21×21, `top:3px`, `left` 3 px aus / 22 px ein (aus `knob()`, Z. 1250), `background:#fff`, `box-shadow:0 1px 3px rgba(0,0,0,.3)`, `transition:left .18s ease`. Bahnfarbe aus `track()`: ein `var(--brand-fill)`, aus `var(--track-off)`.
 
 `<button role="switch" aria-checked={checked} aria-label={label}>`. Die Leertaste löst bei `<button>` von sich aus `click` aus — kein eigener Tastaturcode nötig.
 
-- [ ] **Step 9: Tests laufen lassen**
+- [x] **Step 9: Tests laufen lassen**
 
 Run: `npx vitest run packages/ui/src/primitives/interactive.test.tsx`
 Expected: PASS, 18 Tests
 
-- [ ] **Step 10: Exportieren, prüfen, committen**
+- [x] **Step 10: Exportieren, prüfen, committen**
 
 Alle sieben in `packages/ui/src/index.ts` exportieren (Komponente + Props-Typ).
 
@@ -1594,7 +1599,7 @@ ergaenzt, die der Prototyp nicht hatte."
   - `function ProgressBar(props: { height?: number; segments: readonly { widthPct: number; color: string }[]; label: string })`
   - `function SheetHandle(): React.JSX.Element`
 
-- [ ] **Step 1: Tests schreiben**
+- [x] **Step 1: Tests schreiben**
 
 ```tsx
 import { render, screen } from '@testing-library/react';
@@ -1724,17 +1729,17 @@ describe('Card', () => {
 });
 ```
 
-- [ ] **Step 2: Tests laufen lassen — sie müssen fehlschlagen**
+- [x] **Step 2: Tests laufen lassen — sie müssen fehlschlagen**
 
 Run: `npx vitest run packages/ui/src/primitives/display.test.tsx`
 Expected: FAIL
 
-- [ ] **Step 3: Die beiden Beschriftungen implementieren**
+- [x] **Step 3: Die beiden Beschriftungen implementieren**
 
 `FieldLabel` (Vorlage Z. 751): `<label>`, `font-size:11px`, `font-weight:600`, `color:var(--ink-400)`, `text-transform:uppercase`, `letter-spacing:.7px`.
 `SectionLabel` (Vorlage Z. 363): `<div>`, gleiche Optik, aber `letter-spacing:.8px`. Der Unterschied ist echt und bleibt.
 
-- [ ] **Step 4: Die drei Eingabefelder implementieren**
+- [x] **Step 4: Die drei Eingabefelder implementieren**
 
 Vorlage Z. 752: `width:100%`, `margin-top:6px`, `padding:12px`, Radius 13, `border:1px solid var(--line)`, `background:var(--surface-2)`, `color:var(--ink-900)`, `font-size:13.5px`, `outline:none`. Datums- und Zeitfelder nutzen `13px` (Z. 757).
 
@@ -1742,7 +1747,7 @@ Vorlage Z. 752: `width:100%`, `margin-top:6px`, `padding:12px`, Radius 13, `bord
 
 Die `onChange`-Signatur gibt **den Wert**, nicht das Event: `onChange={(e) => onChange(e.target.value)}` intern. Das hält die Screens frei von DOM-Details.
 
-- [ ] **Step 5: `Card` implementieren**
+- [x] **Step 5: `Card` implementieren**
 
 Drei Tonlagen, alle in der Vorlage:
 - `surface` (Z. 361): `border:1px solid var(--line)`, `background:var(--surface)`, Radius 20, `box-shadow:var(--shadow-sm)`
@@ -1751,30 +1756,30 @@ Drei Tonlagen, alle in der Vorlage:
 
 `flush` schaltet das Innenpolster ab — für Karten, deren Kinder eigene Zeilen mit Trennlinien sind (Z. 426, `overflow:hidden` statt `padding`).
 
-- [ ] **Step 6: `ListRow` implementieren**
+- [x] **Step 6: `ListRow` implementieren**
 
 Vorlage Z. 499–505 (statisch) und Z. 553–559 (klickbar): `display:flex`, `align-items:center`, `gap:12px`, `padding:12px 15px`, `border-bottom:1px solid var(--line-soft)` außer bei `last`. Titel `font-size:13px`/`500`/`var(--ink-900)`, Hinweis `font-size:11px`/`var(--ink-400)`/`margin-top:1px`.
 
 Mit `onClick` wird die Zeile ein `<button>` mit Hover `background:var(--hov-tint)` und einem `›` (`font-size:17px`, `color:var(--ink-400)`) am Ende. Ohne `onClick` ein `<div>` — ein Knopf ohne Handler wäre für Tastaturnutzer eine Falle.
 
-- [ ] **Step 7: `Avatar` und `AvatarPair` implementieren**
+- [x] **Step 7: `Avatar` und `AvatarPair` implementieren**
 
 `Avatar` (Vorlage Z. 74): Standard 30×30, `border-radius:50%`, Slot-Farbe als Fläche, `color:#fff`, `font-size:11.5px`, `font-weight:600`, zentriert. `shape="rounded"` ergibt Radius 10–18 je Größe (Z. 285: 30px/Radius 10; Z. 446: 52px/Radius 18) — Regel: `Math.round(size / 3)`.
 
 `AvatarPair` (Z. 73–76): zwei `Avatar` in einem `flex`, der zweite mit `margin-left:-9px` und `border:2px solid var(--surface)`.
 
-- [ ] **Step 8: `ProgressBar` und `SheetHandle` implementieren**
+- [x] **Step 8: `ProgressBar` und `SheetHandle` implementieren**
 
 `ProgressBar`: Bahn `border-radius:999px`, `background:var(--line-soft)`, `overflow:hidden`; Höhe über `height`-Prop, Standard 7 (Vorlage nutzt 6 in Todo-Karten Z. 291, 7 bei Kategorien Z. 392, 9 im Budget Z. 370). Segmente als `flex`-Kinder mit `width` in Prozent. `role="progressbar"`, `aria-label`, `aria-valuemin={0}`, `aria-valuemax={100}`, `aria-valuenow` = Summe der Segmentbreiten, auf 0–100 geklemmt und gerundet.
 
 `SheetHandle` (Z. 713): `width:38px`, `height:4px`, `border-radius:999px`, `background:var(--line)`, `margin:0 auto 12px`. Dekorativ, also `aria-hidden`.
 
-- [ ] **Step 9: Tests laufen lassen**
+- [x] **Step 9: Tests laufen lassen**
 
 Run: `npx vitest run packages/ui/src/primitives/display.test.tsx`
 Expected: PASS, 13 Tests
 
-- [ ] **Step 10: Exportieren und committen**
+- [x] **Step 10: Exportieren und committen**
 
 ```bash
 npm run typecheck && npm run lint && npx vitest run packages/ui
@@ -1809,7 +1814,7 @@ Toast, ConfirmDialog, EmptyState und Skeleton kommen **nicht** aus der Vorlage �
   - `function Skeleton(props: { height?: number; width?: string; radius?: number })`
   - `const TOAST_DURATION_MS = 4000`
 
-- [ ] **Step 1: Tests schreiben**
+- [x] **Step 1: Tests schreiben**
 
 ```tsx
 import { render, screen } from '@testing-library/react';
@@ -1874,12 +1879,12 @@ describe('Skeleton', () => {
 });
 ```
 
-- [ ] **Step 2: Tests laufen lassen — sie müssen fehlschlagen**
+- [x] **Step 2: Tests laufen lassen — sie müssen fehlschlagen**
 
 Run: `npx vitest run packages/ui/src/primitives/feedback.test.tsx`
 Expected: FAIL
 
-- [ ] **Step 3: `Toast` und `ToastProvider` implementieren**
+- [x] **Step 3: `Toast` und `ToastProvider` implementieren**
 
 Optik aus der Sprache abgeleitet: Karte `background:var(--surface)`, `border:1px solid var(--line)`, Radius 14, `box-shadow:var(--shadow-lg)`, `padding:12px 14px`, `font-size:12.5px`. Position `fixed`, unten zentriert, über dem FAB (`bottom: calc(74px + env(safe-area-inset-bottom) + 12px)` mobil, `20px` ab Sidebar-Breakpoint). Einblenden mit `animation: ral-up .22s cubic-bezier(.2,.8,.2,1)` — dieselbe Kurve wie die Sheets.
 
@@ -1889,7 +1894,7 @@ Tonlagen über die vorhandenen Tokens: `info` → `--brand-soft`/`--brand-line`/
 
 Genau ein Toast gleichzeitig: ein neuer ersetzt den alten und setzt die Standzeit zurück. Der Timer muss beim Ersetzen und beim Unmount aufgeräumt werden.
 
-- [ ] **Step 4: `useToast` implementieren**
+- [x] **Step 4: `useToast` implementieren**
 
 Kontext-Hook mit der gleichen Fehlermeldung-Konvention wie `useTheme`:
 
@@ -1897,11 +1902,11 @@ Kontext-Hook mit der gleichen Fehlermeldung-Konvention wie `useTheme`:
 if (!value) throw new Error('useToast braucht einen ToastProvider im Baum');
 ```
 
-- [ ] **Step 5: `EmptyState` implementieren**
+- [x] **Step 5: `EmptyState` implementieren**
 
 Vorlage Z. 733 und Z. 333: `padding:26px 12px`, `text-align:center`, `font-size:12.5px`, `color:var(--ink-400)`. Optionale Handlung als `Button variant="ghost"` darunter.
 
-- [ ] **Step 6: `Skeleton` implementieren**
+- [x] **Step 6: `Skeleton` implementieren**
 
 `background:var(--line-soft)`, Radius aus Prop (Standard 12), `height` Standard 16, `width` Standard `100%`. Pulsieren über eine neue Keyframe in `reset.css`:
 
@@ -1911,12 +1916,12 @@ Vorlage Z. 733 und Z. 333: `padding:26px 12px`, `text-align:center`, `font-size:
 
 In `@media (prefers-reduced-motion: reduce)` die Animation abschalten.
 
-- [ ] **Step 7: Tests laufen lassen**
+- [x] **Step 7: Tests laufen lassen**
 
 Run: `npx vitest run packages/ui/src/primitives/feedback.test.tsx`
 Expected: PASS, 6 Tests
 
-- [ ] **Step 8: Exportieren und committen**
+- [x] **Step 8: Exportieren und committen**
 
 ```bash
 npm run typecheck && npm run lint && npx vitest run packages/ui
@@ -1949,7 +1954,7 @@ Der anspruchsvollste Teil des Design-Systems. Die Vorlage zeigt acht Sheets mit 
   - `function useFocusTrap(active: boolean): React.RefObject<HTMLDivElement | null>`
   - `function useScrollLock(active: boolean): void`
 
-- [ ] **Step 1: Tests für `BottomSheet` schreiben**
+- [x] **Step 1: Tests für `BottomSheet` schreiben**
 
 ```tsx
 import { render, screen } from '@testing-library/react';
@@ -2061,12 +2066,12 @@ describe('BottomSheet', () => {
 
 Der letzte Test braucht `import React from 'react';` am Dateianfang.
 
-- [ ] **Step 2: Tests laufen lassen — sie müssen fehlschlagen**
+- [x] **Step 2: Tests laufen lassen — sie müssen fehlschlagen**
 
 Run: `npx vitest run packages/ui/src/overlays/BottomSheet.test.tsx`
 Expected: FAIL
 
-- [ ] **Step 3: `use-scroll-lock.ts` implementieren**
+- [x] **Step 3: `use-scroll-lock.ts` implementieren**
 
 ```ts
 import { useEffect } from 'react';
@@ -2089,7 +2094,7 @@ export function useScrollLock(active: boolean): void {
 }
 ```
 
-- [ ] **Step 4: `use-focus-trap.ts` implementieren**
+- [x] **Step 4: `use-focus-trap.ts` implementieren**
 
 ```ts
 import { useEffect, useRef } from 'react';
@@ -2159,7 +2164,7 @@ export function useFocusTrap(active: boolean): React.RefObject<HTMLDivElement | 
 
 Der Container braucht `tabIndex={-1}`, damit `container.focus()` greift, wenn er kein fokussierbares Kind hat.
 
-- [ ] **Step 5: `BottomSheet` implementieren**
+- [x] **Step 5: `BottomSheet` implementieren**
 
 Hülle aus Vorlage Z. 712–713, bei allen acht Sheets identisch:
 - Backdrop: `position:absolute; inset:0; background:rgba(15,23,42,.42); z-index:50; display:flex; align-items:flex-end; animation:ral-fade .16s ease`
@@ -2172,18 +2177,18 @@ Zwei Abweichungen von der Vorlage:
 
 Weiteres: `role="dialog"`, `aria-modal="true"`, `aria-labelledby` auf die Titel-ID (über `useId`), `tabIndex={-1}`; Escape über einen `keydown`-Listener auf `document`; Backdrop-Klick nur wenn `event.target === event.currentTarget`; `data-testid="sheet-backdrop"` auf dem Backdrop. `maxHeight` als Prop, weil die Vorlage je Sheet andere Werte nutzt: `day` 78 %, `new` 88 %, alle übrigen 90 %; `item` hat keine Begrenzung (`'none'`).
 
-- [ ] **Step 6: Tests laufen lassen**
+- [x] **Step 6: Tests laufen lassen**
 
 Run: `npx vitest run packages/ui/src/overlays/BottomSheet.test.tsx`
 Expected: PASS, 12 Tests
 
-- [ ] **Step 7: `Modal` implementieren**
+- [x] **Step 7: `Modal` implementieren**
 
 Gleiche Mechanik wie `BottomSheet` (Fokus-Falle, Scroll-Lock, Escape, Backdrop), aber `align-items:center`, `justify-content:center`, Panel `border-radius:24px`, `max-width:420px`, `margin:16px`, `animation:ral-up`. Wird für `ConfirmDialog` und ab SP1 für Upgrade- und Scope-Dialoge gebraucht.
 
 Um Doppelung zu vermeiden: die gemeinsame Logik in eine interne `OverlayFrame`-Komponente ziehen, die `placement: 'bottom' | 'center'` bekommt; `BottomSheet` und `Modal` sind dünne Hüllen darum. Das ist kein Vorgriff, sondern die Konsequenz daraus, dass beide dieselben acht Verhaltensregeln brauchen.
 
-- [ ] **Step 8: Test für `ConfirmDialog` schreiben**
+- [x] **Step 8: Test für `ConfirmDialog` schreiben**
 
 ```tsx
 import { render, screen } from '@testing-library/react';
@@ -2236,13 +2241,13 @@ describe('ConfirmDialog', () => {
 });
 ```
 
-- [ ] **Step 9: `ConfirmDialog` implementieren**
+- [x] **Step 9: `ConfirmDialog` implementieren**
 
 `Modal` als Hülle, Meldung mit `font-size:13px`/`--ink-700`/`line-height:1.5`, darunter zwei Knöpfe im `flex` mit `gap:9px` (wie Vorlage Z. 654–657): Abbrechen als `secondary`, Zustimmen als `primary` bzw. bei `tone="danger"` als `danger`.
 
 Damit der Startfokus auf Abbrechen liegt, muss der Abbrechen-Knopf im DOM **vor** dem Bestätigen-Knopf stehen — die Fokus-Falle nimmt das erste fokussierbare Element. Der Schließen-Knopf des `Modal` wird für `ConfirmDialog` unterdrückt (`dismissible={false}`), sonst wäre er das erste Element.
 
-- [ ] **Step 10: Tests laufen lassen und committen**
+- [x] **Step 10: Tests laufen lassen und committen**
 
 Run: `npx vitest run packages/ui/src/overlays`
 Expected: PASS, 17 Tests
@@ -2281,7 +2286,7 @@ scrollt nicht mit. Das Panel ist ab Sidebar-Breite zentriert statt fensterbreit.
   - `function Fab(props: { label: string; onClick(): void })`
   - `const SIDEBAR_BREAKPOINT_PX = 1024`
 
-- [ ] **Step 1: Tests schreiben**
+- [x] **Step 1: Tests schreiben**
 
 ```tsx
 import { render, screen } from '@testing-library/react';
@@ -2366,12 +2371,12 @@ describe('Fab', () => {
 });
 ```
 
-- [ ] **Step 2: Tests laufen lassen — sie müssen fehlschlagen**
+- [x] **Step 2: Tests laufen lassen — sie müssen fehlschlagen**
 
 Run: `npx vitest run packages/ui/src/shell/shell.test.tsx`
 Expected: FAIL
 
-- [ ] **Step 3: `nav-items.ts` schreiben**
+- [x] **Step 3: `nav-items.ts` schreiben**
 
 Die Vorlage nutzt in Sidebar und Bottom-Nav **unterschiedliche Beschriftungen** für dieselben Ziele (Z. 86/690: „Wochenplaner" gegen „Planer"; Z. 95/702: „Einstellungen" gegen „Profil"). Das bleibt so — kurze Beschriftungen sind in einer 5-spaltigen Bottom-Nav notwendig.
 
@@ -2405,7 +2410,7 @@ Diese zehn Schlüssel existieren in `i18n.js` nicht — Task 13 legt sie als Zus
 
 Damit die Tests ohne i18n laufen, nimmt `AppLayout` eine `labels`-Abbildung als Prop mit Standardwerten in Deutsch. Signatur: `labels?: Partial<Record<TabId, { sidebar: string; bottom: string }>>`.
 
-- [ ] **Step 4: `AppLayout` implementieren**
+- [x] **Step 4: `AppLayout` implementieren**
 
 Struktur (Vorlage Z. 68 und Z. 106, ohne die Prototyp-Hülle):
 
@@ -2423,17 +2428,17 @@ Sichtbarkeit über `@media (min-width: 1024px)` im CSS-Modul, nicht über JS —
 
 Maße: `shell` `max-width:1180px`, `padding:20px 18px 0`; die Inhaltsspalte `max-width:900px`. Unterhalb des Breakpoints keine `max-width`, kein Polster, kein Rahmen — randlos, wie im Spec festgelegt. Die Bottom-Nav wird `position:sticky; bottom:0` mit `padding-bottom: calc(9px + env(safe-area-inset-bottom))`.
 
-- [ ] **Step 5: `Sidebar` implementieren**
+- [x] **Step 5: `Sidebar` implementieren**
 
 Vorlage Z. 71–103: `width:236px`, `flex:none`, `background:var(--surface)`, `border:1px solid var(--line)`, Radius 22, `padding:18px 14px`, `box-shadow:var(--shadow-sm)`, `position:sticky`, `top:80px` — hier `top:20px`, weil die Prototyp-Kopfleiste entfällt.
 
 Inhalt: `AvatarPair` mit Namen und „verbunden" (Z. 72–81), die fünf `NavItem layout="sidebar"` in `nav` mit `aria-label="Bereiche"`, darunter das „Diese Woche"-Panel als `Card tone="brand"` (Z. 99–102). Panelinhalt kommt über `sidebarSummary` von außen — `packages/ui` kennt keine Termindaten.
 
-- [ ] **Step 6: `BottomNav` implementieren**
+- [x] **Step 6: `BottomNav` implementieren**
 
 Vorlage Z. 683–704: `display:flex`, `gap:2px`, `padding:7px 8px 9px`, `border-top:1px solid var(--line)`, `background:var(--surface)`. Fünf `NavItem layout="bottom"`, jedes `flex:1`. `nav` mit `aria-label="Hauptnavigation"`.
 
-- [ ] **Step 7: `AppHeader` implementieren**
+- [x] **Step 7: `AppHeader` implementieren**
 
 Vorlage Z. 108–142: `padding:18px 18px 14px`, `border-bottom:1px solid var(--line-soft)`, `background:var(--surface)`. Kicker `font-size:11px`/`600`/`letter-spacing:1.1px`/uppercase/`--ink-400`; Titel als `<h1>` mit `font-size:21px`/`600`/`letter-spacing:-.3px`/`--ink-900`.
 
@@ -2443,18 +2448,18 @@ Der Zurück-Knopf (Z. 111) und die Bereichsnavigation (Z. 119–121) als `IconBu
 
 Den `+`-Knopf im Header **nicht** einbauen: die Vorlage setzt `showHeaderAdd: false` (Z. 1527) — hinzugefügt wird über den FAB.
 
-- [ ] **Step 8: `Fab` implementieren**
+- [x] **Step 8: `Fab` implementieren**
 
 Vorlage Z. 708: `position:fixed`, `right:16px`, 54×54, Radius 19, `background:var(--brand-fill)`, `color:#fff`, `font-size:25px`, `box-shadow:0 10px 24px rgba(124,58,237,.42)`, Hover `transform:translateY(-2px) scale(1.04)` mit stärkerem Schatten.
 
 `bottom`: mobil `calc(74px + env(safe-area-inset-bottom))`, ab Breakpoint `20px` (Vorlage: 74 px bzw. 20 px, Z. 1528). Das `+` ist `aria-hidden`, der Name kommt aus `aria-label={label}`.
 
-- [ ] **Step 9: Tests laufen lassen**
+- [x] **Step 9: Tests laufen lassen**
 
 Run: `npx vitest run packages/ui/src/shell/shell.test.tsx`
 Expected: PASS, 8 Tests
 
-- [ ] **Step 10: Exportieren und committen**
+- [x] **Step 10: Exportieren und committen**
 
 ```bash
 npm run typecheck && npm run lint && npx vitest run packages/ui
@@ -2488,7 +2493,7 @@ Ab hier gibt es zum ersten Mal etwas zu sehen. Ziel dieser Task: `npm run dev` s
   - `const router` mit den Pfaden `/kalender`, `/planer`, `/todos`, `/todos/:listId`, `/geld`, `/profil`, `/profil/sync`
   - `apps/app/dist` als Build-Ausgabe
 
-- [ ] **Step 1: Test für `AppFrame` schreiben**
+- [x] **Step 1: Test für `AppFrame` schreiben**
 
 ```tsx
 import { render, screen } from '@testing-library/react';
@@ -2547,12 +2552,12 @@ describe('Routing', () => {
 });
 ```
 
-- [ ] **Step 2: Test laufen lassen — er muss fehlschlagen**
+- [x] **Step 2: Test laufen lassen — er muss fehlschlagen**
 
 Run: `npx vitest run apps/app/src/routes/AppFrame.test.tsx`
 Expected: FAIL
 
-- [ ] **Step 3: `vite.config.ts` schreiben**
+- [x] **Step 3: `vite.config.ts` schreiben**
 
 ```ts
 import { fileURLToPath } from 'node:url';
@@ -2578,7 +2583,7 @@ export default defineConfig({
 });
 ```
 
-- [ ] **Step 4: `index.html` schreiben**
+- [x] **Step 4: `index.html` schreiben**
 
 ```html
 <!doctype html>
@@ -2607,7 +2612,7 @@ export default defineConfig({
 
 `viewport-fit=cover` ist Voraussetzung dafür, dass `env(safe-area-inset-*)` überhaupt Werte liefert.
 
-- [ ] **Step 5: Test schreiben, der das Inline-Skript gegen `themeBootScript()` prüft**
+- [x] **Step 5: Test schreiben, der das Inline-Skript gegen `themeBootScript()` prüft**
 
 Sonst driften die zwei Kopien auseinander. Create `apps/app/src/boot/theme-boot.test.ts`:
 
@@ -2631,7 +2636,7 @@ describe('Theme-Boot-Skript', () => {
 
 Diese Datei liegt unter `apps/app/src/**/*.test.ts` und läuft damit im `dom`-Projekt — Dateizugriff ist dort erlaubt.
 
-- [ ] **Step 6: `router.tsx` schreiben**
+- [x] **Step 6: `router.tsx` schreiben**
 
 ```tsx
 import { Navigate, type RouteObject } from 'react-router';
@@ -2663,7 +2668,7 @@ export const routes: RouteObject[] = [
 
 `routes` wird exportiert, damit Tests `createMemoryRouter` nutzen können; `main.tsx` baut daraus `createBrowserRouter(routes, { basename: '/app' })`.
 
-- [ ] **Step 7: `AppFrame.tsx` schreiben**
+- [x] **Step 7: `AppFrame.tsx` schreiben**
 
 ```tsx
 import { Outlet, useLocation, useNavigate } from 'react-router';
@@ -2693,7 +2698,7 @@ export function AppFrame(): React.JSX.Element {
 }
 ```
 
-- [ ] **Step 8: `App.tsx` und `main.tsx` schreiben**
+- [x] **Step 8: `App.tsx` und `main.tsx` schreiben**
 
 `App.tsx` klammert die Provider:
 
@@ -2735,12 +2740,12 @@ createRoot(host).render(
 );
 ```
 
-- [ ] **Step 9: Tests laufen lassen**
+- [x] **Step 9: Tests laufen lassen**
 
 Run: `npx vitest run apps/app`
 Expected: PASS, 10 Tests
 
-- [ ] **Step 10: Dev-Server und Build prüfen**
+- [x] **Step 10: Dev-Server und Build prüfen**
 
 Run: `npm run dev`
 Expected: Vite startet, `http://localhost:5173/app/` zeigt die Shell mit fünf Tabs. Bei ≥1024 px Fensterbreite links die Sidebar, darunter die Bottom-Nav. Danach beenden.
@@ -2748,7 +2753,7 @@ Expected: Vite startet, `http://localhost:5173/app/` zeigt die Shell mit fünf T
 Run: `npm run build`
 Expected: Exit 0, `apps/app/dist/index.html` und `dist/assets/*` entstehen, keine Warnungen.
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add apps/app package.json
@@ -2783,7 +2788,7 @@ Inline-Theme-Skript in index.html mit themeBootScript() synchron."
   - `function useT(): { t(key: string): string; lang: Lang; setLang(next: Lang): void }`
   - `de.json`/`en.json` mit je 546 Schlüsseln aus `i18n.js`, plus die Zusätze aus `additions.json`
 
-- [ ] **Step 1: Test für das Extraktionsskript schreiben**
+- [x] **Step 1: Test für das Extraktionsskript schreiben**
 
 Create `apps/app/src/i18n/i18n.test.ts`:
 
@@ -2837,12 +2842,12 @@ describe('Übersetzungskataloge', () => {
 });
 ```
 
-- [ ] **Step 2: Test laufen lassen — er muss fehlschlagen**
+- [x] **Step 2: Test laufen lassen — er muss fehlschlagen**
 
 Run: `npx vitest run apps/app/src/i18n/i18n.test.ts`
 Expected: FAIL — `de.json` existiert nicht
 
-- [ ] **Step 3: `scripts/extract-i18n.mjs` schreiben**
+- [x] **Step 3: `scripts/extract-i18n.mjs` schreiben**
 
 Handarbeit ist ausgeschlossen. Das Skript liest das Objektliteral und wertet es aus, statt es mit Regex zu zerlegen — Werte enthalten Apostrophe, Emoji und Escapes, an denen ein Zeilenparser scheitert.
 
@@ -2966,7 +2971,7 @@ if (failed) process.exit(1);
 console.log(`${deKeys.length} Schlüssel je Sprache${check ? ' geprüft' : ' geschrieben'}`);
 ```
 
-- [ ] **Step 4: `additions.json` schreiben**
+- [x] **Step 4: `additions.json` schreiben**
 
 Die zehn Navigations-Schlüssel, die `i18n.js` nicht hat. Beschriftungen wortgleich aus der Vorlage (Sidebar Z. 84–96, Bottom-Nav Z. 686–702):
 
@@ -3001,7 +3006,7 @@ Die zehn Navigations-Schlüssel, die `i18n.js` nicht hat. Beschriftungen wortgle
 
 Weitere Schlüssel für Screen-Texte kommen in den Tasks 15–21 hier hinzu. Regel: alles, was Ralia_Opus schon kennt, wird **nicht** dupliziert — erst in `i18n.js` nachsehen.
 
-- [ ] **Step 5: Skript ausführen und Ergebnis prüfen**
+- [x] **Step 5: Skript ausführen und Ergebnis prüfen**
 
 Run: `npm run i18n:extract`
 Expected: Warnungen zu 6 doppelten DE- und 4 doppelten EN-Schlüsseln, danach `556 Schlüssel je Sprache geschrieben` (546 + 10).
@@ -3009,12 +3014,12 @@ Expected: Warnungen zu 6 doppelten DE- und 4 doppelten EN-Schlüsseln, danach `5
 Run: `node scripts/extract-i18n.mjs --check`
 Expected: `556 Schlüssel je Sprache geprüft`, Exit 0 — belegt, dass das Skript reproduzierbar arbeitet.
 
-- [ ] **Step 6: Test laufen lassen**
+- [x] **Step 6: Test laufen lassen**
 
 Run: `npx vitest run apps/app/src/i18n/i18n.test.ts`
 Expected: PASS, 6 Tests
 
-- [ ] **Step 7: `catalog.ts` und `I18nProvider` schreiben**
+- [x] **Step 7: `catalog.ts` und `I18nProvider` schreiben**
 
 ```ts
 import de from './de.json' with { type: 'json' };
@@ -3046,7 +3051,7 @@ export function translate(lang: Lang, key: string): string {
 
 `I18nProvider` hält `lang` im State (Startwert aus `detectLang`), schreibt bei `setLang` in `localStorage` und setzt `document.documentElement.lang`. Der Kontextwert wird memoisiert.
 
-- [ ] **Step 8: Test für den Provider schreiben und bestehen lassen**
+- [x] **Step 8: Test für den Provider schreiben und bestehen lassen**
 
 ```tsx
 import { render, screen } from '@testing-library/react';
@@ -3102,7 +3107,7 @@ describe('I18nProvider', () => {
 });
 ```
 
-- [ ] **Step 9: `AppFrame` an i18n anschließen**
+- [x] **Step 9: `AppFrame` an i18n anschließen**
 
 `AppFrame` übergibt `labels` an `AppLayout`, gefüllt aus `useT()` über `TABS`:
 
@@ -3115,7 +3120,7 @@ const labels = Object.fromEntries(
 
 `App.tsx` klammert `I18nProvider` um `RouterProvider`.
 
-- [ ] **Step 10: Alles prüfen und committen**
+- [x] **Step 10: Alles prüfen und committen**
 
 Run: `npm run typecheck && npm run lint && npm test`
 Expected: grün
@@ -3147,7 +3152,7 @@ auseinanderlaufen. --check belegt Reproduzierbarkeit."
   - `function runBoot(deps?: BootDeps): Promise<BootResult>` — `BootDeps` erlaubt das Einsetzen von Testdoppeln für `loadRuntimeConfig`, `storage`, `serviceWorker`, `caches`
   - `function BootGate(props: { children: ReactNode })`
 
-- [ ] **Step 1: Tests schreiben**
+- [x] **Step 1: Tests schreiben**
 
 Die Reihenfolge aus dem Spec ist das Prüfobjekt: `/config` darf nicht blockieren, die Legacy-Migration läuft genau einmal, Alt-Keys fallen erst nach dem Import.
 
@@ -3259,12 +3264,12 @@ describe('runBoot', () => {
 });
 ```
 
-- [ ] **Step 2: Tests laufen lassen — sie müssen fehlschlagen**
+- [x] **Step 2: Tests laufen lassen — sie müssen fehlschlagen**
 
 Run: `npx vitest run apps/app/src/boot/bootstrap.test.ts`
 Expected: FAIL
 
-- [ ] **Step 3: `bootstrap.ts` implementieren**
+- [x] **Step 3: `bootstrap.ts` implementieren**
 
 Die Reihenfolge ist zwingend und im Code zu kommentieren. Alle Außenkanten kommen über `BootDeps` mit Standardwerten aus der Umgebung — nur so ist die Sequenz testbar, ohne einen Browser zu fahren.
 
@@ -3286,12 +3291,12 @@ Ablauf:
 
 Der Rückgabewert enthält `config`, `warnings` und die `Outbox`-Instanz, damit spätere Sub-Projekte sie über einen Kontext beziehen können.
 
-- [ ] **Step 4: Tests laufen lassen**
+- [x] **Step 4: Tests laufen lassen**
 
 Run: `npx vitest run apps/app/src/boot/bootstrap.test.ts`
 Expected: PASS, 6 Tests
 
-- [ ] **Step 5: `BootGate` implementieren**
+- [x] **Step 5: `BootGate` implementieren**
 
 `useEffect` mit einem `ref`-Wächter, damit `runBoot` unter `StrictMode` nicht zweimal läuft. Drei Zustände:
 
@@ -3299,11 +3304,11 @@ Expected: PASS, 6 Tests
 - `ready`: `children`, und jede Warnung einmal als Toast (`tone="info"`)
 - `failed`: `EmptyState` mit der Fehlermeldung und einem „Erneut versuchen"-Knopf, der `runBoot` neu anstößt
 
-- [ ] **Step 6: `App.tsx` erweitern**
+- [x] **Step 6: `App.tsx` erweitern**
 
 Reihenfolge der Provider: `ThemeProvider` → `I18nProvider` → `ToastProvider` → `BootGate` → `RouterProvider`. `BootGate` muss innerhalb von `ToastProvider` liegen, weil es Warnungen als Toast meldet, und innerhalb von `I18nProvider`, weil seine Texte übersetzt sind.
 
-- [ ] **Step 7: Prüfen und committen**
+- [x] **Step 7: Prüfen und committen**
 
 Run: `npm run typecheck && npm run lint && npm test && npm run build`
 Expected: grün
@@ -3336,7 +3341,7 @@ Ein fehlgeschlagenes /config wird zur Warnung, nicht zum Abbruch."
   - `interface MockExpense { title: string; slot: PersonSlot; category: string; date: string; amount: number; split: string }`
   - `const MOCK_EVENTS`, `MOCK_TODOS`, `MOCK_TODO_LISTS`, `MOCK_PLANNER`, `MOCK_CATEGORIES`, `MOCK_EXPENSES`, `MOCK_PROFILE`
 
-- [ ] **Step 1: Test schreiben**
+- [x] **Step 1: Test schreiben**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -3382,12 +3387,12 @@ describe('Demo-Daten', () => {
 });
 ```
 
-- [ ] **Step 2: Test laufen lassen — er muss fehlschlagen**
+- [x] **Step 2: Test laufen lassen — er muss fehlschlagen**
 
 Run: `npx vitest run apps/app/src/mock/fixtures.test.ts`
 Expected: FAIL
 
-- [ ] **Step 3: Fixtures übernehmen**
+- [x] **Step 3: Fixtures übernehmen**
 
 Quelle: Vorlage Z. 1079–1147 (`baseEvents`, `baseTodos`, `basePlanner`, `categories`, `expenses`) und Z. 1063 (`me`). Feldnamen ausschreiben: `d` → `iso`, `t` → `title`, `s` → `start`, `e` → `end`, `who` → `slot`, `loc` → `location`, `g` → `listId`.
 
@@ -3406,7 +3411,7 @@ Dateikopf:
  */
 ```
 
-- [ ] **Step 4: Test laufen lassen und committen**
+- [x] **Step 4: Test laufen lassen und committen**
 
 Run: `npx vitest run apps/app/src/mock/fixtures.test.ts`
 Expected: PASS, 6 Tests
@@ -3436,7 +3441,7 @@ git commit -m "feat(app): Demo-Daten der Vorlage als SP0-Platzhalter"
   - `function MonthView(props: { year: number; monthIndex: number; weekStart: WeekStart; today: string; events: readonly MockEvent[]; onSelectDay(iso: string): void })`
   - `function monthTitle(year: number, monthIndex: number, lang: Lang): string`
 
-- [ ] **Step 1: Tests schreiben**
+- [x] **Step 1: Tests schreiben**
 
 ```tsx
 import { render, screen } from '@testing-library/react';
@@ -3533,12 +3538,12 @@ describe('MonthView', () => {
 });
 ```
 
-- [ ] **Step 2: Tests laufen lassen — sie müssen fehlschlagen**
+- [x] **Step 2: Tests laufen lassen — sie müssen fehlschlagen**
 
 Run: `npx vitest run apps/app/src/screens/calendar/MonthView.test.tsx`
 Expected: FAIL
 
-- [ ] **Step 3: `use-element-height.ts` implementieren**
+- [x] **Step 3: `use-element-height.ts` implementieren**
 
 ```ts
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -3573,7 +3578,7 @@ export function useElementHeight(): [(node: HTMLElement | null) => void, number]
 }
 ```
 
-- [ ] **Step 4: `MonthView` implementieren**
+- [x] **Step 4: `MonthView` implementieren**
 
 Raster und Zellen: Vorlage Z. 148–174. Werte im CSS-Modul: Kopfzeile `grid-template-columns:repeat(7,minmax(0,1fr))`, `gap:5px`; Raster zusätzlich `grid-template-rows:repeat(6,minmax(46px,1fr))`, `flex:1`, `min-height:0`; Zelle `padding:5px 4px`, Radius 11, `border:1px solid`; Tagesnummer 20×20 Kreis, `font-size:11px`; Chip `height:16px`, Radius 5, `border-left:2.5px solid`, Titel `font-size:9px`; Punkt 7×7, Radius 2.
 
@@ -3597,7 +3602,7 @@ Dazu `aria-current="date"` am heutigen Tag, `data-outside="true"` außerhalb des
 
 Wochentagsnamen und Monatsnamen aus `calendar-labels.ts` über `Intl.DateTimeFormat` mit der aktiven Sprache — nicht als hartcodierte Arrays wie in der Vorlage (Z. 1076–1077), sonst wäre die englische Fassung deutsch.
 
-- [ ] **Step 5: `CalendarScreen` implementieren**
+- [x] **Step 5: `CalendarScreen` implementieren**
 
 Hält `year`/`monthIndex`/`calMode` im State, rendert `AppHeader` mit `kicker` und `title` (Monatsname plus Jahr), Bereichsnavigation über `range` und darunter als `children` den `SegmentSwitch` `Monat | Woche` plus die Personenlegende (Vorlage Z. 129–141). Der FAB steht im Screen, nicht im Layout — die Vorlage blendet ihn auf Profil und Sync aus (Z. 1526).
 
@@ -3605,17 +3610,17 @@ Bis Task 17 zeigt `calMode === 'woche'` einen `EmptyState`.
 
 Router: `/kalender` auf `CalendarScreen` umstellen.
 
-- [ ] **Step 6: Tests laufen lassen**
+- [x] **Step 6: Tests laufen lassen**
 
 Run: `npx vitest run apps/app/src/screens/calendar`
 Expected: PASS, 9 Tests
 
-- [ ] **Step 7: Im Browser gegen die Vorlage abgleichen**
+- [x] **Step 7: Im Browser gegen die Vorlage abgleichen**
 
 Run: `npm run dev` und `/app/kalender` öffnen.
 Prüfen: 6×7-Raster füllt die Höhe; heute violett hinterlegt mit gefüllter Nummer; Chips zeigen Titel in Personenfarbe; Fenster schmaler ziehen → Chips werden zu Punkten; Tage außerhalb blass.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add apps/app
@@ -3642,7 +3647,7 @@ Namen mit Terminzahl - die Vorlage liest dort nur eine Zahl vor."
   - `function WeekView(props: { weekStartIso: string; today: string; events: readonly MockEvent[]; nightExpanded: boolean; onToggleNight(): void; onSelectDay(iso: string): void })`
   - `function addDaysIso(iso: string, days: number): string` in `apps/app/src/screens/calendar/calendar-labels.ts`
 
-- [ ] **Step 1: Tests schreiben**
+- [x] **Step 1: Tests schreiben**
 
 ```tsx
 import { render, screen } from '@testing-library/react';
@@ -3730,12 +3735,12 @@ describe('WeekView', () => {
 });
 ```
 
-- [ ] **Step 2: Tests laufen lassen — sie müssen fehlschlagen**
+- [x] **Step 2: Tests laufen lassen — sie müssen fehlschlagen**
 
 Run: `npx vitest run apps/app/src/screens/calendar/WeekView.test.tsx`
 Expected: FAIL
 
-- [ ] **Step 3: `WeekView` implementieren**
+- [x] **Step 3: `WeekView` implementieren**
 
 Struktur und Werte: Vorlage Z. 179–217.
 
@@ -3752,11 +3757,11 @@ Mindestbreite `640px` unterhalb des Sidebar-Breakpoints, `100%` darüber (Vorlag
 
 Geometrie ausschließlich über `weekEventGeometry`; Termine ohne Zeit (`parseTimeToMinutes` liefert `null`) werden übersprungen. Der Name eines Termins ist `` `${title}, ${start}–${end}` `` — der innere Text `aria-hidden`.
 
-- [ ] **Step 4: `CalendarScreen` erweitern**
+- [x] **Step 4: `CalendarScreen` erweitern**
 
 `weekStartIso` und `nightExpanded` in den State. Bei `calMode === 'woche'` verschiebt die Bereichsnavigation um sieben Tage statt um einen Monat, und Kicker/Titel wechseln auf Kalenderwoche und Datumsspanne (Vorlage Z. 1472, 1480). „Heute" springt in beiden Modi auf `MOCK_TODAY`.
 
-- [ ] **Step 5: Tests laufen lassen, im Browser prüfen, committen**
+- [x] **Step 5: Tests laufen lassen, im Browser prüfen, committen**
 
 Run: `npx vitest run apps/app/src/screens/calendar`
 Expected: PASS, 19 Tests
@@ -3781,7 +3786,7 @@ git commit -m "feat(app): Wochenansicht als Timeline mit einklappbaren Nachtstun
 - Consumes: Task 8 (`Card`, `Button`), Task 6 (`Icon` mit `meal`/`task`), Task 15 (`MOCK_PLANNER`)
 - Produces: `function PlannerScreen(): React.JSX.Element`
 
-- [ ] **Step 1: Tests schreiben**
+- [x] **Step 1: Tests schreiben**
 
 ```tsx
 import { render, screen } from '@testing-library/react';
@@ -3838,12 +3843,12 @@ describe('PlannerScreen', () => {
 });
 ```
 
-- [ ] **Step 2: Test laufen lassen — er muss fehlschlagen**
+- [x] **Step 2: Test laufen lassen — er muss fehlschlagen**
 
 Run: `npx vitest run apps/app/src/screens/planner`
 Expected: FAIL
 
-- [ ] **Step 3: `PlannerScreen` implementieren**
+- [x] **Step 3: `PlannerScreen` implementieren**
 
 Struktur und Werte: Vorlage Z. 221–276.
 
@@ -3859,7 +3864,7 @@ Aufgaben als echte `<input type="checkbox">` mit sichtbar gestaltetem Kästchen 
 
 Icons: die Vorlage codiert `stroke="#f97316"` und `stroke="#3b82f6"` hart. Hier über `color` auf dem Elternelement plus `currentColor` im Icon, gesetzt auf `var(--bday)` und `var(--u1)` — dieselben Farben, aber themenfähig.
 
-- [ ] **Step 4: Tests laufen lassen und committen**
+- [x] **Step 4: Tests laufen lassen und committen**
 
 Run: `npx vitest run apps/app/src/screens/planner`
 Expected: PASS, 7 Tests
@@ -3891,7 +3896,7 @@ Optik, aber der Zustand ist fuer Screenreader lesbar."
   - `function TodoDetail(): React.JSX.Element` — liest `listId` aus `useParams`
   - `function useTodoStore(): { items; lists; toggle(id: string): void; filter; setFilter }` — SP0-interner Zustand über `useState`, ersetzt in SP3 durch ein Repository
 
-- [ ] **Step 1: Tests für die Übersicht schreiben**
+- [x] **Step 1: Tests für die Übersicht schreiben**
 
 ```tsx
 import { render, screen } from '@testing-library/react';
@@ -3931,7 +3936,7 @@ describe('TodoOverview', () => {
 });
 ```
 
-- [ ] **Step 2: Tests für das Detail schreiben**
+- [x] **Step 2: Tests für das Detail schreiben**
 
 ```tsx
 import { render, screen } from '@testing-library/react';
@@ -3996,18 +4001,18 @@ describe('TodoDetail', () => {
 });
 ```
 
-- [ ] **Step 3: Tests laufen lassen — sie müssen fehlschlagen**
+- [x] **Step 3: Tests laufen lassen — sie müssen fehlschlagen**
 
 Run: `npx vitest run apps/app/src/screens/todos`
 Expected: FAIL
 
-- [ ] **Step 4: `todo-store.ts` implementieren**
+- [x] **Step 4: `todo-store.ts` implementieren**
 
 Ein `useState`-Speicher mit den Fixtures als Startwert, `toggle(id)` kippt `done`, `filter` ist `'alle' | 'u1' | 'u2' | 'offen'` (Vorlage Z. 1382–1400).
 
 Der Zustand muss in einem Kontext auf `/todos`-Ebene liegen, damit Übersicht und Detail dieselbe Wahrheit sehen — sonst verpufft ein Abhaken im Detail beim Zurückgehen. Also `TodoStoreProvider` als Elternroute für `/todos` und `/todos/:listId`; `useTodoStore` liest daraus. Mehr als das braucht es nicht: SP3 ersetzt den Speicher durch ein Repository.
 
-- [ ] **Step 5: `TodoOverview` implementieren**
+- [x] **Step 5: `TodoOverview` implementieren**
 
 Vorlage Z. 280–311: Raster `repeat(2,minmax(0,1fr))`, `gap:12px`; Kachel Radius 20, `padding:14px`, `min-height:152px`, Hover `transform:translateY(-2px)` mit Schatten und `border-color:var(--hov-ring)`; Initiale 30×30 Radius 10 in Listenfarbe; Zähler `font-size:20px`; Titel `font-size:15px`; `ProgressBar height={6}`; `AvatarPair`-artige Überlappung mit `margin-left:-5px` und 20×20-Avataren. Anlegen-Kachel `border:1.5px dashed var(--line)`.
 
@@ -4015,17 +4020,17 @@ Darunter die Karte „Zuletzt erledigt" (Z. 307–310).
 
 Zellenname für Screenreader: `` `${titel}, ${offen} offen` `` — die Vorlage liest Titel und Zahl getrennt vor.
 
-- [ ] **Step 6: `TodoDetail` implementieren**
+- [x] **Step 6: `TodoDetail` implementieren**
 
 Vorlage Z. 315–356: Filterleiste als waagerecht scrollende `Chip`-Reihe; Liste in einer `Card flush` mit Zeilen `padding:14px 15px`, Kästchen 22×22 Radius 8, Text `font-size:14px`, Notiz `font-size:10.5px` in `--ink-400`, Avatar 24×24; darunter „+ Eintrag hinzufügen" als `Button variant="ghost"`; dann der Erledigt-Aufklapper (`Card` auf `--surface-2`) mit `aria-expanded`; zuletzt die Metazeile.
 
 Auch hier echte Checkboxen statt Knöpfe. Das lange Drücken zum Bearbeiten kommt in Task 22 mit dem Item-Sheet; hier bleibt es beim Abhaken.
 
-- [ ] **Step 7: Router und Header verdrahten**
+- [x] **Step 7: Router und Header verdrahten**
 
 `/todos` → `TodoOverview`, `/todos/:listId` → `TodoDetail` unter einer gemeinsamen Elternroute mit `TodoStoreProvider`. Der Header bekommt bei einer geöffneten Liste `onBack` (Vorlage Z. 1587–1588) und als Kicker `` `${offen} offen · geteilt mit …` ``.
 
-- [ ] **Step 8: Tests laufen lassen und committen**
+- [x] **Step 8: Tests laufen lassen und committen**
 
 Run: `npx vitest run apps/app/src/screens/todos`
 Expected: PASS, 11 Tests
@@ -4057,7 +4062,7 @@ Zurueckgehen erhalten bleibt."
   - `function budgetSummary(categories, budget): { spent: number; pct: number; remaining: number }`
   - `function MoneyScreen(): React.JSX.Element`
 
-- [ ] **Step 1: Test für die Rechnung schreiben**
+- [x] **Step 1: Test für die Rechnung schreiben**
 
 Die Arithmetik zuerst, getrennt von der Darstellung — sie ist die einzige Stelle im Screen, die falsch rechnen kann.
 
@@ -4129,7 +4134,7 @@ describe('budgetSummary', () => {
 });
 ```
 
-- [ ] **Step 2: Test für den Screen schreiben**
+- [x] **Step 2: Test für den Screen schreiben**
 
 ```tsx
 import { render, screen } from '@testing-library/react';
@@ -4174,16 +4179,16 @@ describe('MoneyScreen', () => {
 });
 ```
 
-- [ ] **Step 3: Tests laufen lassen — sie müssen fehlschlagen**
+- [x] **Step 3: Tests laufen lassen — sie müssen fehlschlagen**
 
 Run: `npx vitest run apps/app/src/screens/money`
 Expected: FAIL
 
-- [ ] **Step 4: `money-math.ts` implementieren**
+- [x] **Step 4: `money-math.ts` implementieren**
 
 Regel aus Vorlage Z. 1413–1458. Segmentfarben über `personTokens`, nie als Literal. Division durch null ergibt 100 Prozent, wenn ausgegeben wurde, sonst 0.
 
-- [ ] **Step 5: `MoneyScreen` implementieren**
+- [x] **Step 5: `MoneyScreen` implementieren**
 
 Vorlage Z. 360–439, vier Blöcke:
 1. Budgetkarte: `SectionLabel` „Budget <Monat>", Betrag `font-size:27px` mit `letter-spacing:-.5px`, `ProgressBar height={9}`, Restzeile `font-size:11.5px`
@@ -4191,7 +4196,7 @@ Vorlage Z. 360–439, vier Blöcke:
 3. Bilanz: `Card tone="brand"` mit zwei Personenkarten (Radius 14) und der Schuldzeile, darunter der Ausgleichsknopf
 4. Letzte Ausgaben: `Card flush` mit Zeilen aus Plakette 26×26 Radius 9, Titel, Meta und Betrag
 
-- [ ] **Step 6: Tests laufen lassen und committen**
+- [x] **Step 6: Tests laufen lassen und committen**
 
 Run: `npx vitest run apps/app/src/screens/money`
 Expected: PASS, 15 Tests
@@ -4219,7 +4224,7 @@ Der erste Screen, der echte Funktion trägt: hier hängen Theme- und Sprachumsch
 - Consumes: Task 4 (`useTheme`), Task 7 (`Toggle`, `SegmentSwitch`, `Button`), Task 8 (`Card`, `ListRow`, `Avatar`, `SectionLabel`), Task 9 (`useToast`), Task 13 (`useT`)
 - Produces: `function SettingsScreen(): React.JSX.Element`
 
-- [ ] **Step 1: Tests schreiben**
+- [x] **Step 1: Tests schreiben**
 
 ```tsx
 import { render, screen } from '@testing-library/react';
@@ -4315,12 +4320,12 @@ describe('SettingsScreen', () => {
 });
 ```
 
-- [ ] **Step 2: Tests laufen lassen — sie müssen fehlschlagen**
+- [x] **Step 2: Tests laufen lassen — sie müssen fehlschlagen**
 
 Run: `npx vitest run apps/app/src/screens/settings`
 Expected: FAIL
 
-- [ ] **Step 3: `SettingsScreen` implementieren**
+- [x] **Step 3: `SettingsScreen` implementieren**
 
 Vorlage Z. 443–563, sechs Blöcke:
 
@@ -4337,7 +4342,7 @@ Der Dark-Mode-`Toggle` bildet `resolved === 'dark'` ab und setzt beim Umschalten
 
 Beim Kopieren `navigator.clipboard.writeText` in `try/catch` und in beiden Fällen einen Toast: Erfolg oder Hinweis, den Code abzuschreiben.
 
-- [ ] **Step 4: Tests laufen lassen und committen**
+- [x] **Step 4: Tests laufen lassen und committen**
 
 Run: `npx vitest run apps/app/src/screens/settings`
 Expected: PASS, 8 Tests
@@ -4363,7 +4368,7 @@ abgeleitet - Abnahmekriterium 7 verlangt sie erreichbar."
 - Consumes: Task 7, Task 8, Task 11 (`AppHeader` mit `onBack`)
 - Produces: `function SyncScreen(): React.JSX.Element`
 
-- [ ] **Step 1: Tests schreiben**
+- [x] **Step 1: Tests schreiben**
 
 ```tsx
 import { render, screen, within } from '@testing-library/react';
@@ -4450,12 +4455,12 @@ describe('SyncScreen', () => {
 });
 ```
 
-- [ ] **Step 2: Tests laufen lassen — sie müssen fehlschlagen**
+- [x] **Step 2: Tests laufen lassen — sie müssen fehlschlagen**
 
 Run: `npx vitest run apps/app/src/screens/settings/SyncScreen.test.tsx`
 Expected: FAIL
 
-- [ ] **Step 3: `SyncScreen` implementieren**
+- [x] **Step 3: `SyncScreen` implementieren**
 
 Vorlage Z. 567–678, sechs Blöcke: Statuskarte mit „G"-Plakette und Sync-Knopf; verbundene Konten; Kalenderliste mit Farbpunkt und Schalter (44×25, Knopf 19 px — kleiner als der Standard-`Toggle`, also über eine `size`-Variante); Richtungsauswahl als Radiogruppe mit `border:1.5px solid` und Radiopunkt 19 px; Konfliktkarte `Card tone="warn"` mit zwei Gegenüberstellungen und zwei Knöpfen; Protokoll mit Zeitspalte `min-width:80px` und `font-variant-numeric:tabular-nums`.
 
@@ -4465,7 +4470,7 @@ Der Konflikt hat drei Zustände (`open` → `done` → zurück auf `open`), wie 
 
 Alle Fixtures dieses Screens (Konten, Kalender, Protokoll, Konflikt) nach `apps/app/src/mock/fixtures.ts` verschieben, damit der Screen keine Literale trägt — Vorlage Z. 1072 (`cals`) und die `syncAccounts`/`syncLog`/`syncDirs`-Blöcke.
 
-- [ ] **Step 4: Tests laufen lassen und committen**
+- [x] **Step 4: Tests laufen lassen und committen**
 
 Run: `npx vitest run apps/app/src/screens/settings`
 Expected: PASS, 18 Tests (8 aus Task 21, 10 hier)
@@ -4502,7 +4507,7 @@ Drei Sheets: `day`, `new`, `event`. Sie hängen zusammen — aus dem Tages-Sheet
   - `function EventSheet(props: { open: boolean; event: MockEvent | null; onClose(): void; onSave(next: MockEvent): void; onDelete(): void })`
   - `interface EventDraft { title: string; iso: string; time: string; slot: PersonSlot; toGoogle: boolean }`
 
-- [ ] **Step 1: Tests schreiben**
+- [x] **Step 1: Tests schreiben**
 
 ```tsx
 import { render, screen } from '@testing-library/react';
@@ -4616,12 +4621,12 @@ describe('NewEventSheet', () => {
 });
 ```
 
-- [ ] **Step 2: Tests laufen lassen — sie müssen fehlschlagen**
+- [x] **Step 2: Tests laufen lassen — sie müssen fehlschlagen**
 
 Run: `npx vitest run apps/app/src/sheets`
 Expected: FAIL
 
-- [ ] **Step 3: `use-long-press.ts` implementieren**
+- [x] **Step 3: `use-long-press.ts` implementieren**
 
 Vorlage Z. 1189–1196: 480 ms Schwelle, Timer bei `pointerup` und `pointerleave` löschen. Ergänzung gegenüber der Vorlage: nach dem Auslösen muss der folgende `click` unterdrückt werden, sonst würde ein langes Drücken zusätzlich das Abhaken auslösen. Dafür ein `ref`-Merker und `onClickCapture` mit `stopPropagation()`.
 
@@ -4659,17 +4664,17 @@ export function useLongPress(onLongPress: () => void, delayMs = 480) {
 }
 ```
 
-- [ ] **Step 4: `sheets.module.css` schreiben**
+- [x] **Step 4: `sheets.module.css` schreiben**
 
 Die Formularmaße, die alle acht Sheets teilen (Vorlage Z. 749–780): Feldstapel `display:flex; flex-direction:column; gap:11px; margin-top:15px`; Zeile mit zwei Feldern `display:flex; gap:10px`, das schmale Feld je nach Sheet `width:104px`, `110px` oder `112px`; Knopfzeile `display:flex; gap:9px; margin-top:2px`; Personenwahl `display:flex; gap:8px; margin-top:7px`.
 
-- [ ] **Step 5: `DaySheet` implementieren**
+- [x] **Step 5: `DaySheet` implementieren**
 
 Vorlage Z. 711–739. `BottomSheet maxHeight="78%"`, Kicker aus Vorlage Z. 1511 („Heute" oder Wochentag plus „tag"), Titel als ausgeschriebenes Datum. Termine nach Startzeit sortiert; Zeile `padding:12px`, Radius 14, `border-left:3px solid`, Zeit `min-width:44px` mit `font-variant-numeric:tabular-nums`, Titel `font-size:13.5px`, Untertitel `font-size:11px`. Hinweiszeile „Lange drücken zum Bearbeiten oder Löschen" (Z. 736), darunter der Knopf „Termin hinzufügen".
 
 Jede Terminzeile trägt `data-testid="day-event"` und die `useLongPress`-Handler. Ganztägige Termine zeigen statt der Zeit eine Kennzeichnung — die Vorlage lässt das Feld leer, was in einer Liste sortierter Zeiten verwirrt.
 
-- [ ] **Step 6: `NewEventSheet` und `EventSheet` implementieren**
+- [x] **Step 6: `NewEventSheet` und `EventSheet` implementieren**
 
 `NewEventSheet` aus Vorlage Z. 984–1025: Titel, Datum plus Zeit in einer Zeile, drei `PersonChip` für „Gilt für", eine `ListRow` mit `Toggle` für den Google-Export, Speichern-Knopf. `maxHeight="88%"`.
 
@@ -4677,13 +4682,13 @@ Jede Terminzeile trägt `data-testid="day-event"` und die `useLongPress`-Handler
 
 Beide: jedes Feld über `useId` mit seinem `FieldLabel` verbunden. Leerer Titel verhindert das Speichern und setzt `aria-describedby` auf eine Fehlermeldung — die Vorlage speichert dann still den alten Titel weiter (Z. 1555), was ein Fehler ist.
 
-- [ ] **Step 7: An `CalendarScreen` anschließen**
+- [x] **Step 7: An `CalendarScreen` anschließen**
 
 Ein `sheet`-Zustand vom Typ `{ kind: 'day' | 'new' | 'event'; iso?: string; event?: MockEvent } | null`. Zellklick in Monat und Woche öffnet `day`; der FAB öffnet `new` mit dem gewählten oder dem heutigen Tag; langes Drücken im Tages-Sheet öffnet `event`. Beim Schließen von `event` geht es zurück auf `day`, wie in der Vorlage (Z. 1559).
 
 Änderungen wirken auf einen lokalen `useState`-Abzug der Fixtures, damit die Interaktion sichtbar ist.
 
-- [ ] **Step 8: Tests laufen lassen und committen**
+- [x] **Step 8: Tests laufen lassen und committen**
 
 Run: `npx vitest run apps/app/src/sheets`
 Expected: PASS, 10 Tests
@@ -4717,7 +4722,7 @@ Fünf Sheets: `todo`, `item`, `plan`, `expense`, `profile`.
   - `function ExpenseSheet(props: { open: boolean; categories; onClose(); onSave(draft) })`
   - `function ProfileSheet(props: { open: boolean; profile; onClose(); onSave(next) })`
 
-- [ ] **Step 1: Tests schreiben**
+- [x] **Step 1: Tests schreiben**
 
 ```tsx
 import { render, screen } from '@testing-library/react';
@@ -4820,12 +4825,12 @@ describe('ExpenseSheet', () => {
 });
 ```
 
-- [ ] **Step 2: Tests laufen lassen — sie müssen fehlschlagen**
+- [x] **Step 2: Tests laufen lassen — sie müssen fehlschlagen**
 
 Run: `npx vitest run apps/app/src/sheets/organizer-sheets.test.tsx`
 Expected: FAIL
 
-- [ ] **Step 3: `TodoSheet` implementieren**
+- [x] **Step 3: `TodoSheet` implementieren**
 
 Vorlage Z. 859–898. Die Duplikaterkennung ist die einzige Logik hier und stammt aus Z. 1582–1584: Vergleich innerhalb der gewählten Liste, getrimmt und ohne Groß-/Kleinschreibung. Drei Zustände für die Knopfbeschriftung — kein Treffer „Zur Liste hinzufügen", offener Treffer „Vorhandenen Eintrag anzeigen", erledigter Treffer „Eintrag wieder öffnen".
 
@@ -4833,32 +4838,32 @@ Die Warnung als `Card tone="warn"` mit `role="alert"`; die Vorlage nutzt nur ein
 
 Die Vergleichsfunktion in `apps/app/src/sheets/todo-duplicate.ts` auslagern und dort mitgetestet — sie ist reine Logik.
 
-- [ ] **Step 4: `ItemSheet` implementieren**
+- [x] **Step 4: `ItemSheet` implementieren**
 
 Vorlage Z. 785–816: Text plus Notiz in einer Zeile, zwei `PersonChip` für „Zugewiesen an", Löschen und Speichern. Kein `maxHeight` (die Vorlage begrenzt dieses Sheet nicht) — also `maxHeight="none"`.
 
-- [ ] **Step 5: `PlanSheet` implementieren**
+- [x] **Step 5: `PlanSheet` implementieren**
 
 Vorlage Z. 819–856: oben zwei `PersonChip`-artige Umschalter Mahlzeit/Aufgabe, dann sieben Tages-Chips, ein Textfeld mit wechselnder Beschriftung und Platzhalter, bei „Aufgabe" zusätzlich drei `PersonChip`. Die Umschalter sind kein `SegmentSwitch`, weil die Vorlage sie als große Chips zeigt.
 
-- [ ] **Step 6: `ExpenseSheet` implementieren**
+- [x] **Step 6: `ExpenseSheet` implementieren**
 
 Vorlage Z. 901–947: Beschreibung plus Betrag (`type="number"`, `step="0.01"`), Kategorie-Chips, drei Zahler-Chips (der dritte „Gem. Konto" mit kleinerer Schrift), drei Aufteilungs-Chips, ein Hinweisfeld auf `--brand-soft`, Speichern.
 
 Betrag über `Number.parseFloat` mit Komma-Ersetzung, damit `42,50` genauso funktioniert wie `42.50`. Ohne gültigen Betrag über null wird nicht gespeichert.
 
-- [ ] **Step 7: `ProfileSheet` implementieren**
+- [x] **Step 7: `ProfileSheet` implementieren**
 
 Vorlage Z. 950–981: Name, E-Mail, Geburtstag, dazu die Farbwahl als vier 44 px hohe Felder mit `border:2px solid` und Haken im gewählten. Die Farben kommen aus `PERSON_SLOTS` über `personTokens`.
 
-- [ ] **Step 8: Alle fünf anschließen**
+- [x] **Step 8: Alle fünf anschließen**
 
 - `TodoDetail`: FAB und „+ Eintrag hinzufügen" öffnen `TodoSheet`; langes Drücken auf eine Zeile öffnet `ItemSheet`
 - `PlannerScreen`: FAB und „+ Aufgabe" öffnen `PlanSheet`; das Stift-Zeichen an einer Mahlzeit öffnet es im Mahlzeit-Modus
 - `MoneyScreen`: FAB öffnet `ExpenseSheet`
 - `SettingsScreen`: „Bearbeiten" öffnet `ProfileSheet`
 
-- [ ] **Step 9: Tests laufen lassen und committen**
+- [x] **Step 9: Tests laufen lassen und committen**
 
 Run: `npx vitest run apps/app/src/sheets`
 Expected: PASS, 20 Tests
@@ -4887,7 +4892,7 @@ nicht ankuendigen."
 - Consumes: alle vorigen Tasks
 - Produces: `npm run e2e` startet den Vite-Preview-Server und prüft zwei Abläufe in Chromium
 
-- [ ] **Step 1: `playwright.config.ts` schreiben**
+- [x] **Step 1: `playwright.config.ts` schreiben**
 
 ```ts
 import { defineConfig, devices } from '@playwright/test';
@@ -4916,7 +4921,7 @@ export default defineConfig({
 
 Gegen den Preview-Build statt den Dev-Server, damit der Test auch die Build-Ausgabe prüft.
 
-- [ ] **Step 2: Skripte und Ignores ergänzen**
+- [x] **Step 2: Skripte und Ignores ergänzen**
 
 In der Wurzel-`package.json`:
 
@@ -4929,12 +4934,12 @@ In `.gitignore`: `test-results/` und `playwright-report/`.
 
 In `eslint.config.js` den Testdatei-Block um `'e2e/**/*.ts'` erweitern, damit `no-console` und `no-explicit-any` dort nicht greifen.
 
-- [ ] **Step 3: Browser installieren**
+- [x] **Step 3: Browser installieren**
 
 Run: `npm run e2e:install`
 Expected: Chromium wird geladen. Bei fehlender Netzverbindung: Task hier abbrechen und melden — der Rest hängt daran.
 
-- [ ] **Step 4: Die zwei Smoke-Tests schreiben**
+- [x] **Step 4: Die zwei Smoke-Tests schreiben**
 
 ```ts
 import { expect, test } from '@playwright/test';
@@ -4992,12 +4997,12 @@ test('mobil gibt es keine waagerechte Scrollleiste', async ({ page }) => {
 });
 ```
 
-- [ ] **Step 5: Tests laufen lassen**
+- [x] **Step 5: Tests laufen lassen**
 
 Run: `npm run e2e`
 Expected: 4 Tests grün
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add playwright.config.ts e2e package.json .gitignore eslint.config.js
@@ -5017,34 +5022,34 @@ Kein neuer Code — ein Durchgang durch die zehn Abnahmekriterien des Specs mit 
 - Consumes: alle vorigen Tasks
 - Produces: Abnahmeprotokoll mit einer Zeile je Kriterium: erfüllt / nicht erfüllt, mit Befehl und Beobachtung
 
-- [ ] **Step 1: Kriterium 1 — `npm run verify`**
+- [x] **Step 1: Kriterium 1 — `npm run verify`**
 
 Run: `npm run verify`
 Erwartung: typecheck, lint, test und build ohne Fehler und ohne Build-Warnungen. Ausgabe in das Protokoll übernehmen, inklusive Testzahl.
 
-- [ ] **Step 2: Kriterium 2 — Navigation und Layout**
+- [x] **Step 2: Kriterium 2 — Navigation und Layout**
 
 Run: `npm run dev`
 Prüfen bei 1280 px Breite: Sidebar links sichtbar, keine Bottom-Nav. Bei 900 px: Bottom-Nav sichtbar, keine Sidebar. Bei 1024 px genau: Sidebar erscheint. Alle fünf Tabs navigierbar; `/profil/sync` über „Kalender & Konflikte verwalten" erreichbar und über Zurück verlassbar.
 
-- [ ] **Step 3: Kriterium 3 — alle acht Ansichten mit Daten**
+- [x] **Step 3: Kriterium 3 — alle acht Ansichten mit Daten**
 
 Der Reihe nach aufrufen und je einen Datenwert bestätigen: Monat (Chips mit Titel), Woche (Termine in der Timeline), Planer (7 Tage), Todos-Übersicht (3 Kacheln), Todos-Detail (Einträge), Geld (5 Kategorien), Einstellungen (Profil und Code), Sync (2 Konten, 1 Konflikt).
 
-- [ ] **Step 4: Kriterium 4 — alle acht Sheets, drei Schließwege**
+- [x] **Step 4: Kriterium 4 — alle acht Sheets, drei Schließwege**
 
 Für jedes der acht Sheets: öffnen, mit Escape schließen, wieder öffnen, mit Backdrop-Klick schließen, wieder öffnen, mit dem ✕-Knopf schließen. 24 Prüfungen, tabellarisch protokollieren.
 
-- [ ] **Step 5: Kriterium 5 — Token-Parität**
+- [x] **Step 5: Kriterium 5 — Token-Parität**
 
 Run: `npx vitest run packages/ui/src/tokens/tokens.parity.test.ts`
 Erwartung: 8 Tests grün. Zusätzlich gegenprüfen, dass der Test wirklich greift: einen Wert in `tokens.css` versuchsweise verfälschen, Test muss fehlschlagen, Änderung zurücknehmen.
 
-- [ ] **Step 6: Kriterium 6 — Theme**
+- [x] **Step 6: Kriterium 6 — Theme**
 
 Light, Dark und System durchschalten; `data-ralia-theme` im Inspektor prüfen; Reload; auf Betriebssystemebene zwischen hell und dunkel wechseln, während `system` aktiv ist. Auf kein Aufblitzen achten: mit gedrosseltem Netz (DevTools „Slow 3G") neu laden und beobachten.
 
-- [ ] **Step 7: Kriterium 7 — Sprache**
+- [x] **Step 7: Kriterium 7 — Sprache**
 
 DE und EN umschalten; Navigation, Kopfzeilen und Screens auf Übersetzung prüfen. Schlüsselzahl belegen:
 
@@ -5053,19 +5058,19 @@ node -e "const d=require('./apps/app/src/i18n/de.json'),e=require('./apps/app/sr
 ```
 Erwartung: zwei gleiche Zahlen, mindestens 546.
 
-- [ ] **Step 8: Kriterium 8 — `/config`**
+- [x] **Step 8: Kriterium 8 — `/config`**
 
 Im Netzwerk-Tab bestätigen, dass `GET .../functions/v1/app-api/config` beim Boot einmal läuft und 200 liefert. Dann im DevTools-Netzwerk auf „Offline" stellen und neu laden: die App muss trotzdem starten und eine Warnung als Toast zeigen.
 
-- [ ] **Step 9: Kriterium 9 — mobil randlos**
+- [x] **Step 9: Kriterium 9 — mobil randlos**
 
 Mit iPhone-14-Emulation prüfen: kein äußerer Kartenrahmen, kein Rand um den Inhalt, Inhalt reicht bis an die Kanten, Bottom-Nav sitzt über der Home-Anzeige. Der Playwright-Test aus Task 25 belegt zusätzlich, dass nichts waagerecht überläuft.
 
-- [ ] **Step 10: Kriterium 10 — Tastatur und Fokus**
+- [x] **Step 10: Kriterium 10 — Tastatur und Fokus**
 
 Ausschließlich mit Tab, Shift+Tab, Pfeiltasten, Enter, Leertaste und Escape durch alle fünf Tabs, einen geöffneten Sheet und die Einstellungen navigieren. Jede fokussierte Stelle muss einen sichtbaren Ring zeigen. In einem offenen Sheet darf der Fokus nicht dahinter geraten.
 
-- [ ] **Step 11: Protokoll schreiben und committen**
+- [x] **Step 11: Protokoll schreiben und committen**
 
 Für jedes Kriterium: Nummer, Kurztext, Befund, Belegbefehl oder Beobachtung. Nicht erfüllte Punkte mit genauer Beschreibung — und zwar als offene Punkte stehen lassen, nicht stillschweigend nacharbeiten.
 

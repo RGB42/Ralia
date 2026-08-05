@@ -1,0 +1,279 @@
+/* Vorlage Z. 360–439. */
+
+.budgetHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.budgetLabel {
+  flex: 1;
+}
+
+.budgetPct {
+  font-size: 11.5px;
+  color: var(--ink-500);
+}
+
+.budgetAmounts {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin-top: 6px;
+}
+
+.budgetSpent {
+  font-size: 27px;
+  font-weight: 600;
+  color: var(--ink-900);
+  letter-spacing: -0.5px;
+}
+
+.budgetOf {
+  font-size: 13px;
+  color: var(--ink-400);
+}
+
+.budgetBar {
+  margin-top: 12px;
+}
+
+.budgetRemain {
+  font-size: 11.5px;
+  color: var(--ink-500);
+  margin-top: 9px;
+}
+
+.categories {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.categoriesHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 2px;
+}
+
+.categoriesLabel {
+  flex: 1;
+}
+
+.miniLegend {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 10px;
+  color: var(--ink-400);
+}
+
+.miniLegendItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.miniSwatch {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+}
+
+.category {
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: var(--surface);
+  padding: 12px 14px;
+}
+
+.categoryHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.categoryName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-900);
+  flex: 1;
+}
+
+.categoryAmount {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-900);
+}
+
+/* Ueber dem Limit: dieselbe Warnfarbe wie die Warnkarte. */
+.categoryOver {
+  color: var(--danger);
+}
+
+.categoryLimit {
+  font-size: 11px;
+  color: var(--ink-400);
+}
+
+.categoryBar {
+  margin-top: 9px;
+}
+
+.categoryNote {
+  font-size: 10.5px;
+  color: var(--ink-400);
+  margin-top: 7px;
+}
+
+.balancePair {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.balanceCard {
+  flex: 1;
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+}
+
+.balanceWho {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.balanceDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+}
+
+.balanceName {
+  font-size: 11.5px;
+  color: var(--ink-500);
+}
+
+.balanceAmount {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink-900);
+  margin-top: 4px;
+}
+
+.owed {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.owedText {
+  flex: 1;
+}
+
+.owedTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-900);
+}
+
+.owedHint {
+  font-size: 11px;
+  color: var(--ink-500);
+  margin-top: 2px;
+}
+
+.owedAmount {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--brand-600);
+}
+
+.settle {
+  width: 100%;
+  margin-top: 10px;
+  border: none;
+  background: var(--brand-fill);
+  color: #fff;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 11px;
+  border-radius: 12px;
+  transition: filter 0.14s ease;
+}
+
+.settle:hover {
+  filter: brightness(1.09);
+}
+
+.expensesHead {
+  padding: 13px 14px 11px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.expense {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--line-soft);
+  transition: background-color 0.14s ease;
+}
+
+.expense:last-child {
+  border-bottom: none;
+}
+
+.expense:hover {
+  background: var(--hov-tint);
+}
+
+.expenseAvatar {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 9px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.expenseBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.expenseTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.expenseMeta {
+  font-size: 10.5px;
+  color: var(--ink-400);
+  margin-top: 1px;
+}
+
+.expenseAmount {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-900);
+  white-space: nowrap;
+}

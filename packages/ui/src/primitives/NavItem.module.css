@@ -1,0 +1,46 @@
+/*
+ * Zustand aus navItem() (Vorlage Z. 1242), Geometrie sidebar Z. 83, bottom Z. 684.
+ * Beide Layouts teilen Farben und Hover — nur Ausrichtung und Maszen unterscheiden sich.
+ */
+
+.navItem {
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  background: transparent;
+  color: var(--ink-500);
+  font-weight: 600;
+  transition:
+    background-color 0.14s ease,
+    color 0.14s ease;
+}
+
+.navItem:hover:not(.active) {
+  background: var(--hov-tint);
+  color: var(--brand-600);
+}
+
+.active {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.sidebar {
+  gap: 11px;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+}
+
+.bottom {
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 8px 2px 6px;
+  border-radius: 13px;
+  min-height: 52px;
+  font-size: 9.5px;
+}

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Ralia</title>
+    <link rel="icon" type="image/png" href="./favicon.png" />
+    <meta name="description" content="Teile Deine Tage gemeinsam — Kalender, Organizer und Haushaltskasse für Paare." />
+    <script>
+      // Vor dem ersten Frame: verhindert den Hell-Blitz beim Laden im Dark Mode.
+      // Inhalt muss mit themeBootScript() aus @ralia/ui uebereinstimmen —
+      // src/boot/theme-boot.test.ts haelt beide Kopien synchron.
+      try {
+        var c = localStorage.getItem('ralia.theme');
+        if (c !== 'light' && c !== 'dark') c = 'system';
+        var d =
+          c === 'dark' || (c === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+        if (d) document.documentElement.setAttribute('data-ralia-theme', 'dark');
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

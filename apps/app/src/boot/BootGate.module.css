@@ -1,0 +1,17 @@
+/* Ladezustand: Platzhalter in der Form der spaeteren Inhalte, kein Spinner. */
+
+.pending {
+  padding: 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+}
+
+.failed {
+  padding: 40px 20px;
+}

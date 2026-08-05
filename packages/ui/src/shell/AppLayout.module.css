@@ -1,0 +1,104 @@
+/*
+ * Vorlage Z. 68 (Shell) und Z. 106 (Inhaltsspalte) — ohne die Prototyp-Huelle.
+ *
+ * Mobil randlos: kein Kartenrahmen, kein Radius, kein aeuszerer Schatten,
+ * volle sichtbare Hoehe. Ab 1024px kommt die entworfene Struktur zurueck:
+ * Sidebar 236px sticky, Inhaltsspalte max 900px, Shell max 1180px, gap 26px.
+ */
+
+.shell {
+  display: flex;
+  gap: 26px;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  min-height: 100dvh;
+}
+
+@supports not (min-height: 100dvh) {
+  .shell {
+    min-height: 100vh;
+  }
+}
+
+.column {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  /* Damit die Bottom-Nav unten klebt, muss die Spalte die Hoehe fuellen. */
+  min-height: 100dvh;
+  position: relative;
+}
+
+@supports not (min-height: 100dvh) {
+  .column {
+    min-height: 100vh;
+  }
+}
+
+/*
+ * Flex-Spalte, nicht Block: nur so kann ein Screen darin die volle Hoehe
+ * fuellen. Als Block waere `flex:1` am Screen wirkungslos, er wuerde auf
+ * Inhaltshoehe schrumpfen — das Monatsraster bekaeme flache Zeilen und
+ * monthDensity wuerde dauerhaft in den Punkte-Modus fallen.
+ */
+.content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  /* Safe-Area links/rechts: Landscape-Notch auf iOS. */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Beide Navigationen stehen im DOM; display:none nimmt die verborgene
+   auch aus Tab-Reihenfolge und Screenreader-Baum. */
+.sidebarSlot {
+  display: none;
+}
+
+.bottomSlot {
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+}
+
+@media (min-width: 1024px) {
+  .shell {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 20px 18px 0;
+  }
+
+  .sidebarSlot {
+    display: block;
+    position: sticky;
+    /* Vorlage: top:80px unter ihrer Kopfleiste. Die entfaellt hier. */
+    top: 20px;
+    flex: none;
+  }
+
+  .column {
+    max-width: 900px;
+    border: 1px solid var(--line);
+    border-radius: 28px;
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    min-height: 0;
+    height: calc(100dvh - 40px);
+  }
+
+  .content {
+    overflow-y: auto;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .bottomSlot {
+    display: none;
+  }
+}
