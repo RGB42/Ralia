@@ -1,341 +1,186 @@
 /**
- * Ralia database schema, hand-derived from `Ralia_Opus/migrations/*.sql` plus the
- * column usage in `Ralia_Opus/public/js/*.js`.
+ * Kuratierte Sicht auf das Datenbankschema.
  *
- * Why hand-derived and not `supabase gen types`: the base `profiles` and
- * `events` tables were created in the Supabase dashboard, not by a migration in
- * the repo, and the PostgREST OpenAPI endpoint that would reveal them requires a
- * `service_role` key. Generating types needs a privileged credential this
- * project does not carry.
+ * Die Wahrheit steht in [`database.generated.ts`](./database.generated.ts) und
+ * kommt aus der Introspektion der laufenden Datenbank. Diese Datei fuegt zwei
+ * Dinge hinzu, die ein Generator nicht liefern kann:
  *
- * Nullability policy: every column not provably `NOT NULL` from a migration is
- * typed nullable. An over-nullable type costs a check; an under-nullable one
- * hides a runtime crash.
+ *   1. **Lesbare Namen** — `ProfilesRow` statt
+ *      `Database['public']['Tables']['profiles']['Row']`. Alle *abgeleitet*,
+ *      nicht abgetippt: eine Spalte, die in der Datenbank verschwindet, laesst
+ *      hier den Typecheck fallen, statt still weiterzuexistieren.
+ *   2. **Fach-Unions** — `belongs_to` ist in Postgres `text` mit CHECK. Der
+ *      Generator sieht davon nur `string`. Die Unions unten tragen jeweils dazu,
+ *      *woher* sie stammen: CHECK-Constraint, beobachtete Werte oder Altcode.
  *
- * TODO(SP9): once a service-role key is available in CI, replace this file with
- * `supabase gen types typescript` output and diff it against this to confirm.
+ * Warum die Unions nicht in die Zeilentypen eingesetzt sind: eine Zeile aus der
+ * Datenbank ist erst `string`. Sie als `BelongsTo` zu deklarieren waere eine
+ * Behauptung ueber Daten, die niemand geprueft hat — der Typ wuerde eine
+ * Gewissheit vorspiegeln, die eine alte Zeile oder eine Handaenderung bricht.
+ * Verengt wird deshalb in der Repository-Schicht, an einer Stelle, mit Ruecksicht
+ * auf unerwartete Werte.
+ *
+ * Vorgeschichte: bis 2026-08-05 war diese Datei von Hand aus den Migrationen
+ * abgeleitet, weil das Generieren ein privilegiertes Credential brauchte. Das
+ * hat drei Tabellen falsch beschrieben — `profiles` hatte zwei Spalten, die es
+ * nie gab, `events` fehlten vier, `event_reminder_jobs` war groesstenteils
+ * erfunden — und den Parameternamen von `set_shared_anniversary` verfehlt.
+ * Deshalb steht hier jetzt nichts mehr, was nicht abgeleitet ist.
  */
 
-export type Json = string | number | boolean | null | { [key: string]: Json } | Json[];
+export type { Database, Json } from './database.generated.js';
 
-/** Whose event/item this is, from the *owning* row's perspective. */
-export type BelongsTo = 'user1' | 'user2' | 'both';
+import type { Database } from './database.generated.js';
 
-export type RecurrenceType = 'daily' | 'weekly' | 'monthly' | 'yearly';
+type PublicSchema = Database['public'];
 
-export type EventType = 'default' | 'birthday' | 'anniversary';
+/** Zeilentyp einer Tabelle. */
+export type Tables<T extends keyof PublicSchema['Tables']> = PublicSchema['Tables'][T]['Row'];
+/** Was ein Insert verlangt und was Defaults uebernehmen. */
+export type TablesInsert<T extends keyof PublicSchema['Tables']> =
+  PublicSchema['Tables'][T]['Insert'];
+export type TablesUpdate<T extends keyof PublicSchema['Tables']> =
+  PublicSchema['Tables'][T]['Update'];
 
-export type PlanTier = 'free' | 'pro';
+/** Argumente und Rueckgabe einer Datenbankfunktion. */
+export type FunctionArgs<T extends keyof PublicSchema['Functions']> =
+  PublicSchema['Functions'][T] extends { Args: infer A } ? A : never;
 
-export type ItemType = 'todo' | 'note';
-
-export type WorkflowStatus = 'open' | 'in_progress' | 'waiting';
-
-export type TaskCadence = 'daily' | 'weekly' | 'monthly';
-
-export type TargetMode = 'count' | 'hours';
-
-export type SplitType = 'single' | 'shared';
-
-export type WeekPlanEntryType = 'meal' | 'task';
+// ---------------------------------------------------------------------------
+// Zeilentypen — durchweg abgeleitet
+// ---------------------------------------------------------------------------
 
 /**
- * There is deliberately no `all_day` column.
+ * Es gibt bewusst keine `all_day`-Spalte.
  *
- * Ralia 1.x derives all-day from the data:
+ * Ralia 1.x leitet ganztaegig aus den Daten ab:
  *   `start_date === end_date && isMidnight(start_time) && isMidnight(end_time)`
- * Adding a column would diverge from every row already in production, so the
- * derivation is reproduced in `@ralia/core` instead.
+ * Eine Spalte wuerde von jeder Zeile abweichen, die schon in Produktion liegt;
+ * die Ableitung liegt darum in `@ralia/core`.
  */
-export interface EventsRow {
-  id: string;
-  calendar_id: string;
-  created_by: string | null;
-  name: string;
-  start_date: string;
-  end_date: string | null;
-  start_time: string | null;
-  end_time: string | null;
-  location: string | null;
-  notes: string | null;
-  belongs_to: BelongsTo | null;
-  recurrence_type: RecurrenceType | null;
-  recurrence_end_date: string | null;
-  recurrence_interval: number | null;
-  parent_event_id: string | null;
-  google_event_id: string | null;
-  reminder_enabled: boolean | null;
-  reminder_offset_minutes: number | null;
-  reminder_offsets: number[] | null;
-  event_type: EventType | null;
-  is_special_auto: boolean | null;
-  special_key: string | null;
-  created_at: string | null;
-  updated_at: string | null;
-}
+export type EventsRow = Tables<'events'>;
+export type ProfilesRow = Tables<'profiles'>;
+export type RecurringEventExceptionsRow = Tables<'recurring_event_exceptions'>;
+export type NotesTodosRow = Tables<'notes_todos'>;
+export type NotesTodoGroupsRow = Tables<'notes_todo_groups'>;
+export type RecurringTasksRow = Tables<'recurring_tasks'>;
+export type RecurringTaskLogsRow = Tables<'recurring_task_logs'>;
+export type WeekPlansRow = Tables<'week_plans'>;
+export type SharedExpensesRow = Tables<'shared_expenses'>;
+export type PushSubscriptionsRow = Tables<'push_subscriptions'>;
+export type SentEventRemindersRow = Tables<'sent_event_reminders'>;
+export type EventReminderJobsRow = Tables<'event_reminder_jobs'>;
 
-export interface ProfilesRow {
-  id: string;
-  name: string | null;
-  email: string | null;
-  invite_code: string | null;
-  partner_id: string | null;
-  /** Set by `connect_partner`; mirrors the frontend's `getCalendarId()`. */
-  calendar_id: string | null;
-  timezone: string | null;
-  anniversary_date: string | null;
-  plan_tier: PlanTier | null;
-  plan_status: string | null;
-  ls_customer_id: string | null;
-  ls_subscription_id: string | null;
-  pro_expires_at: string | null;
-  created_at: string | null;
-  updated_at: string | null;
-}
+// ---------------------------------------------------------------------------
+// Fach-Unions
+// ---------------------------------------------------------------------------
 
-export interface RecurringEventExceptionsRow {
-  id: string;
-  calendar_id: string;
-  master_event_id: string;
-  original_occurrence_date: string;
-  created_by: string;
-  is_deleted: boolean;
-  /** Constraint: null exactly when `is_deleted`, non-null otherwise. */
-  override_event_data: Json | null;
-  created_at: string;
-  updated_at: string;
-}
+/**
+ * Erklaert eine Union zur Verengung einer Spalte — und laesst tsc das pruefen.
+ *
+ * `TUnion extends TColumn` ist die eigentliche Arbeit: die Bedingung wird schon
+ * bei der *Deklaration* der Union geprueft, nicht irgendwo weiter unten. Wuerde
+ * `belongs_to` in der Datenbank zu einem Integer, passte kein Literal mehr und
+ * die Zeile schlaegt im Typecheck fehl — statt beim ersten Lesezugriff in
+ * Produktion. Reine Typebene, im Bundle landet davon nichts.
+ *
+ * Die Spalte steht zuerst, damit sie beim Lesen zuerst auffaellt: sie ist die
+ * Tatsache, die Union ist unsere Deutung.
+ */
+type NarrowOf<TColumn, TUnion extends TColumn> = TUnion;
 
-export interface NotesTodosRow {
-  id: string;
-  calendar_id: string;
-  created_by: string;
-  group_name: string;
-  item_type: ItemType;
-  title: string;
-  content: string | null;
-  is_done: boolean;
-  sort_order: number;
-  quantity: number | null;
-  unit: string | null;
-  category: string | null;
-  assigned_to: string;
-  workflow_status: WorkflowStatus;
-  completed_at: string | null;
-  created_at: string;
-  updated_at: string;
-}
+/** Nicht-nullbarer Typ einer Spalte. */
+type Col<TRow, TKey extends keyof TRow> = NonNullable<TRow[TKey]>;
 
-export interface NotesTodoGroupsRow {
-  id: string;
-  calendar_id: string;
-  created_by: string;
-  name: string;
-  created_at: string;
-}
+/**
+ * Wem ein Termin oder Eintrag gehoert, aus Sicht der *besitzenden* Zeile.
+ *
+ * Belegt durch `events_belongs_to_check`: ARRAY['user1','user2','both'].
+ * Die Spalte ist NOT NULL — es gibt kein „unbekannt".
+ */
+export type BelongsTo = NarrowOf<Col<EventsRow, 'belongs_to'>, 'user1' | 'user2' | 'both'>;
 
-export interface RecurringTasksRow {
-  id: string;
-  calendar_id: string;
-  created_by: string;
-  group_name: string;
-  title: string;
-  description: string | null;
-  cadence: TaskCadence;
-  recurrence_interval: number;
-  target_mode: TargetMode;
-  target_value: number;
-  starts_on: string;
-  active: boolean;
-  sort_order: number;
-  assigned_to: string;
-  workflow_status: WorkflowStatus;
-  created_at: string;
-  updated_at: string;
-}
+/** Belegt durch `events_recurrence_type_check`; NULL ist ausdruecklich erlaubt. */
+export type RecurrenceType = NarrowOf<
+  Col<EventsRow, 'recurrence_type'>,
+  'daily' | 'weekly' | 'monthly' | 'yearly'
+>;
 
-export interface RecurringTaskLogsRow {
-  id: string;
-  task_id: string;
-  calendar_id: string;
-  created_by: string;
-  log_date: string;
-  amount: number;
-  note: string | null;
-  created_at: string;
-}
+/**
+ * Kein CHECK auf der Spalte. Belegt durch die Bestandsdaten am 2026-08-05:
+ * `default` (671), `birthday` (30), `anniversary` (1) — und durch
+ * `syncAutomaticSpecialEvents()` in Ralia_Opus, das genau diese drei schreibt.
+ */
+export type EventType = NarrowOf<
+  Col<EventsRow, 'event_type'>,
+  'default' | 'birthday' | 'anniversary'
+>;
 
-export interface WeekPlansRow {
-  id: string;
-  calendar_id: string;
-  created_by: string;
-  /** Monday of the week. */
-  week_start: string;
-  /** 0 = Monday … 6 = Sunday. */
-  day_of_week: number;
-  entry_type: WeekPlanEntryType;
-  title: string;
-  notes: string | null;
-  sort_order: number | null;
-  created_at: string | null;
-  updated_at: string | null;
-}
+/** Kein CHECK. Bestandsdaten am 2026-08-05: `free` (5), `pro` (8). */
+export type PlanTier = NarrowOf<Col<ProfilesRow, 'plan_tier'>, 'free' | 'pro'>;
 
-export interface SharedExpensesRow {
-  id: string;
-  calendar_id: string;
-  title: string;
-  amount: number;
-  paid_by: string;
-  category: string | null;
-  paid_at: string;
-  notes: string | null;
-  split_type: SplitType | null;
-  created_at: string | null;
-  updated_at: string | null;
-}
+/**
+ * Bewusst *keine* Union, obwohl der Bestand nur `active` und `inactive` zeigt:
+ * die Werte kommen aus den LemonSqueezy-Webhooks, also von aussen. Was der
+ * Anbieter morgen sendet (`past_due`, `cancelled`, …), darf keinen Typfehler
+ * ausloesen, sondern muss in SP6 als unbekannter Zustand behandelt werden.
+ */
+export type PlanStatus = Col<ProfilesRow, 'plan_status'>;
 
-export interface PushSubscriptionsRow {
-  id: number;
-  user_id: string;
-  endpoint: string;
-  p256dh: string;
-  auth: string;
-  user_agent: string | null;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+/**
+ * Kein CHECK. Der Bestand kennt nur `todo` (92 Zeilen); `note` steht in
+ * Ralia_Opus (`todo-notes.js`) als zweite Form und ist in der Oberflaeche
+ * erreichbar, kommt in den Daten aber noch nicht vor.
+ */
+export type ItemType = NarrowOf<Col<NotesTodosRow, 'item_type'>, 'todo' | 'note'>;
 
-export interface SentEventRemindersRow {
-  token: string;
-  event_id: string;
-  recipient_user_id: string;
-  sent_at: string;
-}
+/** Belegt durch `notes_todos_workflow_status_check` und dasselbe CHECK auf `recurring_tasks`. */
+export type WorkflowStatus = NarrowOf<
+  Col<NotesTodosRow, 'workflow_status'> & Col<RecurringTasksRow, 'workflow_status'>,
+  'open' | 'in_progress' | 'waiting'
+>;
 
-/** Managed by triggers and drained by the pg_cron reminder worker. */
-export interface EventReminderJobsRow {
-  id: string;
-  calendar_id: string;
-  event_id: string;
-  occurrence_date: string | null;
-  recipient_user_id: string;
-  offset_minutes: number;
-  fire_at: string;
-  status: string;
-  attempts: number | null;
-  last_error: string | null;
-  claimed_at: string | null;
-  sent_at: string | null;
-  created_at: string | null;
-  updated_at: string | null;
-}
+/** Kein CHECK. Bestand: `weekly`. Die drei Stufen stammen aus `recurring-tasks` in Ralia_Opus. */
+export type TaskCadence = NarrowOf<
+  Col<RecurringTasksRow, 'cadence'>,
+  'daily' | 'weekly' | 'monthly'
+>;
 
-type Insertable<TRow, TRequired extends keyof TRow> = Partial<TRow> & Pick<TRow, TRequired>;
+/** Kein CHECK. Bestand: `count`. `hours` ist die zweite Form in Ralia_Opus. */
+export type TargetMode = NarrowOf<Col<RecurringTasksRow, 'target_mode'>, 'count' | 'hours'>;
 
-export interface Database {
-  public: {
-    Tables: {
-      events: {
-        Row: EventsRow;
-        Insert: Insertable<EventsRow, 'calendar_id' | 'name' | 'start_date'>;
-        Update: Partial<EventsRow>;
-      };
-      profiles: {
-        Row: ProfilesRow;
-        Insert: Insertable<ProfilesRow, 'id'>;
-        Update: Partial<ProfilesRow>;
-      };
-      recurring_event_exceptions: {
-        Row: RecurringEventExceptionsRow;
-        Insert: Insertable<
-          RecurringEventExceptionsRow,
-          'calendar_id' | 'master_event_id' | 'original_occurrence_date' | 'created_by'
-        >;
-        Update: Partial<RecurringEventExceptionsRow>;
-      };
-      notes_todos: {
-        Row: NotesTodosRow;
-        Insert: Insertable<NotesTodosRow, 'calendar_id' | 'created_by' | 'title'>;
-        Update: Partial<NotesTodosRow>;
-      };
-      notes_todo_groups: {
-        Row: NotesTodoGroupsRow;
-        Insert: Insertable<NotesTodoGroupsRow, 'calendar_id' | 'created_by' | 'name'>;
-        Update: Partial<NotesTodoGroupsRow>;
-      };
-      recurring_tasks: {
-        Row: RecurringTasksRow;
-        Insert: Insertable<RecurringTasksRow, 'calendar_id' | 'created_by' | 'title'>;
-        Update: Partial<RecurringTasksRow>;
-      };
-      recurring_task_logs: {
-        Row: RecurringTaskLogsRow;
-        Insert: Insertable<
-          RecurringTaskLogsRow,
-          'task_id' | 'calendar_id' | 'created_by' | 'log_date' | 'amount'
-        >;
-        Update: Partial<RecurringTaskLogsRow>;
-      };
-      week_plans: {
-        Row: WeekPlansRow;
-        Insert: Insertable<
-          WeekPlansRow,
-          'calendar_id' | 'created_by' | 'week_start' | 'day_of_week' | 'entry_type' | 'title'
-        >;
-        Update: Partial<WeekPlansRow>;
-      };
-      shared_expenses: {
-        Row: SharedExpensesRow;
-        Insert: Insertable<SharedExpensesRow, 'calendar_id' | 'title' | 'amount' | 'paid_by'>;
-        Update: Partial<SharedExpensesRow>;
-      };
-      push_subscriptions: {
-        Row: PushSubscriptionsRow;
-        Insert: Insertable<PushSubscriptionsRow, 'user_id' | 'endpoint' | 'p256dh' | 'auth'>;
-        Update: Partial<PushSubscriptionsRow>;
-      };
-      sent_event_reminders: {
-        Row: SentEventRemindersRow;
-        Insert: Insertable<SentEventRemindersRow, 'token' | 'event_id' | 'recipient_user_id'>;
-        Update: Partial<SentEventRemindersRow>;
-      };
-      event_reminder_jobs: {
-        Row: EventReminderJobsRow;
-        Insert: Insertable<
-          EventReminderJobsRow,
-          'calendar_id' | 'event_id' | 'recipient_user_id' | 'offset_minutes' | 'fire_at'
-        >;
-        Update: Partial<EventReminderJobsRow>;
-      };
-    };
-    Views: Record<never, never>;
-    Functions: {
-      /** Links two profiles and writes the shared `calendar_id` onto both. */
-      connect_partner: {
-        Args: { p_invite_code: string };
-        Returns: Json;
-      };
-      disconnect_partner: {
-        Args: Record<never, never>;
-        Returns: Json;
-      };
-      /** Writes `anniversary_date` to both partners' profiles. */
-      set_shared_anniversary: {
-        Args: { p_anniversary_date: string | null };
-        Returns: Json;
-      };
-    };
-    Enums: Record<never, never>;
-    CompositeTypes: Record<never, never>;
-  };
-}
+/** Belegt durch `shared_expenses_split_type_check`. */
+export type SplitType = NarrowOf<Col<SharedExpensesRow, 'split_type'>, 'single' | 'shared'>;
 
-/** Convenience aliases for the tables the app reads most. */
-export type Tables<T extends keyof Database['public']['Tables']> =
-  Database['public']['Tables'][T]['Row'];
-export type TablesInsert<T extends keyof Database['public']['Tables']> =
-  Database['public']['Tables'][T]['Insert'];
-export type TablesUpdate<T extends keyof Database['public']['Tables']> =
-  Database['public']['Tables'][T]['Update'];
+/** Belegt durch `week_plans_entry_type_check`. */
+export type WeekPlanEntryType = NarrowOf<Col<WeekPlansRow, 'entry_type'>, 'meal' | 'task'>;
+
+/** Belegt durch `event_reminder_jobs_status_check`. */
+export type ReminderJobStatus = NarrowOf<
+  Col<EventReminderJobsRow, 'status'>,
+  'pending' | 'processing' | 'sent' | 'failed' | 'canceled'
+>;
+
+/**
+ * `notes_todos.assigned_to` und `recurring_tasks.assigned_to` tragen entweder
+ * eine User-UUID oder das Wort `both`. Kein CHECK, keine Fremdschluessel —
+ * die Semantik steckt allein im Altcode, deshalb bleibt der Typ weit.
+ */
+export type AssignedTo = Col<NotesTodosRow, 'assigned_to'>;
+
+/**
+ * Die Spalten, auf denen die App aufsetzt, als ausdrueckliche Zusage.
+ *
+ * Verschwindet eine davon aus der Datenbank, faellt der Typecheck hier — an
+ * einer Stelle, die erklaert warum. Genau das hat gefehlt, als diese Datei von
+ * Hand gepflegt wurde: `profiles.calendar_id` und `profiles.updated_at` standen
+ * jahrelang im Typ und haben in der Datenbank nie existiert.
+ */
+export type ProfileEssentials = Pick<
+  ProfilesRow,
+  'id' | 'name' | 'email' | 'invite_code' | 'partner_id' | 'anniversary_date' | 'timezone'
+>;
+export type EventEssentials = Pick<
+  EventsRow,
+  'id' | 'calendar_id' | 'name' | 'start_date' | 'start_time' | 'belongs_to' | 'created_by'
+>;

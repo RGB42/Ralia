@@ -39,15 +39,18 @@ export {
 } from './config.js';
 
 export type {
+  AssignedTo,
   BelongsTo,
   Database,
   EventReminderJobsRow,
   EventType,
   EventsRow,
+  FunctionArgs,
   ItemType,
   Json,
   NotesTodoGroupsRow,
   NotesTodosRow,
+  PlanStatus,
   PlanTier,
   ProfilesRow,
   PushSubscriptionsRow,
@@ -55,6 +58,7 @@ export type {
   RecurringEventExceptionsRow,
   RecurringTaskLogsRow,
   RecurringTasksRow,
+  ReminderJobStatus,
   SentEventRemindersRow,
   SharedExpensesRow,
   SplitType,
