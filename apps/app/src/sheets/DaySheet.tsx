@@ -1,6 +1,6 @@
 import { BottomSheet, Button, EmptyState, personTokens } from '@ralia/ui';
 import { useT } from '../i18n/useT.js';
-import type { MockEvent } from '../mock/fixtures.js';
+import type { CalendarEvent } from '../screens/calendar/calendar-event.js';
 import { MOCK_TODAY } from '../mock/fixtures.js';
 import { dayLabel, weekdayShort } from '../screens/calendar/calendar-labels.js';
 import styles from './sheets.module.css';
@@ -9,9 +9,9 @@ import { useLongPress } from './use-long-press.js';
 export interface DaySheetProps {
   open: boolean;
   iso: string | null;
-  events: readonly MockEvent[];
+  events: readonly CalendarEvent[];
   onClose(): void;
-  onEdit(event: MockEvent): void;
+  onEdit(event: CalendarEvent): void;
   onAdd(): void;
 }
 
@@ -21,7 +21,7 @@ function DayEventRow({
   allDayLabel,
   onEdit,
 }: {
-  event: MockEvent;
+  event: CalendarEvent;
   allDayLabel: string;
   onEdit(): void;
 }): React.JSX.Element {

@@ -43,6 +43,17 @@ export {
   type OfflineProbe,
 } from './net/offline-error.js';
 
+export {
+  expandRecurringEvent,
+  expandRecurringEvents,
+  type InclusiveDateRange,
+  type RecurrenceOccurrence,
+  type RecurrenceType as CoreRecurrenceType,
+  type RecurringEventException,
+  type RecurringEventMaster,
+  type RecurringEventOverride,
+} from './recurrence/index.js';
+
 export { BACKOFF_BASE_MS, BACKOFF_CEILING_MS, backoffDelayMs } from './outbox/backoff.js';
 
 export {

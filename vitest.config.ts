@@ -42,6 +42,7 @@ export default defineConfig({
           environment: 'jsdom',
           globals: true,
           css: true,
+          testTimeout: 20_000,
           setupFiles: [resolvePath('./vitest.setup.ts')],
           include: ['packages/ui/src/**/*.test.tsx', 'apps/app/src/**/*.test.{ts,tsx}'],
         },

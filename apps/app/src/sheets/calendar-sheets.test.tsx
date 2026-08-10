@@ -89,14 +89,15 @@ describe('NewEventSheet', () => {
     expect(screen.getByLabelText('Datum')).toHaveValue('2026-07-31');
   });
 
-  it('sammelt Titel, Zeit, Zuordnung und Google-Schalter', async () => {
+  it('sammelt Titel, Ort, Zeit und Zuordnung ohne unfertigen Google-Schalter', async () => {
     const onSave = renderNew();
     await userEvent.type(screen.getByLabelText('Titel'), 'Kino');
+    await userEvent.type(screen.getByLabelText('Ort'), 'Astor');
     await userEvent.click(screen.getByRole('button', { name: 'Beide' }));
-    await userEvent.click(screen.getByRole('switch', { name: /Google/ }));
+    expect(screen.queryByRole('switch', { name: /Google/ })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Speichern' }));
     expect(onSave).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'Kino', slot: 'both', toGoogle: false }),
+      expect.objectContaining({ title: 'Kino', location: 'Astor', slot: 'both', toGoogle: false }),
     );
   });
 
@@ -109,8 +110,8 @@ describe('NewEventSheet', () => {
 
   it('hat genau eine Zuordnung gleichzeitig gedrueckt', async () => {
     renderNew();
-    await userEvent.click(screen.getByRole('button', { name: 'Jonas' }));
-    const pressed = ['Jonas', 'Lena', 'Beide']
+    await userEvent.click(screen.getByRole('button', { name: 'Partner' }));
+    const pressed = ['Partner', 'Mich', 'Beide']
       .map((n) => screen.getByRole('button', { name: n }))
       .filter((b) => b.getAttribute('aria-pressed') === 'true');
     expect(pressed).toHaveLength(1);

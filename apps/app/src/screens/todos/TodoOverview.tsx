@@ -1,20 +1,38 @@
-import { AppHeader, Card, Fab, ProgressBar, SectionLabel, personTokens } from '@ralia/ui';
+import {
+  AppHeader,
+  BottomSheet,
+  Button,
+  Card,
+  Fab,
+  FieldLabel,
+  Input,
+  ProgressBar,
+  SectionLabel,
+  personTokens,
+} from '@ralia/ui';
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
+import { useAuth } from '../../auth/useAuth.js';
 import { useT } from '../../i18n/useT.js';
-import { MOCK_PROFILE } from '../../mock/fixtures.js';
+import { TodoSheet } from '../../sheets/TodoSheet.js';
 import screen from '../screen.module.css';
 import styles from './TodoOverview.module.css';
 import { useTodoStore } from './todo-store.js';
 
-const INITIAL_BY_SLOT: Record<string, string> = {
-  u1: MOCK_PROFILE.me.initial,
-  u2: MOCK_PROFILE.partner.initial,
-};
-
 export function TodoOverview(): React.JSX.Element {
   const { t } = useT();
   const navigate = useNavigate();
-  const { items, lists } = useTodoStore();
+  const { session } = useAuth();
+  const { items, lists, add, addList } = useTodoStore();
+  const [newItemOpen, setNewItemOpen] = useState(false);
+  const [newListOpen, setNewListOpen] = useState(false);
+  const [listName, setListName] = useState('');
+  const identity = session.status === 'signed-in' ? session.identity : null;
+  const initials: Record<string, string> = {
+    u1: identity?.profile.name?.trim().charAt(0).toUpperCase() || '?',
+    u2: identity?.partner?.name?.trim().charAt(0).toUpperCase() || '?',
+  };
+  const recentlyDone = items.filter((item) => item.done).slice(-2).reverse();
 
   return (
     <div className={screen.screen}>
@@ -71,7 +89,7 @@ export function TodoOverview(): React.JSX.Element {
                           className={styles.avatar}
                           style={{ background: personTokens(slot).bar }}
                         >
-                          {INITIAL_BY_SLOT[slot] ?? '?'}
+                          {initials[slot] ?? '?'}
                         </span>
                       ))}
                     </span>
@@ -80,7 +98,7 @@ export function TodoOverview(): React.JSX.Element {
               );
             })}
 
-            <button type="button" className={styles.newCard}>
+            <button type="button" className={styles.newCard} onClick={() => setNewListOpen(true)}>
               <span className={styles.newPlus} aria-hidden="true">
                 +
               </span>
@@ -91,16 +109,67 @@ export function TodoOverview(): React.JSX.Element {
           <Card padding="14px">
             <SectionLabel>{t('todosRecentlyDone')}</SectionLabel>
             <div className={styles.recent}>
-              Spülmaschinentabs · Jonas, heute 08:14
-              <br />
-              Geschenk für Mia · Lena, gestern
+              {recentlyDone.length === 0
+                ? t('todosEmpty')
+                : recentlyDone.map((item, index) => (
+                    <span key={item.id}>
+                      {index > 0 ? <br /> : null}
+                      {item.text}
+                    </span>
+                  ))}
             </div>
           </Card>
         </div>
       </div>
-      {/* Nicht „Neue Liste": das ist die gestrichelte Kachel. Der FAB oeffnet
-          in der Vorlage openNew, also das Sheet fuer einen neuen Eintrag. */}
-      <Fab label={t('todosAddItem')} onClick={() => undefined} />
+      <Fab
+        label={t('todosAddItem')}
+        onClick={() => (lists.length > 0 ? setNewItemOpen(true) : setNewListOpen(true))}
+      />
+
+      <TodoSheet
+        key={`${newItemOpen}-${lists[0]?.id ?? 'none'}`}
+        open={newItemOpen && lists.length > 0}
+        lists={lists}
+        defaultListId={lists[0]?.id ?? ''}
+        existing={items}
+        onClose={() => setNewItemOpen(false)}
+        onSave={(draft) => {
+          add(draft);
+          setNewItemOpen(false);
+        }}
+        onReveal={(item) => {
+          setNewItemOpen(false);
+          void navigate(`/todos/${item.listId}`);
+        }}
+      />
+
+      <BottomSheet
+        open={newListOpen}
+        onClose={() => setNewListOpen(false)}
+        closeLabel={t('sheetClose')}
+        title={t('todosNewList')}
+      >
+        <div className={screen.stack}>
+          <div>
+            <FieldLabel htmlFor="new-list-name">{t('name')}</FieldLabel>
+            <Input id="new-list-name" value={listName} onChange={setListName} />
+          </div>
+          <Button
+            fullWidth
+            disabled={listName.trim() === ''}
+            onClick={() => {
+              void addList(listName).then((id) => {
+                if (!id) return;
+                setListName('');
+                setNewListOpen(false);
+                void navigate(`/todos/${id}`);
+              });
+            }}
+          >
+            {t('sheetSave')}
+          </Button>
+        </div>
+      </BottomSheet>
     </div>
   );
 }

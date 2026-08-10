@@ -22,6 +22,9 @@ import type { ProfilesRow } from '../database.types.js';
 
 export const IDENTITY_STORAGE_KEY = 'ralia:identity';
 
+/** Offline identity is a short-lived convenience, not a permanent credential. */
+export const IDENTITY_SNAPSHOT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
 /** Die einzige Fassung, die gelesen wird. */
 const SNAPSHOT_VERSION = 1;
 
@@ -34,6 +37,19 @@ export interface IdentitySnapshot {
   profile: ProfilesRow;
   partner: ProfilesRow | null;
   savedAt: string;
+}
+
+function snapshotProfile(profile: ProfilesRow, partner: boolean): ProfilesRow {
+  return {
+    ...profile,
+    email: partner ? null : profile.email,
+    invite_code: partner ? null : profile.invite_code,
+    ls_customer_id: null,
+    ls_subscription_id: null,
+    plan_status: partner ? null : profile.plan_status,
+    plan_tier: partner ? null : profile.plan_tier,
+    pro_expires_at: partner ? null : profile.pro_expires_at,
+  };
 }
 
 /** Nur der Teil von `Storage`, den der Abzug braucht — so ist er einsetzbar. */
@@ -53,14 +69,17 @@ export function writeIdentitySnapshot(
 ): void {
   if (!profile.id) return;
 
+  const localProfile = snapshotProfile(profile, false);
+  const localPartner = partner ? snapshotProfile(partner, true) : null;
+
   const snapshot: IdentitySnapshot = {
     version: SNAPSHOT_VERSION,
-    userId: profile.id,
-    name: profile.name,
-    email: profile.email,
-    calendarId: computeCalendarId(profile.id, profile.partner_id),
-    profile,
-    partner,
+    userId: localProfile.id,
+    name: localProfile.name,
+    email: localProfile.email,
+    calendarId: computeCalendarId(localProfile.id, localProfile.partner_id),
+    profile: localProfile,
+    partner: localPartner,
     savedAt: new Date().toISOString(),
   };
 
@@ -71,7 +90,7 @@ export function writeIdentitySnapshot(
   }
 }
 
-function isUsable(value: unknown): value is IdentitySnapshot {
+function isUsable(value: unknown, now: number): value is IdentitySnapshot {
   if (typeof value !== 'object' || value === null) return false;
   const candidate = value as Partial<IdentitySnapshot>;
   /*
@@ -80,11 +99,19 @@ function isUsable(value: unknown): value is IdentitySnapshot {
    * einer Identität, die nicht stimmt — schlimmer als gar keine.
    */
   if (candidate.version !== SNAPSHOT_VERSION) return false;
+  if (typeof candidate.savedAt !== 'string') return false;
+  const savedAt = Date.parse(candidate.savedAt);
+  if (!Number.isFinite(savedAt) || savedAt > now || now - savedAt > IDENTITY_SNAPSHOT_MAX_AGE_MS) {
+    return false;
+  }
   // Dieselbe Prüfung wie `restoreIdentityFromSnapshot` in Ralia 1.x.
   return typeof candidate.profile?.id === 'string' && candidate.profile.id.length > 0;
 }
 
-export function readIdentitySnapshot(storage: SnapshotStorage): IdentitySnapshot | null {
+export function readIdentitySnapshot(
+  storage: SnapshotStorage,
+  now: number = Date.now(),
+): IdentitySnapshot | null {
   let raw: string | null;
   try {
     raw = storage.getItem(IDENTITY_STORAGE_KEY);
@@ -95,7 +122,12 @@ export function readIdentitySnapshot(storage: SnapshotStorage): IdentitySnapshot
 
   try {
     const parsed: unknown = JSON.parse(raw);
-    return isUsable(parsed) ? parsed : null;
+    if (!isUsable(parsed, now)) return null;
+    return {
+      ...parsed,
+      profile: snapshotProfile(parsed.profile, false),
+      partner: parsed.partner ? snapshotProfile(parsed.partner, true) : null,
+    };
   } catch {
     // Angebrochenes JSON entsteht, wenn der Browser mitten im Schreiben zumacht.
     return null;

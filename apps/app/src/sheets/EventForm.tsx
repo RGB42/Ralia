@@ -1,8 +1,8 @@
 import { Button, FieldLabel, Input, ListRow, PersonChip, Toggle } from '@ralia/ui';
 import type { PersonSlot } from '@ralia/ui';
-import { useId, useState } from 'react';
+import { useContext, useId, useState } from 'react';
+import { AuthContext } from '../auth/AuthProvider.js';
 import { useT } from '../i18n/useT.js';
-import { MOCK_PROFILE } from '../mock/fixtures.js';
 import styles from './sheets.module.css';
 
 export interface EventDraft {
@@ -42,6 +42,7 @@ export function EventForm({
   deleteLabel,
 }: EventFormProps): React.JSX.Element {
   const { t } = useT();
+  const auth = useContext(AuthContext);
   const baseId = useId();
   const [draft, setDraft] = useState<EventDraft>(initial);
   const [showError, setShowError] = useState(false);
@@ -61,9 +62,10 @@ export function EventForm({
     onSubmit({ ...draft, title: draft.title.trim() });
   };
 
+  const identity = auth?.session.status === 'signed-in' ? auth.session.identity : null;
   const people: readonly { slot: PersonSlot; label: string }[] = [
-    { slot: 'u1', label: MOCK_PROFILE.me.name.split(' ')[0] ?? 'u1' },
-    { slot: 'u2', label: MOCK_PROFILE.partner.name.split(' ')[0] ?? 'u2' },
+    { slot: 'u1', label: identity?.profile.name?.split(' ')[0] || t('me') },
+    { slot: 'u2', label: identity?.partner?.name?.split(' ')[0] || t('partner') },
     { slot: 'both', label: t('calLegendBoth') },
   ];
 

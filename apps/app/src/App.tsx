@@ -2,6 +2,7 @@ import { ThemeProvider, ToastProvider } from '@ralia/ui';
 import { RouterProvider, createBrowserRouter } from 'react-router';
 import { AuthProvider } from './auth/AuthProvider.js';
 import { BootGate } from './boot/BootGate.js';
+import { DataProvider } from './data/DataProvider.js';
 import { I18nProvider } from './i18n/I18nProvider.js';
 import { routes } from './routes/router.js';
 
@@ -31,7 +32,9 @@ export function App(): React.JSX.Element {
         <ToastProvider>
           <BootGate>
             <AuthProvider>
-              <RouterProvider router={router} />
+              <DataProvider>
+                <RouterProvider router={router} />
+              </DataProvider>
             </AuthProvider>
           </BootGate>
         </ToastProvider>

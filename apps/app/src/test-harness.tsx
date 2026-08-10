@@ -1,11 +1,13 @@
-import type { ProfilesRow, SessionState } from '@ralia/data';
+import type { NotesTodo, NotesTodoGroupsRow, ProfilesRow, SessionState } from '@ralia/data';
 import { ThemeProvider, ToastProvider } from '@ralia/ui';
 import { render } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { vi } from 'vitest';
 import { AuthContext, type ActionResult, type AuthContextValue } from './auth/AuthProvider.js';
+import { DataContext, type DataServices } from './data/DataProvider.js';
 import { I18nProvider } from './i18n/I18nProvider.js';
 import { LANG_STORAGE_KEY } from './i18n/catalog.js';
+import { MOCK_TODOS, MOCK_TODO_LISTS } from './mock/fixtures.js';
 import { routes } from './routes/router.js';
 
 /**
@@ -68,6 +70,169 @@ export function signedInState(profile: ProfilesRow = TEST_PROFILE): SessionState
 
 const OK: ActionResult = { ok: true };
 
+const TEST_TODO_GROUPS: NotesTodoGroupsRow[] = MOCK_TODO_LISTS.map((list) => ({
+  id: list.id,
+  calendar_id: TEST_USER_ID,
+  created_by: TEST_USER_ID,
+  name: list.title,
+  created_at: '2026-08-10T10:00:00Z',
+}));
+
+const TEST_TODOS: NotesTodo[] = MOCK_TODOS.map((item, index) => ({
+  id: item.id,
+  calendar_id: TEST_USER_ID,
+  created_by: TEST_USER_ID,
+  group_name: MOCK_TODO_LISTS.find((list) => list.id === item.listId)?.title ?? 'Allgemein',
+  item_type: 'todo',
+  title: item.text,
+  content: item.note || null,
+  is_done: item.done,
+  sort_order: index,
+  created_at: '2026-08-10T10:00:00Z',
+  updated_at: '2026-08-10T10:00:00Z',
+  quantity: null,
+  unit: null,
+  category: null,
+  assigned_to:
+    item.slot === 'u1' ? TEST_USER_ID : item.slot === 'u2' ? TEST_PARTNER_ID : 'both',
+  workflow_status: 'open',
+  completed_at: item.done ? '2026-08-10T10:00:00Z' : null,
+}));
+
+export function dataDouble(overrides: Partial<DataServices> = {}): DataServices {
+  return {
+    appPreferences: {
+      getByUserId: async () => null,
+      ensure: async (userId) => ({
+        user_id: userId,
+        solo_mode: false,
+        week_start: 'mo',
+        locale: 'de',
+        notification_settings: {},
+        created_at: '2026-08-10T10:00:00Z',
+        updated_at: '2026-08-10T10:00:00Z',
+      }),
+      update: async (userId, changes) => ({
+        user_id: userId,
+        solo_mode: changes.solo_mode ?? false,
+        week_start: changes.week_start ?? 'mo',
+        locale: changes.locale ?? 'de',
+        notification_settings: changes.notification_settings ?? {},
+        created_at: '2026-08-10T10:00:00Z',
+        updated_at: '2026-08-10T10:00:00Z',
+      }),
+    },
+    events: {
+      list: async () => [],
+      create: async () => {
+        throw new Error('Unexpected event create in test');
+      },
+      update: async () => {
+        throw new Error('Unexpected event update in test');
+      },
+      delete: async () => undefined,
+    },
+    expenses: {
+      list: async () => [],
+      create: async () => {
+        throw new Error('Unexpected expense create in test');
+      },
+      update: async () => {
+        throw new Error('Unexpected expense update in test');
+      },
+      delete: async () => undefined,
+    },
+    expenseBudgets: {
+      list: async () => [],
+      create: async () => {
+        throw new Error('Unexpected expense budget create in test');
+      },
+      update: async () => {
+        throw new Error('Unexpected expense budget update in test');
+      },
+      delete: async () => undefined,
+    },
+    expenseCategories: {
+      list: async () => [],
+      create: async () => {
+        throw new Error('Unexpected expense category create in test');
+      },
+      update: async () => {
+        throw new Error('Unexpected expense category update in test');
+      },
+      delete: async () => undefined,
+    },
+    expenseSettlements: {
+      list: async () => [],
+      create: async () => {
+        throw new Error('Unexpected expense settlement create in test');
+      },
+      delete: async () => undefined,
+    },
+    expenseSplits: {
+      list: async () => [],
+      create: async () => {
+        throw new Error('Unexpected expense split create in test');
+      },
+      update: async () => {
+        throw new Error('Unexpected expense split update in test');
+      },
+      delete: async () => undefined,
+    },
+    notesTodoGroups: {
+      list: async () => TEST_TODO_GROUPS.map((group) => ({ ...group })),
+      create: async (input) => ({
+        id: 'new-group',
+        calendar_id: input.calendarId,
+        created_by: input.createdBy,
+        name: input.name,
+        created_at: '2026-08-10T10:00:00Z',
+      }),
+      rename: async (input) => ({
+        ...(TEST_TODO_GROUPS.find((group) => group.id === input.id) ?? TEST_TODO_GROUPS[0]!),
+        name: input.name,
+      }),
+      delete: async () => undefined,
+    },
+    notesTodos: {
+      list: async () => TEST_TODOS.map((item) => ({ ...item })),
+      create: async (input) => ({
+        ...TEST_TODOS[0]!,
+        id: 'new-todo',
+        calendar_id: input.calendarId,
+        created_by: input.createdBy,
+        group_name: input.groupName,
+        title: input.title,
+        content: input.content ?? null,
+        assigned_to: input.assignedTo,
+        sort_order: input.sortOrder,
+      }),
+      update: async (input) => ({
+        ...(TEST_TODOS.find((item) => item.id === input.id) ?? TEST_TODOS[0]!),
+        ...(input.title === undefined ? {} : { title: input.title }),
+        ...(input.content === undefined ? {} : { content: input.content }),
+      }),
+      toggleDone: async (input) => ({
+        ...(TEST_TODOS.find((item) => item.id === input.id) ?? TEST_TODOS[0]!),
+        is_done: !input.currentIsDone,
+      }),
+      delete: async () => undefined,
+      reorder: async () => undefined,
+    },
+    weekPlan: {
+      list: async () => [],
+      create: async () => {
+        throw new Error('Unexpected week plan create in test');
+      },
+      update: async () => {
+        throw new Error('Unexpected week plan update in test');
+      },
+      delete: async () => undefined,
+    },
+    ...overrides,
+  };
+}
+
 /**
  * Auth-Doppelgaenger fuer Screen-Tests.
  *
@@ -99,6 +264,7 @@ export function authDouble(overrides: Partial<AuthContextValue> = {}): AuthConte
 
 export interface RenderAppOptions {
   auth?: Partial<AuthContextValue>;
+  data?: Partial<DataServices>;
 }
 
 /**
@@ -117,7 +283,9 @@ export function renderAppAt(path: string, options: RenderAppOptions = {}) {
       <I18nProvider>
         <ToastProvider>
           <AuthContext.Provider value={authDouble(options.auth)}>
-            <RouterProvider router={router} />
+            <DataContext.Provider value={dataDouble(options.data)}>
+              <RouterProvider router={router} />
+            </DataContext.Provider>
           </AuthContext.Provider>
         </ToastProvider>
       </I18nProvider>

@@ -2,13 +2,28 @@ services:
   - type: web
     name: ralia-app
     env: static
-    buildCommand: npm ci && npm run build --workspace @ralia/app
+    buildCommand: npm ci && npm run verify
     staticPublishPath: apps/app/dist
     envVars:
       # Render bedient die Site an der Domainwurzel, nicht unter /app/ wie die
       # spaetere Produktion (siehe apps/app/vite.config.ts).
       - key: VITE_BASE_PATH
         value: /
+      - key: NODE_VERSION
+        value: 22.22.0
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: Permissions-Policy
+        value: camera=(), microphone=(), geolocation=()
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
     routes:
       - type: rewrite
         source: /*

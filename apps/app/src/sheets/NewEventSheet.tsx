@@ -37,10 +37,10 @@ export function NewEventSheet({
           time: '',
           slot: 'both',
           location: '',
-          toGoogle: true,
+          toGoogle: false,
         }}
-        withLocation={false}
-        withGoogleToggle
+        withLocation
+        withGoogleToggle={false}
         submitLabel={t('sheetSave')}
         onSubmit={onSave}
       />

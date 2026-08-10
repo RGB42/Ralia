@@ -1,7 +1,15 @@
-import { AppHeader, Fab, SegmentSwitch } from '@ralia/ui';
-import { useState } from 'react';
+import {
+  displayBelongsTo,
+  type BelongsTo,
+  type CreateEventInput,
+  type EventsRow,
+  type UpdateEventInput,
+} from '@ralia/data';
+import { AppHeader, Fab, SegmentSwitch, useToast } from '@ralia/ui';
+import { useEffect, useRef, useState } from 'react';
+import { useAuth } from '../../auth/useAuth.js';
+import { useData } from '../../data/DataProvider.js';
 import { useT } from '../../i18n/useT.js';
-import { MOCK_EVENTS, MOCK_PROFILE, MOCK_TODAY, type MockEvent } from '../../mock/fixtures.js';
 import { DaySheet } from '../../sheets/DaySheet.js';
 import { EventSheet } from '../../sheets/EventSheet.js';
 import { NewEventSheet } from '../../sheets/NewEventSheet.js';
@@ -9,6 +17,7 @@ import type { EventDraft } from '../../sheets/EventForm.js';
 import { Legend } from '../Legend.js';
 import { MonthView } from './MonthView.js';
 import { WeekView } from './WeekView.js';
+import type { CalendarEvent } from './calendar-event.js';
 import screen from '../screen.module.css';
 import {
   addDaysIso,
@@ -20,26 +29,29 @@ import {
 
 type CalMode = 'monat' | 'woche';
 
-const TODAY_YEAR = Number(MOCK_TODAY.slice(0, 4));
-const TODAY_MONTH = Number(MOCK_TODAY.slice(5, 7)) - 1;
-
 /** Welches Sheet offen ist. `null` heiszt: keines. */
 type SheetState =
   | { kind: 'day'; iso: string }
   | { kind: 'new'; iso: string }
-  | { kind: 'event'; iso: string; event: MockEvent }
+  | { kind: 'event'; iso: string; event: CalendarEvent }
   | null;
 
 export function CalendarScreen(): React.JSX.Element {
   const { t, lang } = useT();
-  // Lokaler Abzug der Fixtures, damit Anlegen und Loeschen sichtbar wirken.
-  const [events, setEvents] = useState<readonly MockEvent[]>(MOCK_EVENTS);
+  const { show } = useToast();
+  const { session } = useAuth();
+  const { events: eventRepo } = useData();
+  const today = localTodayIso();
+  const todayYear = Number(today.slice(0, 4));
+  const todayMonth = Number(today.slice(5, 7)) - 1;
+  const [events, setEvents] = useState<readonly CalendarEvent[]>([]);
   const [sheet, setSheet] = useState<SheetState>(null);
   const [mode, setMode] = useState<CalMode>('monat');
-  const [year, setYear] = useState(TODAY_YEAR);
-  const [monthIndex, setMonthIndex] = useState(TODAY_MONTH);
-  const [weekStartIso, setWeekStartIso] = useState(() => weekStartIsoOf(MOCK_TODAY, 'mo'));
+  const [year, setYear] = useState(todayYear);
+  const [monthIndex, setMonthIndex] = useState(todayMonth);
+  const [weekStartIso, setWeekStartIso] = useState(() => weekStartIsoOf(today, 'mo'));
   const [nightExpanded, setNightExpanded] = useState(false);
+  const request = useRef(0);
 
   const shiftMonth = (delta: number) => {
     const next = new Date(Date.UTC(year, monthIndex + delta, 1));
@@ -48,12 +60,99 @@ export function CalendarScreen(): React.JSX.Element {
   };
 
   const goToday = () => {
-    setYear(TODAY_YEAR);
-    setMonthIndex(TODAY_MONTH);
-    setWeekStartIso(weekStartIsoOf(MOCK_TODAY, 'mo'));
+    setYear(todayYear);
+    setMonthIndex(todayMonth);
+    setWeekStartIso(weekStartIsoOf(today, 'mo'));
   };
 
   const isMonth = mode === 'monat';
+  const rangeStart = isMonth ? monthIso(year, monthIndex, 1) : weekStartIso;
+  const rangeEnd = isMonth ? monthEndIso(year, monthIndex) : addDaysIso(weekStartIso, 6);
+  const identity = session.status === 'signed-in' ? session.identity : null;
+
+  useEffect(() => {
+    if (!identity) return;
+    const requestId = ++request.current;
+    void eventRepo
+      .list(identity.calendarId, { startDate: rangeStart, endDate: rangeEnd })
+      .then((rows) => {
+        if (request.current !== requestId) return;
+        setEvents(rows.map((row) => eventFromRow(row, identity.userId)));
+      })
+      .catch(() => {
+        if (request.current !== requestId) return;
+        show(t('calendarLoadError'), 'danger');
+      });
+    return () => {
+      request.current += 1;
+    };
+  }, [eventRepo, identity, rangeEnd, rangeStart, show, t]);
+
+  const switchMode = (next: CalMode) => {
+    if (next === mode) return;
+    if (next === 'woche') {
+      setWeekStartIso(weekStartIsoOf(monthIso(year, monthIndex, 1), 'mo'));
+    } else {
+      setYear(Number(weekStartIso.slice(0, 4)));
+      setMonthIndex(Number(weekStartIso.slice(5, 7)) - 1);
+    }
+    setMode(next);
+  };
+
+  const saveNew = async (draft: EventDraft) => {
+    if (!identity) return;
+    try {
+      const row = await eventRepo.create(
+        identity.calendarId,
+        createEventInput(draft, identity.userId),
+      );
+      setEvents((current) =>
+        upsertVisible(current, eventFromRow(row, identity.userId), rangeStart, rangeEnd),
+      );
+      setSheet(null);
+    } catch {
+      show(t('calendarSaveError'), 'danger');
+    }
+  };
+
+  const saveExisting = async (draft: EventDraft) => {
+    if (!identity || sheet?.kind !== 'event' || !sheet.event.id) return;
+    try {
+      const row = await eventRepo.update(
+        identity.calendarId,
+        sheet.event.id,
+        updateEventInput(draft),
+      );
+      setEvents((current) =>
+        upsertVisible(current, eventFromRow(row, identity.userId), rangeStart, rangeEnd),
+      );
+      setSheet({ kind: 'day', iso: draft.iso });
+    } catch {
+      show(t('calendarSaveError'), 'danger');
+    }
+  };
+
+  const deleteExisting = async () => {
+    if (!identity || sheet?.kind !== 'event' || !sheet.event.id) return;
+    const event = sheet.event;
+    const eventId = event.id;
+    if (!eventId) return;
+    try {
+      await eventRepo.delete(identity.calendarId, eventId);
+      setEvents((current) => current.filter((entry) => entry.id !== eventId));
+      setSheet({ kind: 'day', iso: event.iso });
+    } catch {
+      show(t('calendarDeleteError'), 'danger');
+    }
+  };
+
+  const myName = identity?.profile.name?.split(' ')[0] || t('me');
+  const partnerName = identity?.partner?.name?.split(' ')[0] || t('partner');
+  const createIso = isMonth
+    ? year === todayYear && monthIndex === todayMonth
+      ? today
+      : monthIso(year, monthIndex, 1)
+    : weekStartIso;
 
   return (
     <div className={screen.screen}>
@@ -72,7 +171,7 @@ export function CalendarScreen(): React.JSX.Element {
         <SegmentSwitch<CalMode>
           label={t('calViewLabel')}
           value={mode}
-          onChange={setMode}
+          onChange={switchMode}
           options={[
             { value: 'monat', label: t('month') },
             { value: 'woche', label: t('week') },
@@ -80,8 +179,8 @@ export function CalendarScreen(): React.JSX.Element {
         />
         <Legend
           entries={[
-            { slot: 'u1', label: MOCK_PROFILE.me.name.split(' ')[0] ?? 'u1' },
-            { slot: 'u2', label: MOCK_PROFILE.partner.name.split(' ')[0] ?? 'u2' },
+            { slot: 'u1', label: myName },
+            { slot: 'u2', label: partnerName },
             { slot: 'both', label: t('calLegendBoth') },
           ]}
         />
@@ -93,14 +192,14 @@ export function CalendarScreen(): React.JSX.Element {
             year={year}
             monthIndex={monthIndex}
             weekStart="mo"
-            today={MOCK_TODAY}
+            today={today}
             events={events}
             onSelectDay={(iso) => setSheet({ kind: 'day', iso })}
           />
         ) : (
           <WeekView
             weekStartIso={weekStartIso}
-            today={MOCK_TODAY}
+            today={today}
             events={events}
             nightExpanded={nightExpanded}
             onToggleNight={() => setNightExpanded((value) => !value)}
@@ -113,7 +212,7 @@ export function CalendarScreen(): React.JSX.Element {
           auf Profil und Sync aus (Z. 1526). */}
       <Fab
         label={t('calAddEvent')}
-        onClick={() => setSheet({ kind: 'new', iso: isMonth ? MOCK_TODAY : weekStartIso })}
+        onClick={() => setSheet({ kind: 'new', iso: createIso })}
       />
 
       <DaySheet
@@ -127,12 +226,9 @@ export function CalendarScreen(): React.JSX.Element {
 
       <NewEventSheet
         open={sheet?.kind === 'new'}
-        defaultIso={sheet?.kind === 'new' ? sheet.iso : MOCK_TODAY}
+        defaultIso={sheet?.kind === 'new' ? sheet.iso : today}
         onClose={() => setSheet(null)}
-        onSave={(draft) => {
-          setEvents((current) => [...current, toEvent(draft)]);
-          setSheet(null);
-        }}
+        onSave={(draft) => void saveNew(draft)}
       />
 
       <EventSheet
@@ -140,44 +236,107 @@ export function CalendarScreen(): React.JSX.Element {
         event={sheet?.kind === 'event' ? sheet.event : null}
         // Zurueck auf das Tages-Sheet, wie in der Vorlage (Z. 1559).
         onClose={() => setSheet(sheet?.kind === 'event' ? { kind: 'day', iso: sheet.iso } : null)}
-        onSave={(draft) => {
-          if (sheet?.kind !== 'event') return;
-          const previous = sheet.event;
-          setEvents((current) =>
-            current.map((entry) => (entry === previous ? toEvent(draft) : entry)),
-          );
-          setSheet({ kind: 'day', iso: draft.iso });
-        }}
-        onDelete={() => {
-          if (sheet?.kind !== 'event') return;
-          const previous = sheet.event;
-          setEvents((current) => current.filter((entry) => entry !== previous));
-          setSheet({ kind: 'day', iso: previous.iso });
-        }}
+        onSave={(draft) => void saveExisting(draft)}
+        onDelete={() => void deleteExisting()}
       />
     </div>
   );
 }
 
 /**
- * Ein Entwurf ohne Endzeit bekommt eine Stunde. Die Vorlage laesst das Feld
- * offen; eine Timeline braucht aber eine Dauer, sonst faellt der Termin auf
- * die Mindesthoehe und sieht wie ein Fehler aus.
+ * The current compact form has one time. Timed events receive one hour while
+ * all-day events use the full local day. Midnight rollover advances end_date.
  */
-function toEvent(draft: EventDraft): MockEvent {
-  const end = draft.time === '' ? '' : addHour(draft.time);
+function eventTimes(draft: EventDraft): {
+  startDate: string;
+  startTime: string;
+  endDate: string;
+  endTime: string;
+} {
+  if (draft.time === '') {
+    return { startDate: draft.iso, startTime: '00:00', endDate: draft.iso, endTime: '23:59' };
+  }
+  const [hours = '0', minutes = '0'] = draft.time.split(':');
+  const total = Number(hours) * 60 + Number(minutes) + 60;
+  const nextDay = total >= 24 * 60;
   return {
-    iso: draft.iso,
-    title: draft.title,
-    start: draft.time,
-    end,
-    slot: draft.slot,
-    location: draft.location,
+    startDate: draft.iso,
+    startTime: draft.time,
+    endDate: nextDay ? addDaysIso(draft.iso, 1) : draft.iso,
+    endTime: `${String(Math.floor((total % (24 * 60)) / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`,
   };
 }
 
-function addHour(time: string): string {
-  const [hours, minutes] = time.split(':');
-  const next = (Number(hours) + 1) % 24;
-  return `${String(next).padStart(2, '0')}:${minutes ?? '00'}`;
+function createEventInput(draft: EventDraft, userId: string): CreateEventInput {
+  const times = eventTimes(draft);
+  return {
+    name: draft.title,
+    location: draft.location || null,
+    start_date: times.startDate,
+    start_time: times.startTime,
+    end_date: times.endDate,
+    end_time: times.endTime,
+    belongs_to: draft.slot === 'bday' ? 'both' : draft.slot,
+    created_by: userId,
+  };
+}
+
+function updateEventInput(draft: EventDraft): UpdateEventInput {
+  const { created_by: _createdBy, ...changes } = createEventInput(draft, 'unused');
+  return changes;
+}
+
+function eventFromRow(row: EventsRow, viewerId: string): CalendarEvent {
+  const belongsTo: BelongsTo =
+    row.belongs_to === 'user1' || row.belongs_to === 'user2' || row.belongs_to === 'both'
+      ? row.belongs_to
+      : 'both';
+  const allDay = row.start_time.startsWith('00:00') && row.end_time.startsWith('23:59');
+  return {
+    id: row.id,
+    iso: row.start_date,
+    endIso: row.end_date,
+    title: row.name,
+    start: allDay ? '' : row.start_time.slice(0, 5),
+    end: allDay ? '' : row.end_time.slice(0, 5),
+    slot: row.event_type === 'birthday' ? 'bday' : displaySlot(belongsTo, row.created_by, viewerId),
+    location: row.location ?? '',
+    ...(row.notes ? { notes: row.notes } : {}),
+  };
+}
+
+function displaySlot(
+  belongsTo: BelongsTo,
+  createdBy: string | null,
+  viewerId: string,
+): 'u1' | 'u2' | 'both' {
+  const display = displayBelongsTo(belongsTo, createdBy, viewerId);
+  if (display === 'user1') return 'u1';
+  if (display === 'user2') return 'u2';
+  return 'both';
+}
+
+function upsertVisible(
+  current: readonly CalendarEvent[],
+  event: CalendarEvent,
+  rangeStart: string,
+  rangeEnd: string,
+): readonly CalendarEvent[] {
+  const withoutEvent = current.filter((entry) => entry.id !== event.id);
+  if (event.iso > rangeEnd || (event.endIso ?? event.iso) < rangeStart) return withoutEvent;
+  return [...withoutEvent, event];
+}
+
+function monthIso(year: number, monthIndex: number, day: number): string {
+  return `${String(year).padStart(4, '0')}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function monthEndIso(year: number, monthIndex: number): string {
+  const end = new Date(Date.UTC(year, monthIndex + 1, 0));
+  return monthIso(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate());
+}
+
+function localTodayIso(): string {
+  const today = new Date();
+  return monthIso(today.getFullYear(), today.getMonth(), today.getDate());
 }

@@ -70,6 +70,11 @@ export type SharedExpensesRow = Tables<'shared_expenses'>;
 export type PushSubscriptionsRow = Tables<'push_subscriptions'>;
 export type SentEventRemindersRow = Tables<'sent_event_reminders'>;
 export type EventReminderJobsRow = Tables<'event_reminder_jobs'>;
+export type AppPreferencesRow = Tables<'app_preferences'>;
+export type ExpenseBudgetsRow = Tables<'expense_budgets'>;
+export type ExpenseCategoriesRow = Tables<'expense_categories'>;
+export type ExpenseSettlementsRow = Tables<'expense_settlements'>;
+export type ExpenseSplitsRow = Tables<'expense_splits'>;
 
 // ---------------------------------------------------------------------------
 // Fach-Unions

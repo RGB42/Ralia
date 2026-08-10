@@ -43,6 +43,7 @@ export {
 export { cleanCallbackUrl, parseAuthCallback, type AuthCallback } from './auth/auth-callback.js';
 
 export {
+  IDENTITY_SNAPSHOT_MAX_AGE_MS,
   IDENTITY_STORAGE_KEY,
   clearIdentitySnapshot,
   readIdentitySnapshot,
@@ -92,13 +93,143 @@ export {
   type ProfileRepo,
 } from './repositories/profile-repo.js';
 
+export {
+  EventRepoError,
+  createEventRepo,
+  createSupabaseEventRepo,
+  normalizeEventRepoError,
+  type CreateEventInput,
+  type EventDateRange,
+  type EventGateway,
+  type EventRepo,
+  type EventRepoErrorKind,
+  type EventRepoOperation,
+  type UpdateEventInput,
+} from './repositories/event-repo.js';
+
+export {
+  createSharedExpenseRepo,
+  createSupabaseSharedExpenseRepo,
+  parseExpenseAmount,
+  type DecimalInput,
+  type SharedExpenseCreateInput,
+  type SharedExpenseGateway,
+  type SharedExpenseRepo,
+  type SharedExpenseUpdateInput,
+} from './repositories/shared-expense-repo.js';
+
+export {
+  createSupabaseWeekPlanRepo,
+  createWeekPlanRepo,
+  type WeekPlanCreateInput,
+  type WeekPlanGateway,
+  type WeekPlanRepo,
+  type WeekPlanUpdateInput,
+} from './repositories/week-plan-repo.js';
+
+export {
+  createNotesTodoGroupsRepo,
+  createSupabaseNotesTodoGroupsRepo,
+  type CreateNotesTodoGroupInput,
+  type DeleteNotesTodoGroupInput,
+  type NotesTodoGroupsGateway,
+  type NotesTodoGroupsRepo,
+  type RenameNotesTodoGroupInput,
+} from './repositories/notes-todo-groups-repo.js';
+
+export {
+  createNotesTodosRepo,
+  createSupabaseNotesTodosRepo,
+  type CreateNotesTodoInput,
+  type DeleteNotesTodoInput,
+  type NotesTodo,
+  type NotesTodosGateway,
+  type NotesTodosRepo,
+  type ReorderNotesTodosInput,
+  type ToggleNotesTodoInput,
+  type UpdateNotesTodoInput,
+} from './repositories/notes-todos-repo.js';
+
+export {
+  RepositoryError,
+  type GatewayResult,
+  type RepositoryErrorCode,
+  type RepositoryGatewayError,
+} from './repositories/repository-error.js';
+
+export {
+  DEFAULT_APP_PREFERENCES,
+  createAppPreferencesRepo,
+  createSupabaseAppPreferencesRepo,
+  type AppLocale,
+  type AppPreferences,
+  type AppPreferencesGateway,
+  type AppPreferencesRepo,
+  type AppWeekStart,
+  type NotificationSettings,
+  type UpdateAppPreferencesInput,
+} from './repositories/app-preferences-repo.js';
+
+export {
+  createExpenseBudgetsRepo,
+  createSupabaseExpenseBudgetsRepo,
+  type CreateExpenseBudgetInput,
+  type DeleteExpenseBudgetInput,
+  type ExpenseBudgetsGateway,
+  type ExpenseBudgetsRepo,
+  type UpdateExpenseBudgetInput,
+} from './repositories/expense-budgets-repo.js';
+
+export {
+  EXPENSE_CATEGORY_NAME_MAX_LENGTH,
+  createExpenseCategoriesRepo,
+  createSupabaseExpenseCategoriesRepo,
+  type CreateExpenseCategoryInput,
+  type DeleteExpenseCategoryInput,
+  type ExpenseCategoriesGateway,
+  type ExpenseCategoriesRepo,
+  type UpdateExpenseCategoryInput,
+} from './repositories/expense-categories-repo.js';
+
+export {
+  createExpenseSettlementsRepo,
+  createSupabaseExpenseSettlementsRepo,
+  type CreateExpenseSettlementInput,
+  type DeleteExpenseSettlementInput,
+  type ExpenseSettlementDateRange,
+  type ExpenseSettlementsGateway,
+  type ExpenseSettlementsRepo,
+} from './repositories/expense-settlements-repo.js';
+
+export {
+  createExpenseSplitsRepo,
+  createSupabaseExpenseSplitsRepo,
+  type CreateExpenseSplitInput,
+  type DeleteExpenseSplitInput,
+  type ExpenseSplitsGateway,
+  type ExpenseSplitsRepo,
+  type UpdateExpenseSplitInput,
+} from './repositories/expense-splits-repo.js';
+
+export {
+  MAX_EXPENSE_AMOUNT_CENTS,
+  expenseAmountToCents,
+  normalizeExpenseAmount,
+  type ExpenseAmountInput,
+} from './repositories/expense-money.js';
+
 export type {
   AssignedTo,
+  AppPreferencesRow,
   BelongsTo,
   Database,
   EventReminderJobsRow,
   EventType,
   EventsRow,
+  ExpenseBudgetsRow,
+  ExpenseCategoriesRow,
+  ExpenseSettlementsRow,
+  ExpenseSplitsRow,
   FunctionArgs,
   ItemType,
   Json,

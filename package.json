@@ -5,7 +5,7 @@
   "description": "Ralia – Teile Deine Tage gemeinsam. Web, iOS und Android aus einer Codebasis.",
   "type": "module",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.22.0"
   },
   "workspaces": [
     "packages/*",

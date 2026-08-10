@@ -85,6 +85,8 @@ export function authErrorKey(error: unknown): string {
 interface SessionUser {
   id: string;
   email: string | null;
+  /** Display metadata only; never use this user-editable value for authorization. */
+  name?: string | null;
 }
 
 /**

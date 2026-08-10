@@ -11,6 +11,7 @@ import {
   parseAuthCallback,
   resetMailLinkClient,
   restoreSession,
+  writeIdentitySnapshot,
   type AuthCallback,
   type ProfileGateway,
   type ProfilesRow,
@@ -76,9 +77,9 @@ function lacksPartner(state: SessionState): boolean {
 
 /** Wohin Mail-Links und der OAuth-Rundlauf zurückkommen. */
 function callbackUrl(): string {
-  // Auf `/app/` und nicht auf die aktuelle Route: die App entscheidet nach dem
-  // Lesen der URL selbst, wohin es weitergeht.
-  return `${globalThis.location.origin}/app/`;
+  // Nicht auf die aktuelle Route: die App entscheidet nach dem Lesen der URL,
+  // wohin es weitergeht. BASE_URL haelt Web-Root und /app/ konsistent.
+  return new URL(import.meta.env.BASE_URL, globalThis.location.origin).toString();
 }
 
 function profileGateway(client: RaliaSupabaseClient): ProfileGateway {
@@ -150,16 +151,27 @@ export function AuthProvider({ children, initialHref }: AuthProviderProps): Reac
   const refresh = useCallback(async (): Promise<SessionState> => {
     const next = await restoreSession({
       getSession: async () => {
-        const { data } = await client.auth.getSession();
+        const { data, error } = await client.auth.getSession();
+        if (error) throw error;
         const user = data.session?.user;
-        return { session: user ? { user: { id: user.id, email: user.email ?? null } } : null };
+        const metadataName = user?.user_metadata?.name;
+        return {
+          session: user
+            ? {
+                user: {
+                  id: user.id,
+                  email: user.email ?? null,
+                  name: typeof metadataName === 'string' ? metadataName : null,
+                },
+              }
+            : null,
+        };
       },
       loadIdentity: async (user) => {
         const profile = await profiles.ensure({
           id: user.id,
           email: user.email,
-          // Der Name steckt bei einer Registrierung in user_metadata.
-          name: null,
+          name: user.name ?? null,
         });
         // Nicht abwarten: die Zeitzone dient den Erinnerungen, nicht dem Start.
         void profiles.syncTimezone(profile, browserTimeZone());
@@ -337,7 +349,7 @@ export function AuthProvider({ children, initialHref }: AuthProviderProps): Reac
           ...session.identity.profile,
           partner_id: result.partner.id,
         };
-        setSession({
+        const nextSession: SessionState = {
           status: 'signed-in',
           offline: false,
           identity: {
@@ -346,7 +358,9 @@ export function AuthProvider({ children, initialHref }: AuthProviderProps): Reac
             partner: result.partner,
             calendarId: computeCalendarId(profile.id, result.partner.id),
           },
-        });
+        };
+        writeIdentitySnapshot(globalThis.localStorage, profile, result.partner);
+        setSession(nextSession);
         return { ok: true, partner: result.partner };
       },
 
@@ -366,6 +380,7 @@ export function AuthProvider({ children, initialHref }: AuthProviderProps): Reac
           const partner = session.identity.partner
             ? { ...session.identity.partner, anniversary_date: date }
             : null;
+          writeIdentitySnapshot(globalThis.localStorage, profile, partner);
           setSession({ ...session, identity: { ...session.identity, profile, partner } });
         }
         return { ok: true };

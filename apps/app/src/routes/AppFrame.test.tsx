@@ -8,12 +8,16 @@ afterEach(() => vi.unstubAllGlobals());
 
 const renderAt = renderAppAt;
 
+function currentMonthTitle(): string {
+  return new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' }).format(new Date());
+}
+
 describe('Routing', () => {
   it('leitet / auf /kalender', async () => {
     renderAt('/');
     // Der Kalender-Screen bringt seinen eigenen AppHeader mit; sein <h1>
-    // traegt den Monatstitel des fiktiven Heute.
-    expect(await screen.findByRole('heading', { name: 'Juli 2026' })).toBeInTheDocument();
+    // traegt den aktuellen lokalen Monat.
+    expect(await screen.findByRole('heading', { name: currentMonthTitle() })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Kalender' })[0]).toHaveAttribute(
       'aria-current',
       'page',
@@ -55,8 +59,8 @@ describe('Routing', () => {
   it('zeigt bei unbekanntem Pfad den Kalender', async () => {
     renderAt('/gibtsnicht');
     // Der Kalender-Screen bringt seinen eigenen AppHeader mit; sein <h1>
-    // traegt den Monatstitel des fiktiven Heute.
-    expect(await screen.findByRole('heading', { name: 'Juli 2026' })).toBeInTheDocument();
+    // traegt den aktuellen lokalen Monat.
+    expect(await screen.findByRole('heading', { name: currentMonthTitle() })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Kalender' })[0]).toHaveAttribute(
       'aria-current',
       'page',

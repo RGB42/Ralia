@@ -1,11 +1,11 @@
 import { BottomSheet } from '@ralia/ui';
 import { useT } from '../i18n/useT.js';
-import type { MockEvent } from '../mock/fixtures.js';
+import type { CalendarEvent } from '../screens/calendar/calendar-event.js';
 import { EventForm, type EventDraft } from './EventForm.js';
 
 export interface EventSheetProps {
   open: boolean;
-  event: MockEvent | null;
+  event: CalendarEvent | null;
   onClose(): void;
   onSave(next: EventDraft): void;
   onDelete(): void;

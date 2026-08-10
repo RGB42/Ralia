@@ -6,7 +6,7 @@ import {
 } from '@ralia/core';
 import { personTokens } from '@ralia/ui';
 import { useT } from '../../i18n/useT.js';
-import type { MockEvent } from '../../mock/fixtures.js';
+import type { CalendarEvent } from './calendar-event.js';
 import styles from './WeekView.module.css';
 import { addDaysIso, dayOfMonth, weekdayShort } from './calendar-labels.js';
 
@@ -14,7 +14,7 @@ export interface WeekViewProps {
   /** ISO-Datum des ersten Tages der Woche. */
   weekStartIso: string;
   today: string;
-  events: readonly MockEvent[];
+  events: readonly CalendarEvent[];
   nightExpanded: boolean;
   onToggleNight(): void;
   onSelectDay(iso: string): void;

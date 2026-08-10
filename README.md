@@ -4,7 +4,7 @@ Teile Deine Tage gemeinsam — Kalender, Organizer und Haushaltskasse für Paare
 
 Eine Codebasis für **Android**, **iOS** und **Web** mit Marketing-Homepage.
 
-> **Status: SP0 abgeschlossen, SP1 umgesetzt.** `npm run dev` startet die App unter `/app/`. Alle acht Ansichten und alle acht Bottom Sheets stehen; seit SP1 liegen sie hinter einer echten Anmeldung, und Identität, Einladungscode, Partner-Verbindung und Jahrestag kommen aus der Datenbank. Die Inhalte der Screens — Termine, Todos, Geld — sind weiter die Demo-Daten der Design-Vorlage; sie folgen in SP2 bis SP4.
+> **Status: SP0 und SP1 abgeschlossen, SP2 bis SP4 in Umsetzung.** `npm run dev` startet die App unter `/app/`. Anmeldung, Identität, Partner-Verbindung und Jahrestag kommen aus Supabase. Kalendertermine sowie Todo-Gruppen und -Einträge besitzen inzwischen echte, kalendergebundene Repositories und Schreibpfade. Die Serien-Engine, Wochenplan- und Geld-Repositories sowie das erweiterte Finanzschema stehen; ihre vollständige UI-Anbindung, Realtime und Offline-Outbox folgen noch.
 >
 > [SP0-Abnahmeprotokoll](docs/superpowers/plans/2026-08-03-sp0-abnahme.md) · [SP1-Spec](docs/superpowers/specs/2026-08-05-sp1-auth-partner-design.md) · [SP1-Plan](docs/superpowers/plans/2026-08-05-sp1-auth-partner.md) · [SP1-Abnahme](docs/superpowers/plans/2026-08-05-sp1-abnahme.md)
 
@@ -12,9 +12,10 @@ Eine Codebasis für **Android**, **iOS** und **Web** mit Marketing-Homepage.
 
 ```
 packages/
-  core/     Domain-Logik, framework-frei, ohne DOM und ohne Supabase
-            outbox/    Offline-Queue auf IndexedDB, Legacy-Import
-            calendar/  Monatsraster, Wochengeometrie, Zellendichte
+    core/     Domain-Logik, framework-frei, ohne DOM und ohne Supabase
+             outbox/    Offline-Queue auf IndexedDB, Legacy-Import
+             calendar/  Monatsraster, Wochengeometrie, Zellendichte
+             recurrence/ Serien-Expansion und Ausnahmen
   data/     Supabase-Client, generierte DB-Typen, appApi-Wrapper
   ui/       Design-System: Tokens, Primitive, Overlays, AppShell
 apps/
@@ -22,18 +23,20 @@ apps/
             boot/      Boot-Reihenfolge, Legacy-Migration, Ladezustand
             i18n/      Kataloge und Provider, DE und EN
             routes/    Router und die Naht zur AppShell
-            auth/      Sitzungszustand, Routenwache
+             auth/      Sitzungszustand, Routenwache
+             data/      gebundene Fach-Repositories
             screens/   Kalender, Planer, Todos, Geld, Einstellungen, Sync, Anmeldung
             sheets/    die acht Bottom Sheets
-            mock/      Demo-Daten der Vorlage (SP0-Platzhalter)
+             mock/      verbleibende Demo-Daten fuer Planer, Geld und Tests
+supabase/    versionierte Vorwaerts-Migrationen fuer den bestehenden Backendvertrag
 e2e/        Playwright-Smoke-Tests gegen den Preview-Build
 ```
 
-`packages/core` darf React, DOM und Supabase nicht kennen. Diese Grenze ist der Grund, warum die schwierigen Teile — Serien-Expansion, Offline-Queue, Split-Arithmetik — als reine Funktionen testbar sind. In der Vorgängerversion lagen sie als globale Funktionen neben DOM-Code und waren es nicht.
+`packages/core` darf React, DOM und Supabase nicht kennen. Diese Grenze ist der Grund, warum die schwierigen Teile — Serien-Expansion und Offline-Queue — als reine Funktionen testbar sind. In der Vorgängerversion lagen sie als globale Funktionen neben DOM-Code und waren es nicht.
 
 ## Backend
 
-Unverändert übernommen und als externe Vertragsgrenze behandelt: dasselbe Supabase-Projekt, dasselbe Schema, dieselbe `app-api` Edge Function wie die Produktionsversion. 25 Migrationen, RLS auf allen Tabellen, Partner-Zugriff über `calendar_id`, Reminder-Pipeline über `pg_cron`.
+Weiterverwendet werden dasselbe Supabase-Projekt und dieselben Edge Functions wie in der Produktionsversion. Neue additive Schemaänderungen liegen reproduzierbar unter [`supabase/migrations/`](supabase/migrations/). RLS schützt alle fachlichen Tabellen; Partner-Zugriff läuft weiterhin über `calendar_id`, die Reminder-Pipeline über `pg_cron`.
 
 Der Quellcode der Edge Function liegt nicht in diesem Repo. Wir konsumieren sie, wir ändern sie nicht.
 
@@ -42,7 +45,7 @@ Der Quellcode der Edge Function liegt nicht in diesem Repo. Wir konsumieren sie,
 ```bash
 npm install
 npm run dev       # Vite, http://localhost:5173/app/
-npm test          # Vitest — 504 Tests
+npm test          # Vitest — 701 Tests
 npm run typecheck # tsc --noEmit, strict
 npm run lint      # ESLint
 npm run verify    # typecheck + lint + test + build

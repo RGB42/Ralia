@@ -1,7 +1,7 @@
 import { monthDensity, monthGridCells, type WeekStart } from '@ralia/core';
 import { personTokens } from '@ralia/ui';
 import { useT } from '../../i18n/useT.js';
-import type { MockEvent } from '../../mock/fixtures.js';
+import type { CalendarEvent } from './calendar-event.js';
 import styles from './MonthView.module.css';
 import { dayLabel, weekdayLabels } from './calendar-labels.js';
 import { useElementHeight } from './use-element-height.js';
@@ -12,7 +12,7 @@ export interface MonthViewProps {
   weekStart: WeekStart;
   /** ISO-Datum des heutigen Tages. */
   today: string;
-  events: readonly MockEvent[];
+  events: readonly CalendarEvent[];
   onSelectDay(iso: string): void;
 }
 
@@ -29,7 +29,7 @@ export function MonthView({
   const density = monthDensity(gridHeight);
   const cells = monthGridCells(year, monthIndex, weekStart);
 
-  const byDay = new Map<string, MockEvent[]>();
+  const byDay = new Map<string, CalendarEvent[]>();
   for (const event of events) {
     const bucket = byDay.get(event.iso);
     if (bucket) bucket.push(event);

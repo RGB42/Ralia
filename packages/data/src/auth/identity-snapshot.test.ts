@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  IDENTITY_SNAPSHOT_MAX_AGE_MS,
   IDENTITY_STORAGE_KEY,
   clearIdentitySnapshot,
   readIdentitySnapshot,
@@ -64,8 +65,17 @@ describe('writeIdentitySnapshot', () => {
       email: 'lena@example.com',
       // Gerechnet, nicht aus einer Spalte: profiles hat kein calendar_id.
       calendarId: [LENA.id, JONAS.id].sort().join('_'),
-      profile: LENA,
-      partner: JONAS,
+      profile: { ...LENA, ls_customer_id: null, ls_subscription_id: null },
+      partner: {
+        ...JONAS,
+        email: null,
+        invite_code: null,
+        ls_customer_id: null,
+        ls_subscription_id: null,
+        plan_status: null,
+        plan_tier: null,
+        pro_expires_at: null,
+      },
       savedAt: '2026-08-05T09:00:00.000Z',
     });
   });
@@ -107,6 +117,26 @@ describe('readIdentitySnapshot', () => {
     const snapshot = readIdentitySnapshot(storage);
     expect(snapshot?.profile.id).toBe(LENA.id);
     expect(snapshot?.partner?.name).toBe('Jonas');
+  });
+
+  it('legt weder Billing-Daten noch Partnerkontakt im Browser ab', () => {
+    writeIdentitySnapshot(
+      storage,
+      { ...LENA, ls_customer_id: 'customer', ls_subscription_id: 'subscription' },
+      { ...JONAS, email: 'jonas@example.com', invite_code: 'SECRET' },
+    );
+
+    const snapshot = readIdentitySnapshot(storage);
+    expect(snapshot?.profile.ls_customer_id).toBeNull();
+    expect(snapshot?.profile.ls_subscription_id).toBeNull();
+    expect(snapshot?.partner?.email).toBeNull();
+    expect(snapshot?.partner?.invite_code).toBeNull();
+  });
+
+  it('verwirft einen abgelaufenen Abzug', () => {
+    writeIdentitySnapshot(storage, LENA, JONAS);
+    const now = Date.parse('2026-08-05T09:00:00.000Z');
+    expect(readIdentitySnapshot(storage, now + IDENTITY_SNAPSHOT_MAX_AGE_MS + 1)).toBeNull();
   });
 
   it('liefert null ohne Eintrag', () => {

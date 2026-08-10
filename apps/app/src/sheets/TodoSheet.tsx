@@ -1,8 +1,9 @@
 import { BottomSheet, Button, Card, Chip, FieldLabel, Input, PersonChip } from '@ralia/ui';
 import type { PersonSlot } from '@ralia/ui';
-import { useId, useState } from 'react';
+import { useContext, useId, useState } from 'react';
+import { AuthContext } from '../auth/AuthProvider.js';
 import { useT } from '../i18n/useT.js';
-import { MOCK_PROFILE, type MockTodoItem, type MockTodoList } from '../mock/fixtures.js';
+import type { MockTodoItem, MockTodoList } from '../mock/fixtures.js';
 import styles from './sheets.module.css';
 import { findDuplicate } from './todo-duplicate.js';
 
@@ -35,6 +36,7 @@ export function TodoSheet({
   onReveal,
 }: TodoSheetProps): React.JSX.Element {
   const { t } = useT();
+  const auth = useContext(AuthContext);
   const baseId = useId();
   const [text, setText] = useState('');
   const [note, setNote] = useState('');
@@ -59,9 +61,11 @@ export function TodoSheet({
     onSave({ text: text.trim(), note: note.trim(), listId, slot });
   };
 
+  const identity = auth?.session.status === 'signed-in' ? auth.session.identity : null;
   const people: readonly { slot: PersonSlot; label: string }[] = [
-    { slot: 'u1', label: MOCK_PROFILE.me.name.split(' ')[0] ?? 'u1' },
-    { slot: 'u2', label: MOCK_PROFILE.partner.name.split(' ')[0] ?? 'u2' },
+    { slot: 'u1', label: identity?.profile.name?.split(' ')[0] || t('me') },
+    { slot: 'u2', label: identity?.partner?.name?.split(' ')[0] || t('partner') },
+    { slot: 'both', label: t('calLegendBoth') },
   ];
 
   return (

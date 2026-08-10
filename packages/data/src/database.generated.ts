@@ -2,7 +2,7 @@
  * GENERIERT — NICHT VON HAND AENDERN.
  *
  * Quelle: Supabase-Projekt `nyvripddydrzvfuateea`, Introspektion der laufenden
- * Datenbank am 2026-08-05. PostgREST 14.4.
+ * Datenbank am 2026-08-10. PostgREST 14.4.
  *
  * Neu erzeugen:
  *   npx supabase gen types typescript --project-id nyvripddydrzvfuateea
@@ -29,6 +29,36 @@ export type Database = {
   };
   public: {
     Tables: {
+      app_preferences: {
+        Row: {
+          created_at: string;
+          locale: string;
+          notification_settings: Json;
+          solo_mode: boolean;
+          updated_at: string;
+          user_id: string;
+          week_start: string;
+        };
+        Insert: {
+          created_at?: string;
+          locale?: string;
+          notification_settings?: Json;
+          solo_mode?: boolean;
+          updated_at?: string;
+          user_id: string;
+          week_start?: string;
+        };
+        Update: {
+          created_at?: string;
+          locale?: string;
+          notification_settings?: Json;
+          solo_mode?: boolean;
+          updated_at?: string;
+          user_id?: string;
+          week_start?: string;
+        };
+        Relationships: [];
+      };
       crawled_events: {
         Row: {
           accessibility_info: string | null;
@@ -361,6 +391,162 @@ export type Database = {
             columns: ['parent_event_id'];
             isOneToOne: false;
             referencedRelation: 'events';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      expense_budgets: {
+        Row: {
+          amount: number;
+          calendar_id: string;
+          created_at: string;
+          created_by: string;
+          id: string;
+          month_start: string;
+          updated_at: string;
+        };
+        Insert: {
+          amount: number;
+          calendar_id: string;
+          created_at?: string;
+          created_by: string;
+          id?: string;
+          month_start: string;
+          updated_at?: string;
+        };
+        Update: {
+          amount?: number;
+          calendar_id?: string;
+          created_at?: string;
+          created_by?: string;
+          id?: string;
+          month_start?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      expense_categories: {
+        Row: {
+          calendar_id: string;
+          color: string | null;
+          created_at: string;
+          created_by: string;
+          id: string;
+          monthly_limit: number | null;
+          name: string;
+          sort_order: number;
+          updated_at: string;
+        };
+        Insert: {
+          calendar_id: string;
+          color?: string | null;
+          created_at?: string;
+          created_by: string;
+          id?: string;
+          monthly_limit?: number | null;
+          name: string;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Update: {
+          calendar_id?: string;
+          color?: string | null;
+          created_at?: string;
+          created_by?: string;
+          id?: string;
+          monthly_limit?: number | null;
+          name?: string;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      expense_settlements: {
+        Row: {
+          amount: number;
+          calendar_id: string;
+          created_at: string;
+          created_by: string;
+          from_user_id: string;
+          id: string;
+          notes: string | null;
+          settled_at: string;
+          to_user_id: string;
+        };
+        Insert: {
+          amount: number;
+          calendar_id: string;
+          created_at?: string;
+          created_by: string;
+          from_user_id: string;
+          id?: string;
+          notes?: string | null;
+          settled_at?: string;
+          to_user_id: string;
+        };
+        Update: {
+          amount?: number;
+          calendar_id?: string;
+          created_at?: string;
+          created_by?: string;
+          from_user_id?: string;
+          id?: string;
+          notes?: string | null;
+          settled_at?: string;
+          to_user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'expense_settlements_from_user_id_fkey';
+            columns: ['from_user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'expense_settlements_to_user_id_fkey';
+            columns: ['to_user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      expense_splits: {
+        Row: {
+          amount: number;
+          created_at: string;
+          expense_id: string;
+          id: string;
+          user_id: string;
+        };
+        Insert: {
+          amount: number;
+          created_at?: string;
+          expense_id: string;
+          id?: string;
+          user_id: string;
+        };
+        Update: {
+          amount?: number;
+          created_at?: string;
+          expense_id?: string;
+          id?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'expense_splits_expense_id_fkey';
+            columns: ['expense_id'];
+            isOneToOne: false;
+            referencedRelation: 'shared_expenses';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'expense_splits_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
             referencedColumns: ['id'];
           },
         ];
@@ -866,6 +1052,14 @@ export type Database = {
         Returns: Record<string, unknown>[];
       };
       dblink_is_busy: { Args: { '': string }; Returns: number };
+      delete_notes_todo_group: {
+        Args: {
+          p_calendar_id: string;
+          p_group_id: string;
+          p_group_name: string;
+        };
+        Returns: string;
+      };
       disconnect_partner: { Args: never; Returns: undefined };
       event_reminder_recipients: {
         Args: { p_belongs_to: string; p_calendar_id: string };
@@ -887,6 +1081,36 @@ export type Database = {
       rebuild_all_event_reminder_jobs: { Args: never; Returns: number };
       rebuild_event_reminder_jobs: {
         Args: { p_event_id: string };
+        Returns: number;
+      };
+      rename_notes_todo_group: {
+        Args: {
+          p_calendar_id: string;
+          p_current_name: string;
+          p_group_id: string;
+          p_new_name: string;
+        };
+        Returns: {
+          calendar_id: string;
+          created_at: string;
+          created_by: string;
+          id: string;
+          name: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'notes_todo_groups';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      reorder_notes_todos: {
+        Args: {
+          p_calendar_id: string;
+          p_group_name: string;
+          p_positions: Json;
+          p_updated_at?: string;
+        };
         Returns: number;
       };
       set_shared_anniversary: { Args: { p_date: string }; Returns: undefined };

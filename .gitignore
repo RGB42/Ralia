@@ -35,6 +35,7 @@ apps/mobile/ios/DerivedData/
 # Editor / OS
 .DS_Store
 Thumbs.db
+opencode.exe
 .idea/
 *.swp
 .vscode/*
