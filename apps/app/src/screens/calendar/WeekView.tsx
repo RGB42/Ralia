@@ -1,6 +1,7 @@
 import {
   WEEK_DEFAULT_START_HOUR,
   WEEK_EXPANDED_START_HOUR,
+  layoutMonthEventRanges,
   parseTimeToMinutes,
   weekEventGeometry,
 } from '@ralia/core';
@@ -36,6 +37,17 @@ export function WeekView({
   const startHour = nightExpanded ? WEEK_EXPANDED_START_HOUR : WEEK_DEFAULT_START_HOUR;
   const hours = Array.from({ length: 24 - startHour }, (_, index) => startHour + index);
   const days = Array.from({ length: 7 }, (_, index) => addDaysIso(weekStartIso, index));
+  const spanningEvents = events.filter(
+    (event) => event.start === '' || (event.endIso ?? event.iso) > event.iso,
+  );
+  const allDayLayout = layoutMonthEventRanges(
+    days,
+    spanningEvents.map((event) => ({
+      startDate: event.iso,
+      endDate: event.endIso ?? event.iso,
+    })),
+  );
+  const allDayLanes = allDayLayout.rowLaneCounts[0] ?? 0;
 
   return (
     <div className={styles.week}>
@@ -57,6 +69,40 @@ export function WeekView({
             );
           })}
         </div>
+
+        {allDayLanes > 0 ? (
+          <div className={styles.allDayRow}>
+            <div className={styles.allDayGutter}>{t('sheetAllDay')}</div>
+            <div
+              className={styles.allDayGrid}
+              style={{ gridTemplateRows: `repeat(${allDayLanes}, 18px)` }}
+            >
+              {allDayLayout.segments.map((segment) => {
+                const event = spanningEvents[segment.eventIndex]!;
+                const tokens = personTokens(event.slot);
+                return (
+                  <button
+                    key={`${event.id ?? event.title}-${segment.columnStart}`}
+                    type="button"
+                    className={`${styles.allDayBar} ${segment.continuesBefore ? styles.allDayContinuesBefore : ''} ${segment.continuesAfter ? styles.allDayContinuesAfter : ''}`}
+                    style={{
+                      gridColumn: `${segment.columnStart} / span ${segment.columnSpan}`,
+                      gridRow: segment.lane + 1,
+                      background: tokens.bg,
+                      borderColor: tokens.bar,
+                      color: tokens.fg,
+                    }}
+                    data-testid="week-multi-day-segment"
+                    aria-label={`${event.title}, ${segment.startDate} – ${segment.endDate}`}
+                    onClick={() => onSelectDay(segment.startDate)}
+                  >
+                    {event.title}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
 
         <button
           type="button"
@@ -86,7 +132,12 @@ export function WeekView({
           {days.map((iso) => {
             const isToday = iso === today;
             const timed = events
-              .filter((event) => event.iso === iso)
+              .filter(
+                (event) =>
+                  event.iso === iso &&
+                  (event.endIso ?? event.iso) === event.iso &&
+                  event.start !== '',
+              )
               .map((event) => {
                 const start = parseTimeToMinutes(event.start);
                 const end = parseTimeToMinutes(event.end);

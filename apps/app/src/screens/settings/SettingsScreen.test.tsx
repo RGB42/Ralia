@@ -7,9 +7,18 @@ import { AuthContext, type AuthContextValue } from '../../auth/AuthProvider.js';
 import { I18nProvider } from '../../i18n/I18nProvider.js';
 import { LANG_STORAGE_KEY } from '../../i18n/catalog.js';
 import { authDouble, signedInState, TEST_PROFILE } from '../../test-harness.js';
+import {
+  appPreferencesDouble,
+  TEST_PARTNER_ID,
+  TEST_USER_ID,
+} from '../../test-harness.js';
+import { AppPreferencesContext, type AppPreferencesValue } from '../../preferences/AppPreferencesProvider.js';
 import { SettingsScreen } from './SettingsScreen.js';
 
-function renderScreen(auth: Partial<AuthContextValue> = {}) {
+function renderScreen(
+  auth: Partial<AuthContextValue> = {},
+  preferences: Partial<AppPreferencesValue> = {},
+) {
   vi.stubGlobal('matchMedia', () => ({
     matches: false,
     media: '',
@@ -22,7 +31,9 @@ function renderScreen(auth: Partial<AuthContextValue> = {}) {
         <I18nProvider>
           <ToastProvider>
             <AuthContext.Provider value={authDouble(auth)}>
-              <SettingsScreen />
+              <AppPreferencesContext.Provider value={appPreferencesDouble(preferences)}>
+                <SettingsScreen />
+              </AppPreferencesContext.Provider>
             </AuthContext.Provider>
           </ToastProvider>
         </I18nProvider>
@@ -39,10 +50,10 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('SettingsScreen', () => {
-  it('zeigt Profilkarte und drei Kennzahlen', () => {
+  it('zeigt die echte Profilkarte ohne Demo-Kennzahlen', () => {
     renderScreen();
-    expect(screen.getByText('Jonas Berger')).toBeInTheDocument();
-    expect(screen.getAllByTestId('profile-stat')).toHaveLength(3);
+    expect(screen.getByText('Lena')).toBeInTheDocument();
+    expect(screen.queryByTestId('profile-stat')).toBeNull();
   });
 
   it('schaltet das Theme auf dunkel und speichert es', async () => {
@@ -102,9 +113,10 @@ describe('SettingsScreen', () => {
   });
 
   it('schaltet den Wochenstart um', async () => {
-    renderScreen();
+    const update = vi.fn().mockResolvedValue(true);
+    renderScreen({}, { update });
     await userEvent.click(screen.getByRole('radio', { name: 'So' }));
-    expect(screen.getByRole('radio', { name: 'So' })).toBeChecked();
+    expect(update).toHaveBeenCalledWith({ week_start: 'so' });
   });
 
   it('fuehrt zur Sync-Unterseite', () => {
@@ -146,7 +158,10 @@ describe('SettingsScreen', () => {
      * Rueckfrage waere ein Fehlgriff auf dem Telefon nicht rueckholbar.
      */
     const disconnectPartner = vi.fn().mockResolvedValue({ ok: true });
-    renderScreen({ disconnectPartner });
+    renderScreen({
+      disconnectPartner,
+      session: pairedSession(),
+    });
 
     await userEvent.click(screen.getByRole('button', { name: 'Trennen' }));
 
@@ -156,7 +171,10 @@ describe('SettingsScreen', () => {
 
   it('trennt erst nach der Bestaetigung', async () => {
     const disconnectPartner = vi.fn().mockResolvedValue({ ok: true });
-    renderScreen({ disconnectPartner });
+    renderScreen({
+      disconnectPartner,
+      session: pairedSession(),
+    });
 
     await userEvent.click(screen.getByRole('button', { name: 'Trennen' }));
     const dialog = await screen.findByRole('dialog');
@@ -179,3 +197,21 @@ describe('SettingsScreen', () => {
     expect(signOut).toHaveBeenCalledTimes(1);
   });
 });
+
+function pairedSession() {
+  return {
+    status: 'signed-in' as const,
+    offline: false,
+    identity: {
+      userId: TEST_USER_ID,
+      profile: { ...TEST_PROFILE, partner_id: TEST_PARTNER_ID },
+      partner: {
+        ...TEST_PROFILE,
+        id: TEST_PARTNER_ID,
+        name: 'Jonas Berger',
+        partner_id: TEST_USER_ID,
+      },
+      calendarId: [TEST_USER_ID, TEST_PARTNER_ID].sort().join('_'),
+    },
+  };
+}

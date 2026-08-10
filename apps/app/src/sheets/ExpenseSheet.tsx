@@ -1,11 +1,16 @@
-import { BottomSheet, Button, Chip, FieldLabel, Input, PersonChip } from '@ralia/ui';
+import { BottomSheet, Button, Chip, FieldLabel, Input, PersonChip, Textarea } from '@ralia/ui';
 import type { PersonSlot } from '@ralia/ui';
-import { useId, useState } from 'react';
+import { parseExpenseAmount } from '@ralia/data';
+import { useContext, useId, useState } from 'react';
+import { AuthContext } from '../auth/AuthProvider.js';
 import { useT } from '../i18n/useT.js';
-import { MOCK_PROFILE, type MockCategory } from '../mock/fixtures.js';
 import styles from './sheets.module.css';
 
-export type SplitMode = 'even' | 'payerOnly' | 'shared';
+export type SplitMode = 'even' | 'payerOnly' | 'custom';
+
+export interface ExpenseCategoryOption {
+  name: string;
+}
 
 export interface ExpenseDraft {
   title: string;
@@ -13,11 +18,14 @@ export interface ExpenseDraft {
   category: string;
   slot: PersonSlot;
   split: SplitMode;
+  paidAt: string;
+  notes: string;
+  customShares?: { u1: number; u2: number };
 }
 
 export interface ExpenseSheetProps {
   open: boolean;
-  categories: readonly MockCategory[];
+  categories: readonly ExpenseCategoryOption[];
   onClose(): void;
   onSave(draft: ExpenseDraft): void;
 }
@@ -28,11 +36,11 @@ export interface ExpenseSheetProps {
  * still 42 ergeben — ein stiller Rechenfehler in einer Haushaltskasse.
  */
 export function parseAmount(raw: string): number | null {
-  const normalized = raw.trim().replace(',', '.');
-  if (normalized === '') return null;
-  const value = Number.parseFloat(normalized);
-  if (!Number.isFinite(value) || value <= 0) return null;
-  return Math.round(value * 100) / 100;
+  try {
+    return parseExpenseAmount(raw);
+  } catch {
+    return null;
+  }
 }
 
 /** Vorlage Z. 901–947. */
@@ -43,23 +51,30 @@ export function ExpenseSheet({
   onSave,
 }: ExpenseSheetProps): React.JSX.Element {
   const { t } = useT();
+  const auth = useContext(AuthContext);
   const baseId = useId();
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState(categories[0]?.name ?? '');
   const [slot, setSlot] = useState<PersonSlot>('u1');
   const [split, setSplit] = useState<SplitMode>('even');
+  const [paidAt, setPaidAt] = useState(localTodayIso);
+  const [notes, setNotes] = useState('');
+  const [u1Share, setU1Share] = useState('');
+  const [u2Share, setU2Share] = useState('');
 
+  const identity = auth?.session.status === 'signed-in' ? auth.session.identity : null;
   const payers: readonly { slot: PersonSlot; label: string }[] = [
-    { slot: 'u1', label: MOCK_PROFILE.me.name.split(' ')[0] ?? 'u1' },
-    { slot: 'u2', label: MOCK_PROFILE.partner.name.split(' ')[0] ?? 'u2' },
-    { slot: 'both', label: t('sheetJointAccount') },
+    { slot: 'u1', label: identity?.profile.name?.split(' ')[0] || t('me') },
+    ...(identity?.partner
+      ? [{ slot: 'u2' as const, label: identity.partner.name?.split(' ')[0] || t('partner') }]
+      : []),
   ];
 
   const splits: readonly { value: SplitMode; label: string }[] = [
     { value: 'even', label: t('sheetSplitEven') },
     { value: 'payerOnly', label: t('sheetSplitPayer') },
-    { value: 'shared', label: t('sheetSplitShared') },
+    ...(identity?.partner ? [{ value: 'custom' as const, label: t('moneyCustomSplit') }] : []),
   ];
 
   return (
@@ -100,6 +115,49 @@ export function ExpenseSheet({
               </span>
             ))}
           </div>
+          <Input
+            ariaLabel={t('moneyCategories')}
+            value={category}
+            onChange={setCategory}
+            placeholder={t('moneyCategoryPlaceholder')}
+          />
+        </div>
+
+        {split === 'custom' ? (
+          <div className={styles.row}>
+            <div className={styles.rowGrow}>
+              <FieldLabel htmlFor={`${baseId}-share-u1`}>{payers[0]?.label ?? t('me')}</FieldLabel>
+              <Input
+                id={`${baseId}-share-u1`}
+                value={u1Share}
+                onChange={setU1Share}
+                inputMode="decimal"
+                placeholder="0,00"
+              />
+            </div>
+            <div className={styles.rowGrow}>
+              <FieldLabel htmlFor={`${baseId}-share-u2`}>{payers[1]?.label ?? t('partner')}</FieldLabel>
+              <Input
+                id={`${baseId}-share-u2`}
+                value={u2Share}
+                onChange={setU2Share}
+                inputMode="decimal"
+                placeholder="0,00"
+              />
+            </div>
+          </div>
+        ) : null}
+
+        <div className={styles.row}>
+          <div className={styles.rowGrow}>
+            <FieldLabel htmlFor={`${baseId}-paid-at`}>{t('moneyDate')}</FieldLabel>
+            <Input
+              id={`${baseId}-paid-at`}
+              type="date"
+              value={paidAt}
+              onChange={setPaidAt}
+            />
+          </div>
         </div>
 
         <div>
@@ -120,6 +178,17 @@ export function ExpenseSheet({
               />
             ))}
           </div>
+        </div>
+
+        <div>
+          <FieldLabel htmlFor={`${baseId}-notes`}>{t('notes')}</FieldLabel>
+          <Textarea
+            id={`${baseId}-notes`}
+            value={notes}
+            onChange={setNotes}
+            rows={2}
+            placeholder={t('sheetOptional')}
+          />
         </div>
 
         <div>
@@ -145,7 +214,26 @@ export function ExpenseSheet({
             onClick={() => {
               const value = parseAmount(amount);
               if (title.trim() === '' || value === null) return;
-              onSave({ title: title.trim(), amount: value, category, slot, split });
+              const customU1 = split === 'custom' ? parseAmount(u1Share) : null;
+              const customU2 = split === 'custom' ? parseAmount(u2Share) : null;
+              if (
+                split === 'custom' &&
+                (customU1 === null || customU2 === null || Math.round((customU1 + customU2) * 100) !== Math.round(value * 100))
+              ) {
+                return;
+              }
+              onSave({
+                title: title.trim(),
+                amount: value,
+                category: category.trim(),
+                slot,
+                split,
+                paidAt,
+                notes: notes.trim(),
+                ...(split === 'custom' && customU1 !== null && customU2 !== null
+                  ? { customShares: { u1: customU1, u2: customU2 } }
+                  : {}),
+              });
             }}
           >
             {t('sheetSaveExpense')}
@@ -154,4 +242,9 @@ export function ExpenseSheet({
       </div>
     </BottomSheet>
   );
+}
+
+function localTodayIso(): string {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 }

@@ -77,6 +77,10 @@ function requireSortOrder(value: number | null): void {
   }
 }
 
+function requireBoolean(value: boolean, field: string): void {
+  if (typeof value !== 'boolean') throw new TypeError(`${field} must be a boolean.`);
+}
+
 function createRow(input: WeekPlanCreateInput): WeekPlanInsert {
   requireText(input.calendar_id, 'calendar_id');
   requireText(input.created_by, 'created_by');
@@ -85,6 +89,8 @@ function createRow(input: WeekPlanCreateInput): WeekPlanInsert {
   requireDayOfWeek(input.day_of_week);
   requireEntryType(input.entry_type);
   if (input.sort_order !== undefined) requireSortOrder(input.sort_order);
+  if (input.assigned_to !== undefined) requireText(input.assigned_to, 'assigned_to');
+  if (input.is_done !== undefined) requireBoolean(input.is_done, 'is_done');
 
   const row: WeekPlanInsert = {
     calendar_id: input.calendar_id,
@@ -96,6 +102,9 @@ function createRow(input: WeekPlanCreateInput): WeekPlanInsert {
   };
   if (input.notes !== undefined) row.notes = input.notes;
   if (input.sort_order !== undefined) row.sort_order = input.sort_order;
+  if (input.assigned_to !== undefined) row.assigned_to = input.assigned_to;
+  if (input.is_done !== undefined) row.is_done = input.is_done;
+  if (input.completed_at !== undefined) row.completed_at = input.completed_at;
   return row;
 }
 
@@ -119,6 +128,15 @@ function updateRow(input: WeekPlanUpdateInput): WeekPlanUpdate {
     row.title = input.title;
   }
   if (input.notes !== undefined) row.notes = input.notes;
+  if (input.assigned_to !== undefined) {
+    requireText(input.assigned_to, 'assigned_to');
+    row.assigned_to = input.assigned_to;
+  }
+  if (input.is_done !== undefined) {
+    requireBoolean(input.is_done, 'is_done');
+    row.is_done = input.is_done;
+  }
+  if (input.completed_at !== undefined) row.completed_at = input.completed_at;
   if (input.sort_order !== undefined) {
     requireSortOrder(input.sort_order);
     row.sort_order = input.sort_order;

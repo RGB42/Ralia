@@ -169,8 +169,7 @@ export async function importLegacyOutbox(
     for (const [offset, mutation] of queue.mutations.entries()) {
       // Synthetic enqueue times preserve the legacy queue's relative order and
       // sort ahead of anything this session creates.
-      await outbox.enqueue(queue.domain, queue.calendarId, mutation, {
-        legacy: true,
+      await outbox.enqueueLegacy(queue.domain, queue.calendarId, mutation, {
         enqueuedAt: offset,
       });
       importedRecords += 1;

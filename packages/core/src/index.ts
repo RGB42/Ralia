@@ -25,6 +25,13 @@ export {
 } from './calendar/month-grid.js';
 
 export {
+  layoutMonthEventRanges,
+  type MonthRangeInput,
+  type MonthRangeLayout,
+  type MonthRangeSegment,
+} from './calendar/month-range-layout.js';
+
+export {
   WEEK_DEFAULT_START_HOUR,
   WEEK_EVENT_HEIGHT_INSET_PX,
   WEEK_EXPANDED_START_HOUR,
@@ -36,6 +43,24 @@ export {
 } from './calendar/week-geometry.js';
 
 export { isLocalId, localIdScope, makeLocalId, type IdFactoryOptions } from './ids.js';
+
+export {
+  UNCATEGORIZED_CATEGORY,
+  aggregateExpensesByCategory,
+  aggregateExpensesByMonth,
+  calculateLedger,
+  type CategoryExpenseTotal,
+  type ExpenseAggregationInput,
+  type ExpenseSplitType,
+  type LedgerBalance,
+  type LedgerExpense,
+  type LedgerInput,
+  type LedgerResult,
+  type LedgerSettlement,
+  type LedgerShare,
+  type MonthlyExpenseTotal,
+  type RecommendedPayment,
+} from './money/ledger.js';
 
 export {
   isOfflineSyncError,

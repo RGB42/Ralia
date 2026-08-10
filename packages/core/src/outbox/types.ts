@@ -21,6 +21,8 @@ export function isOutboxDomain(value: unknown): value is OutboxDomain {
 export interface OutboxRecord<TMutation = unknown> {
   /** IndexedDB auto-increment key. Assigned on write. */
   id: number;
+  /** Owning account. Empty only while a legacy record is still unclaimed. */
+  ownerUserId: string;
   domain: OutboxDomain;
   /** Queues are scoped per calendar, exactly as in Ralia 1.x. */
   calendarId: string;

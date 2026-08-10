@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider.js';
 import { MOCK_EVENTS, MOCK_TODAY } from '../mock/fixtures.js';
 import { pinLanguage } from '../test-harness.js';
+import type { CalendarEvent } from '../screens/calendar/calendar-event.js';
 import { DaySheet } from './DaySheet.js';
 import { NewEventSheet } from './NewEventSheet.js';
 
@@ -15,12 +16,17 @@ function wrap(node: React.ReactNode) {
   return render(<I18nProvider>{node}</I18nProvider>);
 }
 
-function renderDay(iso: string, onEdit = vi.fn(), onAdd = vi.fn()) {
+function renderDay(
+  iso: string,
+  onEdit = vi.fn(),
+  onAdd = vi.fn(),
+  events: readonly CalendarEvent[] = MOCK_EVENTS,
+) {
   wrap(
     <DaySheet
       open
       iso={iso}
-      events={MOCK_EVENTS}
+      events={events}
       onClose={() => {}}
       onEdit={onEdit}
       onAdd={onAdd}
@@ -38,7 +44,10 @@ describe('DaySheet', () => {
   });
 
   it('nennt heute im Kicker', () => {
-    renderDay(MOCK_TODAY);
+    const today = new Date();
+    renderDay(
+      `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`,
+    );
     expect(screen.getByText('Heute')).toBeInTheDocument();
   });
 
@@ -57,12 +66,12 @@ describe('DaySheet', () => {
     expect(onEdit).toHaveBeenCalledOnce();
   });
 
-  it('meldet einen kurzen Tipp nicht als lange gedrueckt', async () => {
+  it('oeffnet per normalem Klick das Bearbeiten', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const { onEdit } = renderDay(MOCK_TODAY);
     await user.click(screen.getAllByTestId('day-event')[0] as HTMLElement);
-    expect(onEdit).not.toHaveBeenCalled();
+    expect(onEdit).toHaveBeenCalledOnce();
   });
 
   it('meldet Termin hinzufuegen', async () => {
@@ -98,6 +107,51 @@ describe('NewEventSheet', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Speichern' }));
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({ title: 'Kino', location: 'Astor', slot: 'both', toGoogle: false }),
+    );
+  });
+
+  it('zeigt einen mehrtaegigen Termin auch an einem mittleren Tag', () => {
+    renderDay('2026-07-06', vi.fn(), vi.fn(), [
+      {
+        id: 'trip',
+        iso: '2026-07-03',
+        endIso: '2026-07-08',
+        title: 'Roadtrip',
+        start: '10:00',
+        end: '18:00',
+        slot: 'both',
+        location: 'Unterwegs',
+      },
+    ]);
+    expect(screen.getByText('Roadtrip')).toBeInTheDocument();
+    expect(screen.getByText(/3\. Juli.*8\. Juli/)).toBeInTheDocument();
+  });
+
+  it('sammelt Zeitraum, Notizen, Serie und Erinnerung', async () => {
+    const onSave = renderNew();
+    await userEvent.type(screen.getByLabelText('Titel'), 'Training');
+    await userEvent.click(screen.getByRole('switch', { name: 'Ganztag' }));
+    await userEvent.type(screen.getByLabelText('Zeit'), '18:00');
+    await userEvent.type(screen.getByLabelText('Endzeit *'), '19:30');
+    await userEvent.type(screen.getByLabelText('Notizen / Kommentare'), 'Sporttasche');
+    await userEvent.selectOptions(screen.getByLabelText('🔄 Wiederholungsmuster'), 'weekly');
+    await userEvent.clear(screen.getByLabelText('Wiederholungsintervall'));
+    await userEvent.type(screen.getByLabelText('Wiederholungsintervall'), '2');
+    await userEvent.click(screen.getByRole('switch', { name: '🔔 Erinnerung aktivieren' }));
+    await userEvent.selectOptions(screen.getByLabelText('Erinnere mich vorher'), '60');
+    await userEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        allDay: false,
+        time: '18:00',
+        endTime: '19:30',
+        notes: 'Sporttasche',
+        recurrenceType: 'weekly',
+        recurrenceInterval: 2,
+        reminderEnabled: true,
+        reminderOffsetMinutes: 60,
+      }),
     );
   });
 

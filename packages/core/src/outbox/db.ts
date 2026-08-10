@@ -2,7 +2,7 @@ import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { NewOutboxRecord, OutboxDomain, OutboxRecord } from './types.js';
 
 export const OUTBOX_DB_NAME = 'ralia';
-export const OUTBOX_DB_VERSION = 1;
+export const OUTBOX_DB_VERSION = 2;
 
 export interface RaliaDB extends DBSchema {
   outbox: {
@@ -14,6 +14,8 @@ export interface RaliaDB extends DBSchema {
      */
     value: OutboxRecord;
     indexes: {
+      /** Account-safe FIFO access to exactly one domain/calendar queue. */
+      'by-owner-domain-calendar': [string, OutboxDomain, string, number];
       /** FIFO drain of one queue. */
       'by-domain-calendar': [OutboxDomain, string, number];
       /** Cheap global counts and full drains. */
@@ -38,11 +40,37 @@ export type RaliaDatabase = IDBPDatabase<RaliaDB>;
  */
 export function openRaliaDB(name: string = OUTBOX_DB_NAME): Promise<RaliaDatabase> {
   return openDB<RaliaDB>(name, OUTBOX_DB_VERSION, {
-    upgrade(db) {
+    upgrade(db, oldVersion, _newVersion, transaction) {
+      let outboxStore;
       if (!db.objectStoreNames.contains('outbox')) {
-        const store = db.createObjectStore('outbox', { keyPath: 'id', autoIncrement: true });
-        store.createIndex('by-domain-calendar', ['domain', 'calendarId', 'enqueuedAt']);
-        store.createIndex('by-enqueued-at', 'enqueuedAt');
+        outboxStore = db.createObjectStore('outbox', { keyPath: 'id', autoIncrement: true });
+        outboxStore.createIndex('by-domain-calendar', ['domain', 'calendarId', 'enqueuedAt']);
+        outboxStore.createIndex('by-enqueued-at', 'enqueuedAt');
+      } else {
+        outboxStore = transaction.objectStore('outbox');
+      }
+
+      if (!outboxStore.indexNames.contains('by-owner-domain-calendar')) {
+        outboxStore.createIndex('by-owner-domain-calendar', [
+          'ownerUserId',
+          'domain',
+          'calendarId',
+          'enqueuedAt',
+        ]);
+      }
+
+      if (oldVersion === 1) {
+        // v1 had no account attribution. Preserve every record, but keep it
+        // unavailable to normal queue operations until claimLegacy() assigns it.
+        void (async () => {
+          let cursor = await outboxStore.openCursor();
+          while (cursor) {
+            if (typeof cursor.value.ownerUserId !== 'string') {
+              await cursor.update({ ...cursor.value, ownerUserId: '' });
+            }
+            cursor = await cursor.continue();
+          }
+        })();
       }
       if (!db.objectStoreNames.contains('meta')) {
         db.createObjectStore('meta');

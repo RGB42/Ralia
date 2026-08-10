@@ -218,6 +218,43 @@ export {
   type ExpenseAmountInput,
 } from './repositories/expense-money.js';
 
+export {
+  createRecurringEventExceptionsRepo,
+  createSupabaseRecurringEventExceptionsRepo,
+  type CreateDeletedRecurringEventExceptionInput,
+  type CreateOverrideRecurringEventExceptionInput,
+  type CreateRecurringEventExceptionInput,
+  type DeleteRecurringEventExceptionInput,
+  type RecurringEventExceptionsGateway,
+  type RecurringEventExceptionsRepo,
+  type RecurringEventOverrideData,
+  type UpdateRecurringEventExceptionInput,
+} from './repositories/recurring-event-exceptions-repo.js';
+
+export {
+  subscribeToEventRealtime,
+  type EventRealtimeInvalidation,
+  type EventRealtimeOperation,
+  type EventRealtimeSubscription,
+  type EventRealtimeTable,
+} from './realtime/event-realtime.js';
+
+export {
+  createRecurringSeriesRepo,
+  createSupabaseRecurringSeriesRepo,
+  type RecurringSeriesChanges,
+  type RecurringSeriesGateway,
+  type RecurringSeriesRepo,
+  type SplitRecurringSeriesInput,
+  type SplitRecurringSeriesResult,
+} from './repositories/recurring-series-repo.js';
+
+export {
+  createEventOutboxExecutor,
+  type EventMutation,
+  type EventOutboxExecutorDependencies,
+} from './outbox/event-outbox-executor.js';
+
 export type {
   AssignedTo,
   AppPreferencesRow,

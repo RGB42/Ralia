@@ -4,6 +4,7 @@ import { AuthProvider } from './auth/AuthProvider.js';
 import { BootGate } from './boot/BootGate.js';
 import { DataProvider } from './data/DataProvider.js';
 import { I18nProvider } from './i18n/I18nProvider.js';
+import { AppPreferencesProvider } from './preferences/AppPreferencesProvider.js';
 import { routes } from './routes/router.js';
 
 // BASE_URL kommt aus vite.config.ts (Standard '/app/'); Render baut mit
@@ -33,7 +34,9 @@ export function App(): React.JSX.Element {
           <BootGate>
             <AuthProvider>
               <DataProvider>
-                <RouterProvider router={router} />
+                <AppPreferencesProvider>
+                  <RouterProvider router={router} />
+                </AppPreferencesProvider>
               </DataProvider>
             </AuthProvider>
           </BootGate>

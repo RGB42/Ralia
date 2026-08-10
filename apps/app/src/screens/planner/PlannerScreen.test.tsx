@@ -1,71 +1,70 @@
-import { render, screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { I18nProvider } from '../../i18n/I18nProvider.js';
-import { LANG_STORAGE_KEY } from '../../i18n/catalog.js';
-import { PlannerScreen } from './PlannerScreen.js';
+import { pinLanguage, renderAppAt } from '../../test-harness.js';
 
-beforeEach(() => localStorage.setItem(LANG_STORAGE_KEY, 'de'));
+beforeEach(() => pinLanguage('de'));
 
 function renderPlanner() {
-  render(
-    <I18nProvider>
-      <PlannerScreen />
-    </I18nProvider>,
-  );
+  return renderAppAt('/planer');
 }
 
 describe('PlannerScreen', () => {
-  it('zeigt sieben Tageskarten', () => {
+  it('zeigt sieben Tageskarten', async () => {
     renderPlanner();
-    expect(screen.getAllByTestId('planner-day')).toHaveLength(7);
+    expect(await screen.findAllByTestId('planner-day')).toHaveLength(7);
   });
 
-  it('klappt vergangene Tage zu und kuenftige auf', () => {
+  it('oeffnet die aktuelle Woche ab heute', async () => {
     renderPlanner();
-    // Fiktives Heute ist der 29. (Index 2) — davor zwei zugeklappte Tage.
-    const collapsed = screen
-      .getAllByTestId('planner-day')
-      .filter((d) => d.querySelector('[aria-expanded="false"]'));
-    expect(collapsed).toHaveLength(2);
+    const firstDay = (await screen.findAllByTestId('planner-day'))[0];
+    expect(firstDay?.querySelector('[aria-expanded="true"]')).toBeInTheDocument();
   });
 
   it('laesst einen Tag auf- und zuklappen', async () => {
     renderPlanner();
-    const [firstDay] = screen.getAllByTestId('planner-day');
+    const [firstDay] = await screen.findAllByTestId('planner-day');
     const toggle = firstDay?.querySelector('button');
-    expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    await userEvent.click(toggle as HTMLElement);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await userEvent.click(toggle as HTMLElement);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
   });
 
-  it('zeigt Mahlzeit und Aufgaben eines aufgeklappten Tages', () => {
+  it('zeigt Mahlzeit und Aufgaben eines aufgeklappten Tages', async () => {
     renderPlanner();
-    expect(screen.getByText('Auswärts: Trattoria Sole')).toBeInTheDocument();
-    expect(screen.getByText('Bad putzen')).toBeInTheDocument();
+    expect(await screen.findByText('Auswärts: Trattoria Sole')).toBeInTheDocument();
+    expect(await screen.findByText('Bad putzen')).toBeInTheDocument();
   });
 
   it('hakt eine Aufgabe ab', async () => {
     renderPlanner();
-    const task = screen.getByRole('checkbox', { name: 'Bad putzen' });
+    const task = await screen.findByRole('checkbox', { name: 'Bad putzen' });
     expect(task).not.toBeChecked();
     await userEvent.click(task);
     expect(screen.getByRole('checkbox', { name: 'Bad putzen' })).toBeChecked();
   });
 
-  it('zeigt bei einem Tag ohne Aufgaben einen Hinweis', () => {
+  it('zeigt bei einem Tag ohne Aufgaben einen Hinweis', async () => {
     renderPlanner();
-    expect(screen.getByText('Keine Aufgaben')).toBeInTheDocument();
+    expect((await screen.findAllByText('Keine Aufgaben')).length).toBeGreaterThan(0);
   });
 
-  it('zeigt bei zugeklapptem Tag eine Vorschau', () => {
+  it('zeigt bei zugeklapptem Tag eine Vorschau', async () => {
     renderPlanner();
+    await screen.findByText('Ofengemüse mit Feta');
+    const [firstDay] = screen.getAllByTestId('planner-day');
+    await userEvent.click(firstDay!.querySelector('button')!);
     expect(screen.getByText(/Ofengemüse mit Feta/)).toBeInTheDocument();
   });
 
-  it('markiert den heutigen Tag', () => {
+  it('markiert den heutigen Tag', async () => {
     renderPlanner();
-    // Der 29. ist heute; seine Plakette traegt die gefuellte Markenfarbe.
-    expect(screen.getByText('29')).toBeInTheDocument();
+    expect(await screen.findByText(String(new Date().getDate()))).toBeInTheDocument();
+  });
+
+  it('oeffnet die gemeinsame Einkaufsliste', async () => {
+    const { router } = renderPlanner();
+    await userEvent.click(await screen.findByRole('button', { name: 'Einkaufsliste' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/todos/einkauf'));
   });
 });

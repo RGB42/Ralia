@@ -35,8 +35,17 @@ export function NewEventSheet({
           title: '',
           iso: defaultIso,
           time: '',
+          endIso: defaultIso,
+          endTime: '',
+          allDay: true,
           slot: 'both',
           location: '',
+          notes: '',
+          recurrenceType: '',
+          recurrenceInterval: 1,
+          recurrenceEndDate: '',
+          reminderEnabled: false,
+          reminderOffsetMinutes: 1440,
           toGoogle: false,
         }}
         withLocation

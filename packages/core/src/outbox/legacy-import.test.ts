@@ -9,6 +9,7 @@ import {
   type LegacyMigrationMarker,
 } from './legacy-import.js';
 import { Outbox } from './outbox.js';
+import type { OutboxRecord } from './types.js';
 
 /** Minimal `localStorage` stand-in with the same index-shifting behaviour. */
 class FakeStorage implements KeyValueStorage {
@@ -138,13 +139,16 @@ describe('importLegacyOutbox', () => {
     expect(result.importedRecords).toBe(3);
     expect(result.importedQueues).toBe(1);
 
-    const pending = await outbox.peek<{ type: string }>('events', 'u1_u2');
+    const pending = (await (await outbox.db()).getAll('outbox')) as OutboxRecord<{
+      type: string;
+    }>[];
     expect(pending.map((r) => r.mutation.type)).toEqual([
       'upsert-event',
       'upsert-event',
       'delete-event',
     ]);
     expect(pending.every((r) => r.legacy)).toBe(true);
+    expect(pending.every((r) => r.ownerUserId === '')).toBe(true);
   });
 
   it('preserves the mutation payload verbatim so domain executors still understand it', async () => {
@@ -163,7 +167,7 @@ describe('importLegacyOutbox', () => {
 
     await importLegacyOutbox(outbox, storage);
 
-    const [record] = await outbox.peek<typeof mutation>('events', 'u1_u2');
+    const [record] = await (await outbox.db()).getAll('outbox');
     expect(record?.mutation).toEqual(mutation);
   });
 
@@ -212,7 +216,7 @@ describe('importLegacyOutbox', () => {
 
     expect(second.ran).toBe(false);
     expect(second.importedRecords).toBe(0);
-    expect(await outbox.size()).toBe(1);
+    expect(await (await outbox.db()).count('outbox')).toBe(1);
   });
 
   it('sweeps leftover keys when a previous run was interrupted after the marker', async () => {
@@ -254,6 +258,6 @@ describe('importLegacyOutbox', () => {
     expect(result.ran).toBe(true);
     expect(result.importedRecords).toBe(0);
     expect(result.removedKeys).toBe(0);
-    expect(await outbox.size()).toBe(0);
+    expect(await (await outbox.db()).count('outbox')).toBe(0);
   });
 });

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../../i18n/I18nProvider.js';
 import { LANG_STORAGE_KEY } from '../../i18n/catalog.js';
 import { MOCK_EVENTS, MOCK_TODAY } from '../../mock/fixtures.js';
+import type { CalendarEvent } from './calendar-event.js';
 import { MonthView } from './MonthView.js';
 
 /**
@@ -31,7 +32,12 @@ function stubResizeObserver(height: number) {
 beforeEach(() => localStorage.setItem(LANG_STORAGE_KEY, 'de'));
 afterEach(() => vi.unstubAllGlobals());
 
-function renderMonth(gridHeight: number, weekStart: 'mo' | 'so' = 'mo', onSelectDay = vi.fn()) {
+function renderMonth(
+  gridHeight: number,
+  weekStart: 'mo' | 'so' = 'mo',
+  onSelectDay = vi.fn(),
+  events: readonly CalendarEvent[] = MOCK_EVENTS,
+) {
   stubResizeObserver(gridHeight);
   render(
     <I18nProvider>
@@ -40,7 +46,7 @@ function renderMonth(gridHeight: number, weekStart: 'mo' | 'so' = 'mo', onSelect
         monthIndex={6}
         weekStart={weekStart}
         today={MOCK_TODAY}
-        events={MOCK_EVENTS}
+        events={events}
         onSelectDay={onSelectDay}
       />
     </I18nProvider>,
@@ -108,5 +114,26 @@ describe('MonthView', () => {
     // Zeilenhoehe 60 → 25 verfuegbar → genau ein Chip. Der 29. hat drei Termine.
     renderMonth(60 * 6);
     expect(screen.getByRole('button', { name: /29\. Juli/ })).toHaveTextContent('+2');
+  });
+
+  it('spannt einen mehrtaegigen Termin ueber mehrere Zellen und Kalenderzeilen', () => {
+    const trip: CalendarEvent = {
+      id: 'trip',
+      iso: '2026-07-03',
+      endIso: '2026-07-08',
+      title: 'Roadtrip',
+      start: '',
+      end: '',
+      slot: 'both',
+      location: '',
+    };
+    renderMonth(900, 'mo', vi.fn(), [trip]);
+
+    const segments = screen.getAllByTestId('multi-day-segment');
+    expect(segments).toHaveLength(2);
+    expect(segments[0]).toHaveStyle({ gridColumn: '5 / span 3', gridRow: '1' });
+    expect(segments[1]).toHaveStyle({ gridColumn: '1 / span 3', gridRow: '2' });
+    expect(segments[0]).toHaveAttribute('data-event-title', 'Roadtrip');
+    expect(segments[1]).toHaveAttribute('data-event-title', 'Roadtrip');
   });
 });

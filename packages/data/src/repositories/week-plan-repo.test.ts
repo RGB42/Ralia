@@ -8,12 +8,15 @@ const ENTRY_ID = '33333333-3333-4333-8333-333333333333';
 const WEEK_START = '2026-08-10';
 
 const ENTRY: WeekPlansRow = {
+  assigned_to: 'both',
   calendar_id: CALENDAR_ID,
+  completed_at: null,
   created_at: '2026-08-10T08:00:00Z',
   created_by: USER_ID,
   day_of_week: 0,
   entry_type: 'meal',
   id: ENTRY_ID,
+  is_done: false,
   notes: null,
   sort_order: 0,
   title: 'Pasta',

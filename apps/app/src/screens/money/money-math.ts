@@ -1,6 +1,5 @@
 import { personTokens } from '@ralia/ui';
 import type { Lang } from '../../i18n/catalog.js';
-import type { MockCategory } from '../../mock/fixtures.js';
 
 /**
  * Die Rechnung des Geld-Screens, getrennt von der Darstellung. Sie ist die
@@ -37,7 +36,13 @@ function percentOfLimit(value: number, limit: number): number {
   return Math.min(100, (value / limit) * 100);
 }
 
-export function categoryTotals(categories: readonly MockCategory[]): CategoryTotal[] {
+export interface MoneyCategoryInput {
+  name: string;
+  limit: number;
+  shares: Record<(typeof SHARE_SLOTS)[number], number>;
+}
+
+export function categoryTotals(categories: readonly MoneyCategoryInput[]): CategoryTotal[] {
   return categories.map((category) => {
     const spent = SHARE_SLOTS.reduce((sum, slot) => sum + category.shares[slot], 0);
     return {
@@ -62,7 +67,10 @@ export interface BudgetSummary {
   remaining: number;
 }
 
-export function budgetSummary(categories: readonly MockCategory[], budget: number): BudgetSummary {
+export function budgetSummary(
+  categories: readonly MoneyCategoryInput[],
+  budget: number,
+): BudgetSummary {
   const spent = categories.reduce(
     (sum, category) => sum + SHARE_SLOTS.reduce((inner, slot) => inner + category.shares[slot], 0),
     0,

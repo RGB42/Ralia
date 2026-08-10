@@ -1,4 +1,10 @@
-import type { NotesTodo, NotesTodoGroupsRow, ProfilesRow, SessionState } from '@ralia/data';
+import type {
+  NotesTodo,
+  NotesTodoGroupsRow,
+  ProfilesRow,
+  SessionState,
+  WeekPlansRow,
+} from '@ralia/data';
 import { ThemeProvider, ToastProvider } from '@ralia/ui';
 import { render } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
@@ -7,7 +13,11 @@ import { AuthContext, type ActionResult, type AuthContextValue } from './auth/Au
 import { DataContext, type DataServices } from './data/DataProvider.js';
 import { I18nProvider } from './i18n/I18nProvider.js';
 import { LANG_STORAGE_KEY } from './i18n/catalog.js';
-import { MOCK_TODOS, MOCK_TODO_LISTS } from './mock/fixtures.js';
+import { MOCK_PLANNER, MOCK_TODOS, MOCK_TODO_LISTS } from './mock/fixtures.js';
+import {
+  AppPreferencesContext,
+  type AppPreferencesValue,
+} from './preferences/AppPreferencesProvider.js';
 import { routes } from './routes/router.js';
 
 /**
@@ -99,6 +109,47 @@ const TEST_TODOS: NotesTodo[] = MOCK_TODOS.map((item, index) => ({
   completed_at: item.done ? '2026-08-10T10:00:00Z' : null,
 }));
 
+const TEST_WEEK_PLAN: WeekPlansRow[] = MOCK_PLANNER.flatMap((day, dayIndex) => [
+  ...(day.meal
+    ? [
+        {
+          id: `meal-${dayIndex}`,
+          calendar_id: TEST_USER_ID,
+          created_by: TEST_USER_ID,
+          week_start: '2026-08-10',
+          day_of_week: dayIndex,
+          entry_type: 'meal',
+          title: day.meal,
+          notes: '',
+          sort_order: 0,
+          created_at: '2026-08-10T10:00:00Z',
+          updated_at: '2026-08-10T10:00:00Z',
+          assigned_to: 'both',
+          is_done: false,
+          completed_at: null,
+        } satisfies WeekPlansRow,
+      ]
+    : []),
+  ...day.tasks.map(
+    (task, taskIndex): WeekPlansRow => ({
+      id: task.id,
+      calendar_id: TEST_USER_ID,
+      created_by: TEST_USER_ID,
+      week_start: '2026-08-10',
+      day_of_week: dayIndex,
+      entry_type: 'task',
+      title: task.text,
+      notes: '',
+      sort_order: taskIndex + 1,
+      created_at: '2026-08-10T10:00:00Z',
+      updated_at: '2026-08-10T10:00:00Z',
+      assigned_to: task.slot === 'u1' ? TEST_USER_ID : TEST_PARTNER_ID,
+      is_done: task.done,
+      completed_at: task.done ? '2026-08-10T10:00:00Z' : null,
+    }),
+  ),
+]);
+
 export function dataDouble(overrides: Partial<DataServices> = {}): DataServices {
   return {
     appPreferences: {
@@ -131,6 +182,18 @@ export function dataDouble(overrides: Partial<DataServices> = {}): DataServices 
         throw new Error('Unexpected event update in test');
       },
       delete: async () => undefined,
+    },
+    eventQueue: {
+      enqueue: async () => undefined,
+      flush: async () => ({
+        done: 0,
+        retried: 0,
+        dropped: 0,
+        deferred: 0,
+        rebases: [],
+        dropReasons: [],
+      }),
+      pending: async () => [],
     },
     expenses: {
       list: async () => [],
@@ -219,16 +282,57 @@ export function dataDouble(overrides: Partial<DataServices> = {}): DataServices 
       delete: async () => undefined,
       reorder: async () => undefined,
     },
-    weekPlan: {
+    recurringEventExceptions: {
       list: async () => [],
       create: async () => {
-        throw new Error('Unexpected week plan create in test');
+        throw new Error('Unexpected recurring exception create in test');
       },
       update: async () => {
-        throw new Error('Unexpected week plan update in test');
+        throw new Error('Unexpected recurring exception update in test');
       },
       delete: async () => undefined,
     },
+    recurringSeries: {
+      splitFuture: async () => {
+        throw new Error('Unexpected recurring series split in test');
+      },
+    },
+    subscribeToEvents: () => ({ unsubscribe: async () => 'ok' }),
+    weekPlan: {
+      list: async () => TEST_WEEK_PLAN.map((entry) => ({ ...entry })),
+      create: async (input) => ({
+        ...TEST_WEEK_PLAN[0]!,
+        ...input,
+        id: 'new-plan-entry',
+        assigned_to: input.assigned_to ?? 'both',
+        is_done: input.is_done ?? false,
+        completed_at: input.completed_at ?? null,
+      }),
+      update: async (_calendarId, id, changes) => ({
+        ...(TEST_WEEK_PLAN.find((entry) => entry.id === id) ?? TEST_WEEK_PLAN[0]!),
+        ...changes,
+      }),
+      delete: async () => undefined,
+    },
+    ...overrides,
+  };
+}
+
+export function appPreferencesDouble(
+  overrides: Partial<AppPreferencesValue> = {},
+): AppPreferencesValue {
+  return {
+    preferences: {
+      user_id: TEST_USER_ID,
+      solo_mode: false,
+      week_start: 'mo',
+      locale: 'de',
+      notification_settings: {},
+      created_at: '2026-08-10T10:00:00Z',
+      updated_at: '2026-08-10T10:00:00Z',
+    },
+    loading: false,
+    update: async () => true,
     ...overrides,
   };
 }
@@ -265,6 +369,7 @@ export function authDouble(overrides: Partial<AuthContextValue> = {}): AuthConte
 export interface RenderAppOptions {
   auth?: Partial<AuthContextValue>;
   data?: Partial<DataServices>;
+  preferences?: Partial<AppPreferencesValue>;
 }
 
 /**
@@ -284,7 +389,9 @@ export function renderAppAt(path: string, options: RenderAppOptions = {}) {
         <ToastProvider>
           <AuthContext.Provider value={authDouble(options.auth)}>
             <DataContext.Provider value={dataDouble(options.data)}>
-              <RouterProvider router={router} />
+              <AppPreferencesContext.Provider value={appPreferencesDouble(options.preferences)}>
+                <RouterProvider router={router} />
+              </AppPreferencesContext.Provider>
             </DataContext.Provider>
           </AuthContext.Provider>
         </ToastProvider>

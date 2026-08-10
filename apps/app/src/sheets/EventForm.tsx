@@ -1,4 +1,14 @@
-import { Button, FieldLabel, Input, ListRow, PersonChip, Toggle } from '@ralia/ui';
+import type { RecurrenceType } from '@ralia/data';
+import {
+  Button,
+  FieldLabel,
+  Input,
+  ListRow,
+  PersonChip,
+  Select,
+  Textarea,
+  Toggle,
+} from '@ralia/ui';
 import type { PersonSlot } from '@ralia/ui';
 import { useContext, useId, useState } from 'react';
 import { AuthContext } from '../auth/AuthProvider.js';
@@ -9,8 +19,17 @@ export interface EventDraft {
   title: string;
   iso: string;
   time: string;
+  endIso: string;
+  endTime: string;
+  allDay: boolean;
   slot: PersonSlot;
   location: string;
+  notes: string;
+  recurrenceType: RecurrenceType | '';
+  recurrenceInterval: number;
+  recurrenceEndDate: string;
+  reminderEnabled: boolean;
+  reminderOffsetMinutes: number;
   toGoogle: boolean;
 }
 
@@ -49,7 +68,19 @@ export function EventForm({
 
   const titleId = `${baseId}-title`;
   const errorId = `${baseId}-title-error`;
-  const invalid = draft.title.trim() === '';
+  const invalidTitle = draft.title.trim() === '';
+  const invalidRange =
+    draft.iso === '' ||
+    draft.endIso === '' ||
+    draft.endIso < draft.iso ||
+    (!draft.allDay &&
+      (draft.time === '' ||
+        draft.endTime === '' ||
+        (draft.iso === draft.endIso && draft.endTime <= draft.time)));
+  const invalidRecurrence =
+    draft.recurrenceType !== '' &&
+    (!Number.isSafeInteger(draft.recurrenceInterval) || draft.recurrenceInterval < 1);
+  const invalid = invalidTitle || invalidRange || invalidRecurrence;
 
   const set = <K extends keyof EventDraft>(key: K, value: EventDraft[K]) =>
     setDraft((current) => ({ ...current, [key]: value }));
@@ -59,7 +90,12 @@ export function EventForm({
       setShowError(true);
       return;
     }
-    onSubmit({ ...draft, title: draft.title.trim() });
+    onSubmit({
+      ...draft,
+      title: draft.title.trim(),
+      location: draft.location.trim(),
+      notes: draft.notes.trim(),
+    });
   };
 
   const identity = auth?.session.status === 'signed-in' ? auth.session.identity : null;
@@ -80,9 +116,9 @@ export function EventForm({
             set('title', next);
             if (next.trim() !== '') setShowError(false);
           }}
-          {...(showError && invalid ? { describedBy: errorId, invalid: true } : {})}
+          {...(showError && invalidTitle ? { describedBy: errorId, invalid: true } : {})}
         />
-        {showError && invalid ? (
+        {showError && invalidTitle ? (
           <div id={errorId} className={styles.error}>
             {t('sheetTitleRequired')}
           </div>
@@ -100,15 +136,46 @@ export function EventForm({
           />
         </div>
         <div className={styles.rowNarrow}>
-          <FieldLabel htmlFor={`${baseId}-time`}>{t('sheetTime')}</FieldLabel>
+          <FieldLabel htmlFor={`${baseId}-end-date`}>{t('endDate')}</FieldLabel>
           <Input
-            id={`${baseId}-time`}
-            type="time"
-            value={draft.time}
-            onChange={(next) => set('time', next)}
+            id={`${baseId}-end-date`}
+            type="date"
+            value={draft.endIso}
+            onChange={(next) => set('endIso', next)}
           />
         </div>
       </div>
+
+      <ListRow title={t('allDay')} last>
+        <Toggle
+          checked={draft.allDay}
+          label={t('allDay')}
+          onChange={(next) => set('allDay', next)}
+        />
+      </ListRow>
+
+      {!draft.allDay ? (
+        <div className={styles.row}>
+          <div className={styles.rowGrow}>
+            <FieldLabel htmlFor={`${baseId}-time`}>{t('sheetTime')}</FieldLabel>
+            <Input
+              id={`${baseId}-time`}
+              type="time"
+              value={draft.time}
+              onChange={(next) => set('time', next)}
+            />
+          </div>
+          <div className={styles.rowNarrow}>
+            <FieldLabel htmlFor={`${baseId}-end-time`}>{t('endTime')}</FieldLabel>
+            <Input
+              id={`${baseId}-end-time`}
+              type="time"
+              value={draft.endTime}
+              onChange={(next) => set('endTime', next)}
+            />
+          </div>
+        </div>
+      ) : null}
 
       {withLocation ? (
         <div>
@@ -119,6 +186,87 @@ export function EventForm({
             onChange={(next) => set('location', next)}
             placeholder={t('sheetOptional')}
           />
+        </div>
+      ) : null}
+
+      <div>
+        <FieldLabel htmlFor={`${baseId}-notes`}>{t('notes')}</FieldLabel>
+        <Textarea
+          id={`${baseId}-notes`}
+          value={draft.notes}
+          onChange={(next) => set('notes', next)}
+          placeholder={t('sheetOptional')}
+        />
+      </div>
+
+      <div>
+        <FieldLabel htmlFor={`${baseId}-repeat`}>{t('repeatPattern')}</FieldLabel>
+        <Select<RecurrenceType | ''>
+          id={`${baseId}-repeat`}
+          value={draft.recurrenceType}
+          onChange={(next) => set('recurrenceType', next)}
+          options={[
+            { value: '', label: t('noRepeat') },
+            { value: 'daily', label: t('daily') },
+            { value: 'weekly', label: t('weekly') },
+            { value: 'monthly', label: t('monthly') },
+            { value: 'yearly', label: t('yearly') },
+          ]}
+        />
+      </div>
+
+      {draft.recurrenceType !== '' ? (
+        <div className={styles.row}>
+          <div className={styles.rowGrow}>
+            <FieldLabel htmlFor={`${baseId}-repeat-interval`}>{t('repeatInterval')}</FieldLabel>
+            <Input
+              id={`${baseId}-repeat-interval`}
+              type="number"
+              inputMode="numeric"
+              value={String(draft.recurrenceInterval)}
+              onChange={(next) => set('recurrenceInterval', Number(next))}
+            />
+          </div>
+          <div className={styles.rowGrow}>
+            <FieldLabel htmlFor={`${baseId}-repeat-until`}>{t('repeatUntil')}</FieldLabel>
+            <Input
+              id={`${baseId}-repeat-until`}
+              type="date"
+              value={draft.recurrenceEndDate}
+              onChange={(next) => set('recurrenceEndDate', next)}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      <ListRow title={t('enableReminder')} last>
+        <Toggle
+          checked={draft.reminderEnabled}
+          label={t('enableReminder')}
+          onChange={(next) => set('reminderEnabled', next)}
+        />
+      </ListRow>
+
+      {draft.reminderEnabled ? (
+        <div>
+          <FieldLabel htmlFor={`${baseId}-reminder`}>{t('remindBefore')}</FieldLabel>
+          <Select
+            id={`${baseId}-reminder`}
+            value={String(draft.reminderOffsetMinutes)}
+            onChange={(next) => set('reminderOffsetMinutes', Number(next))}
+            options={[
+              { value: '60', label: t('reminderOneHour') },
+              { value: '1440', label: t('reminderOneDay') },
+              { value: '2880', label: t('reminderTwoDays') },
+              { value: '10080', label: t('reminderOneWeek') },
+            ]}
+          />
+        </div>
+      ) : null}
+
+      {showError && (invalidRange || invalidRecurrence) ? (
+        <div role="alert" className={styles.error}>
+          {invalidRange ? t('calendarInvalidRange') : t('calendarInvalidRecurrence')}
         </div>
       ) : null}
 

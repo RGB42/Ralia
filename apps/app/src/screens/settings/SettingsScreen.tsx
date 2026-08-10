@@ -15,14 +15,11 @@ import {
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../../auth/useAuth.js';
+import { useAppPreferences } from '../../preferences/AppPreferencesProvider.js';
 import type { Lang } from '../../i18n/catalog.js';
 import { useT } from '../../i18n/useT.js';
-import { MOCK_CALENDARS, MOCK_PROFILE } from '../../mock/fixtures.js';
-import { ProfileSheet } from '../../sheets/ProfileSheet.js';
 import screen from '../screen.module.css';
 import styles from './SettingsScreen.module.css';
-
-type WeekStartChoice = 'mo' | 'so';
 
 export function SettingsScreen(): React.JSX.Element {
   const { t, lang, setLang } = useT();
@@ -30,23 +27,20 @@ export function SettingsScreen(): React.JSX.Element {
   const { show } = useToast();
   const navigate = useNavigate();
   const { session, signOut, disconnectPartner, setAnniversary } = useAuth();
+  const { preferences, update: updatePreferences } = useAppPreferences();
 
-  const [pushOn, setPushOn] = useState(true);
-  const [googleOn, setGoogleOn] = useState(true);
-  const [weekStart, setWeekStart] = useState<WeekStartChoice>('mo');
-  const [profileOpen, setProfileOpen] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
 
-  const activeCalendars = MOCK_CALENDARS.filter((cal) => cal.on).length;
-
-  /*
-   * Identitaet und Partner kommen ab SP1 aus der Sitzung. Die uebrigen Werte
-   * dieses Screens — Statistik, Kalenderzahl, Geburtstag — haengen weiter an den
-   * Fixtures; sie gehoeren zu SP2 bis SP4.
-   */
   const identity = session.status === 'signed-in' ? session.identity : null;
-  const inviteCode = identity?.profile.invite_code ?? MOCK_PROFILE.inviteCode;
+  const inviteCode = identity?.profile.invite_code ?? '';
   const [anniversary, setAnniversaryValue] = useState(identity?.profile.anniversary_date ?? '');
+  const pushOn = preferences?.notification_settings.pushEnabled === true;
+  const weekStart = preferences?.week_start ?? 'mo';
+
+  const savePreferences = async (changes: Parameters<typeof updatePreferences>[0]) => {
+    const saved = await updatePreferences(changes);
+    if (!saved) show(t('settingsPreferencesError'), 'danger');
+  };
 
   const copyCode = async () => {
     try {
@@ -69,10 +63,23 @@ export function SettingsScreen(): React.JSX.Element {
   const doDisconnect = async () => {
     setConfirmDisconnect(false);
     const result = await disconnectPartner();
+    if (result.ok) void savePreferences({ solo_mode: true });
     show(
       result.ok ? t('disconnectedFromPartner') : t(result.messageKey),
       result.ok ? 'ok' : 'info',
     );
+  };
+
+  const shareCode = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ text: inviteCode });
+      } else {
+        await copyCode();
+      }
+    } catch {
+      show(t('settingsCodeCopyFailed'), 'info');
+    }
   };
 
   const doSignOut = async () => {
@@ -89,32 +96,15 @@ export function SettingsScreen(): React.JSX.Element {
           <Card padding="15px">
             <div className={styles.profileHead}>
               <Avatar
-                initial={MOCK_PROFILE.me.initial}
-                slot={MOCK_PROFILE.me.slot}
+                initial={identity?.profile.name?.trim().charAt(0).toUpperCase() || '?'}
+                slot="u1"
                 size={52}
                 shape="rounded"
               />
               <div className={styles.profileText}>
-                <div className={styles.profileName}>{MOCK_PROFILE.me.name}</div>
-                <div className={styles.profileMail}>{MOCK_PROFILE.me.email}</div>
+                <div className={styles.profileName}>{identity?.profile.name ?? t('me')}</div>
+                <div className={styles.profileMail}>{identity?.profile.email ?? ''}</div>
               </div>
-              <Button variant="secondary" onClick={() => setProfileOpen(true)}>
-                {t('settingsEdit')}
-              </Button>
-            </div>
-            <div className={styles.stats}>
-              {(
-                [
-                  ['862', t('settingsDaysTogether')],
-                  ['11', t('settingsEventsPerWeek')],
-                  ['6', t('settingsTasksOpen')],
-                ] as const
-              ).map(([value, label]) => (
-                <div key={label} className={styles.stat} data-testid="profile-stat">
-                  <div className={styles.statValue}>{value}</div>
-                  <div className={styles.statLabel}>{label}</div>
-                </div>
-              ))}
             </div>
           </Card>
 
@@ -122,24 +112,31 @@ export function SettingsScreen(): React.JSX.Element {
             <div className={styles.sectionHeadWide}>
               <SectionLabel>{t('settingsPartner')}</SectionLabel>
             </div>
-            <div className={styles.partnerRow}>
-              <Avatar
-                initial={MOCK_PROFILE.partner.initial}
-                slot={MOCK_PROFILE.partner.slot}
-                size={34}
-                shape="rounded"
-              />
-              <div className={styles.partnerText}>
-                <div className={styles.partnerName}>{MOCK_PROFILE.partner.name}</div>
-                <div className={styles.partnerSince}>
-                  {t('settingsConnectedSince')} {MOCK_PROFILE.connectedSince} ·{' '}
-                  {t('settingsAllShared')}
+            {identity?.partner ? (
+              <div className={styles.partnerRow}>
+                <Avatar
+                  initial={identity.partner.name?.trim().charAt(0).toUpperCase() || '?'}
+                  slot="u2"
+                  size={34}
+                  shape="rounded"
+                />
+                <div className={styles.partnerText}>
+                  <div className={styles.partnerName}>{identity.partner.name ?? t('partner')}</div>
+                  <div className={styles.partnerSince}>{t('settingsAllShared')}</div>
                 </div>
+                <Button variant="danger" onClick={() => setConfirmDisconnect(true)}>
+                  {t('settingsDisconnect')}
+                </Button>
               </div>
-              <Button variant="danger" onClick={() => setConfirmDisconnect(true)}>
-                {t('settingsDisconnect')}
-              </Button>
-            </div>
+            ) : (
+              <div className={styles.partnerRow}>
+                <div className={styles.partnerText}>
+                  <div className={styles.partnerName}>{t('partnerNotConnected')}</div>
+                  <div className={styles.partnerSince}>{t('connectSkipHint')}</div>
+                </div>
+                <Button onClick={() => void navigate('/partner-verbinden')}>{t('connectAction')}</Button>
+              </div>
+            )}
             <div className={styles.codeRow}>
               <div className={styles.codeText}>
                 <div className={styles.codeLabel}>{t('settingsInviteCode')}</div>
@@ -156,11 +153,8 @@ export function SettingsScreen(): React.JSX.Element {
               <Button fullWidth onClick={() => void copyCode()}>
                 {t('settingsCopy')}
               </Button>
-              <Button variant="secondary" fullWidth onClick={() => undefined}>
+              <Button variant="secondary" fullWidth onClick={() => void shareCode()}>
                 {t('settingsShare')}
-              </Button>
-              <Button variant="secondary" onClick={() => undefined}>
-                {t('settingsNewCode')}
               </Button>
             </div>
           </Card>
@@ -169,9 +163,6 @@ export function SettingsScreen(): React.JSX.Element {
             <div className={styles.sectionHead}>
               <SectionLabel>{t('settingsPersonal')}</SectionLabel>
             </div>
-            <ListRow title={t('settingsBirthday')} hint={t('settingsBirthdayHint')}>
-              <span className={styles.value}>{MOCK_PROFILE.me.birthday}</span>
-            </ListRow>
             {/*
              * Der Jahrestag steht hier und nicht im Verbinden-Screen: er gilt
              * fuer beide Profile (`set_shared_anniversary` schreibt beide) und
@@ -203,14 +194,28 @@ export function SettingsScreen(): React.JSX.Element {
               />
             </ListRow>
             <ListRow title={t('settingsPush')} hint={t('settingsPushHint')}>
-              <Toggle checked={pushOn} label={t('settingsPush')} onChange={setPushOn} />
+              <Toggle
+                checked={pushOn}
+                label={t('settingsPush')}
+                onChange={(next) =>
+                  void savePreferences({
+                    notification_settings: {
+                      ...(preferences?.notification_settings ?? {}),
+                      pushEnabled: next,
+                    },
+                  })
+                }
+              />
             </ListRow>
             <ListRow title={t('settingsLanguage')} last={false}>
               <span className={styles.compactSwitch}>
                 <SegmentSwitch<Lang>
                   label={t('settingsLanguage')}
                   value={lang}
-                  onChange={setLang}
+                   onChange={(next) => {
+                     setLang(next);
+                     void savePreferences({ locale: next });
+                   }}
                   options={[
                     { value: 'de', label: 'DE' },
                     { value: 'en', label: 'EN' },
@@ -218,12 +223,12 @@ export function SettingsScreen(): React.JSX.Element {
                 />
               </span>
             </ListRow>
-            <ListRow title={t('settingsWeekStart')} last>
+             <ListRow title={t('settingsWeekStart')} last>
               <span className={styles.compactSwitch}>
-                <SegmentSwitch<WeekStartChoice>
+                 <SegmentSwitch<'mo' | 'so'>
                   label={t('settingsWeekStart')}
                   value={weekStart}
-                  onChange={setWeekStart}
+                   onChange={(next) => void savePreferences({ week_start: next })}
                   options={[
                     { value: 'mo', label: t('settingsWeekStartMo') },
                     { value: 'so', label: t('settingsWeekStartSo') },
@@ -238,30 +243,8 @@ export function SettingsScreen(): React.JSX.Element {
               <SectionLabel>{t('settingsGoogle')}</SectionLabel>
             </div>
             <ListRow
-              title={t('settingsConnected')}
-              hint={`${MOCK_PROFILE.me.email} · ${activeCalendars} ${t('settingsCalendarsActive')}`}
-            >
-              <Toggle checked={googleOn} label={t('settingsConnected')} onChange={setGoogleOn} />
-            </ListRow>
-            <div className={styles.rowActions}>
-              <Button
-                variant="secondary"
-                fullWidth
-                onClick={() => show(t('settingsImportStarted'))}
-              >
-                {t('settingsImport')}
-              </Button>
-              <Button
-                variant="secondary"
-                fullWidth
-                onClick={() => show(t('settingsExportStarted'))}
-              >
-                {t('settingsExport')}
-              </Button>
-            </div>
-            <ListRow
               title={t('settingsManageCalendars')}
-              hint={`2 ${t('settingsAccounts')} · ${activeCalendars} ${t('settingsCalendarsActive')}`}
+              hint={t('googleNotConnected')}
               onClick={() => void navigate('/profil/sync')}
               last
             />
@@ -281,14 +264,6 @@ export function SettingsScreen(): React.JSX.Element {
           <div className={styles.footer}>{t('settingsFooter')}</div>
         </div>
       </div>
-
-      <ProfileSheet
-        key={`profile-${profileOpen}`}
-        open={profileOpen}
-        profile={MOCK_PROFILE.me}
-        onClose={() => setProfileOpen(false)}
-        onSave={() => setProfileOpen(false)}
-      />
 
       <ConfirmDialog
         open={confirmDisconnect}

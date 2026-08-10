@@ -1,8 +1,18 @@
 import {
+  expandRecurringEvents,
+  makeLocalId,
+  type CoreRecurrenceType,
+  type RecurringEventException as CoreRecurringEventException,
+  type RecurrenceOccurrence,
+} from '@ralia/core';
+import {
   displayBelongsTo,
   type BelongsTo,
   type CreateEventInput,
   type EventsRow,
+  type EventMutation,
+  type RecurringEventExceptionsRow,
+  type RecurringEventOverrideData,
   type UpdateEventInput,
 } from '@ralia/data';
 import { AppHeader, Fab, SegmentSwitch, useToast } from '@ralia/ui';
@@ -10,10 +20,15 @@ import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../auth/useAuth.js';
 import { useData } from '../../data/DataProvider.js';
 import { useT } from '../../i18n/useT.js';
+import { useAppPreferences } from '../../preferences/AppPreferencesProvider.js';
 import { DaySheet } from '../../sheets/DaySheet.js';
 import { EventSheet } from '../../sheets/EventSheet.js';
 import { NewEventSheet } from '../../sheets/NewEventSheet.js';
 import type { EventDraft } from '../../sheets/EventForm.js';
+import {
+  RecurrenceScopeDialog,
+  type RecurrenceScope,
+} from '../../sheets/RecurrenceScopeDialog.js';
 import { Legend } from '../Legend.js';
 import { MonthView } from './MonthView.js';
 import { WeekView } from './WeekView.js';
@@ -36,11 +51,22 @@ type SheetState =
   | { kind: 'event'; iso: string; event: CalendarEvent }
   | null;
 
+type PendingSeriesAction =
+  | { kind: 'save'; event: CalendarEvent; draft: EventDraft }
+  | { kind: 'delete'; event: CalendarEvent }
+  | null;
+
 export function CalendarScreen(): React.JSX.Element {
   const { t, lang } = useT();
+  const { preferences } = useAppPreferences();
   const { show } = useToast();
   const { session } = useAuth();
-  const { events: eventRepo } = useData();
+  const {
+    events: eventRepo,
+    eventQueue,
+    recurringEventExceptions,
+    subscribeToEvents,
+  } = useData();
   const today = localTodayIso();
   const todayYear = Number(today.slice(0, 4));
   const todayMonth = Number(today.slice(5, 7)) - 1;
@@ -49,8 +75,11 @@ export function CalendarScreen(): React.JSX.Element {
   const [mode, setMode] = useState<CalMode>('monat');
   const [year, setYear] = useState(todayYear);
   const [monthIndex, setMonthIndex] = useState(todayMonth);
-  const [weekStartIso, setWeekStartIso] = useState(() => weekStartIsoOf(today, 'mo'));
+  const weekStart = preferences?.week_start ?? 'mo';
+  const [weekStartIso, setWeekStartIso] = useState(() => weekStartIsoOf(today, weekStart));
   const [nightExpanded, setNightExpanded] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
+  const [pendingSeriesAction, setPendingSeriesAction] = useState<PendingSeriesAction>(null);
   const request = useRef(0);
 
   const shiftMonth = (delta: number) => {
@@ -62,22 +91,40 @@ export function CalendarScreen(): React.JSX.Element {
   const goToday = () => {
     setYear(todayYear);
     setMonthIndex(todayMonth);
-    setWeekStartIso(weekStartIsoOf(today, 'mo'));
+    setWeekStartIso(weekStartIsoOf(today, weekStart));
   };
 
   const isMonth = mode === 'monat';
-  const rangeStart = isMonth ? monthIso(year, monthIndex, 1) : weekStartIso;
-  const rangeEnd = isMonth ? monthEndIso(year, monthIndex) : addDaysIso(weekStartIso, 6);
+  const activeWeekStartIso = weekStartIsoOf(weekStartIso, weekStart);
+  const rangeStart = isMonth ? monthIso(year, monthIndex, 1) : activeWeekStartIso;
+  const rangeEnd = isMonth ? monthEndIso(year, monthIndex) : addDaysIso(activeWeekStartIso, 6);
   const identity = session.status === 'signed-in' ? session.identity : null;
 
   useEffect(() => {
     if (!identity) return;
     const requestId = ++request.current;
-    void eventRepo
-      .list(identity.calendarId, { startDate: rangeStart, endDate: rangeEnd })
-      .then((rows) => {
+    void Promise.all([
+      eventRepo.list(identity.calendarId, { startDate: rangeStart, endDate: rangeEnd }),
+      recurringEventExceptions.list(identity.calendarId),
+      eventQueue.pending(identity.calendarId),
+    ])
+      .then(([rows, exceptions, pending]) => {
         if (request.current !== requestId) return;
-        setEvents(rows.map((row) => eventFromRow(row, identity.userId)));
+        const projected = projectPendingMutations(
+          rows,
+          exceptions,
+          pending,
+          identity.calendarId,
+        );
+        setEvents(
+          eventsForRange(
+            projected.events,
+            projected.exceptions,
+            rangeStart,
+            rangeEnd,
+            identity.userId,
+          ),
+        );
       })
       .catch(() => {
         if (request.current !== requestId) return;
@@ -86,28 +133,65 @@ export function CalendarScreen(): React.JSX.Element {
     return () => {
       request.current += 1;
     };
-  }, [eventRepo, identity, rangeEnd, rangeStart, show, t]);
+  }, [eventQueue, eventRepo, identity, rangeEnd, rangeStart, recurringEventExceptions, reloadToken, show, t]);
+
+  useEffect(() => {
+    if (!identity) return;
+    const subscription = subscribeToEvents(identity.calendarId, () => {
+      setReloadToken((current) => current + 1);
+    });
+    return () => {
+      void subscription.unsubscribe();
+    };
+  }, [identity, subscribeToEvents]);
 
   const switchMode = (next: CalMode) => {
     if (next === mode) return;
     if (next === 'woche') {
-      setWeekStartIso(weekStartIsoOf(monthIso(year, monthIndex, 1), 'mo'));
+      setWeekStartIso(weekStartIsoOf(monthIso(year, monthIndex, 1), weekStart));
     } else {
-      setYear(Number(weekStartIso.slice(0, 4)));
-      setMonthIndex(Number(weekStartIso.slice(5, 7)) - 1);
+      setYear(Number(activeWeekStartIso.slice(0, 4)));
+      setMonthIndex(Number(activeWeekStartIso.slice(5, 7)) - 1);
     }
     setMode(next);
   };
 
+  const queueEventMutation = async (mutation: EventMutation) => {
+    if (!identity) throw new Error('No active calendar identity');
+    await eventQueue.enqueue(identity.calendarId, mutation);
+    void eventQueue
+      .flush()
+      .then((summary) => {
+        if (summary.rebases.length > 0) {
+          const rebases = new Map(summary.rebases.map((rebase) => [rebase.tempId, rebase.realId]));
+          setEvents((current) =>
+            current.map((event) => {
+              const realId = event.id ? rebases.get(event.id) : undefined;
+              return realId ? { ...event, id: realId } : event;
+            }),
+          );
+        }
+        if (summary.dropped > 0) {
+          show(summary.dropReasons[0] ?? t('calendarSaveError'), 'danger');
+        }
+        if (summary.retried > 0 || summary.deferred > 0) {
+          show(t('offlineCalendarReady'), 'info');
+        }
+        if (summary.done > 0 || summary.dropped > 0) {
+          setReloadToken((current) => current + 1);
+        }
+      })
+      .catch(() => show(t('offlineCalendarReady'), 'info'));
+  };
+
   const saveNew = async (draft: EventDraft) => {
     if (!identity) return;
+    const tempId = makeLocalId('event');
+    const input = createEventInput(draft, identity.userId);
     try {
-      const row = await eventRepo.create(
-        identity.calendarId,
-        createEventInput(draft, identity.userId),
-      );
+      await queueEventMutation({ kind: 'event.create', tempId, input });
       setEvents((current) =>
-        upsertVisible(current, eventFromRow(row, identity.userId), rangeStart, rangeEnd),
+        upsertVisible(current, eventFromDraft(tempId, draft), rangeStart, rangeEnd),
       );
       setSheet(null);
     } catch {
@@ -117,14 +201,19 @@ export function CalendarScreen(): React.JSX.Element {
 
   const saveExisting = async (draft: EventDraft) => {
     if (!identity || sheet?.kind !== 'event' || !sheet.event.id) return;
+    if (sheet.event.recurrence) {
+      setPendingSeriesAction({ kind: 'save', event: sheet.event, draft });
+      return;
+    }
+    const event = sheet.event;
     try {
-      const row = await eventRepo.update(
-        identity.calendarId,
-        sheet.event.id,
-        updateEventInput(draft),
-      );
+      await queueEventMutation({
+        kind: 'event.update',
+        eventId: event.id!,
+        changes: updateEventInput(draft),
+      });
       setEvents((current) =>
-        upsertVisible(current, eventFromRow(row, identity.userId), rangeStart, rangeEnd),
+        upsertVisible(current, eventFromDraft(event.id!, draft), rangeStart, rangeEnd),
       );
       setSheet({ kind: 'day', iso: draft.iso });
     } catch {
@@ -135,14 +224,110 @@ export function CalendarScreen(): React.JSX.Element {
   const deleteExisting = async () => {
     if (!identity || sheet?.kind !== 'event' || !sheet.event.id) return;
     const event = sheet.event;
+    if (event.recurrence) {
+      setPendingSeriesAction({ kind: 'delete', event });
+      return;
+    }
     const eventId = event.id;
     if (!eventId) return;
     try {
-      await eventRepo.delete(identity.calendarId, eventId);
+      await queueEventMutation({ kind: 'event.delete', eventId });
       setEvents((current) => current.filter((entry) => entry.id !== eventId));
       setSheet({ kind: 'day', iso: event.iso });
     } catch {
       show(t('calendarDeleteError'), 'danger');
+    }
+  };
+
+  const applySeriesScope = async (scope: RecurrenceScope) => {
+    if (!identity || !pendingSeriesAction?.event.recurrence) return;
+    const action = pendingSeriesAction;
+    const event = action.event;
+    const recurrence = event.recurrence;
+    if (!recurrence) return;
+    try {
+      if (scope === 'occurrence') {
+        if (action.kind === 'delete') {
+          if (recurrence.exceptionId) {
+            await queueEventMutation({
+              kind: 'exception.update',
+              input: {
+                masterEventId: recurrence.masterId,
+                id: recurrence.exceptionId,
+                isDeleted: true,
+                overrideEventData: null,
+              },
+            });
+          } else {
+            await queueEventMutation({
+              kind: 'exception.create',
+              tempId: makeLocalId('exception'),
+              input: {
+                masterEventId: recurrence.masterId,
+                createdBy: identity.userId,
+                originalOccurrenceDate: recurrence.originalOccurrenceDate,
+                isDeleted: true,
+              },
+            });
+          }
+        } else {
+          const overrideEventData = occurrenceOverride(action.draft);
+          if (recurrence.exceptionId) {
+            await queueEventMutation({
+              kind: 'exception.update',
+              input: {
+                masterEventId: recurrence.masterId,
+                id: recurrence.exceptionId,
+                originalOccurrenceDate: recurrence.originalOccurrenceDate,
+                isDeleted: false,
+                overrideEventData,
+              },
+            });
+          } else {
+            await queueEventMutation({
+              kind: 'exception.create',
+              tempId: makeLocalId('exception'),
+              input: {
+                masterEventId: recurrence.masterId,
+                createdBy: identity.userId,
+                originalOccurrenceDate: recurrence.originalOccurrenceDate,
+                isDeleted: false,
+                overrideEventData,
+              },
+            });
+          }
+        }
+      } else if (scope === 'future') {
+        await queueEventMutation({
+          kind: 'series.splitFuture',
+          input: {
+            masterEventId: recurrence.masterId,
+            originalOccurrenceDate: recurrence.originalOccurrenceDate,
+            changes: action.kind === 'save' ? updateEventInput(action.draft) : {},
+            deleteFuture: action.kind === 'delete',
+          },
+        });
+      } else if (action.kind === 'delete') {
+        await queueEventMutation({ kind: 'event.delete', eventId: recurrence.masterId });
+      } else {
+        await queueEventMutation({
+          kind: 'event.update',
+          eventId: recurrence.masterId,
+          changes: {
+            ...updateEventInput(action.draft),
+            start_date: recurrence.masterStartDate,
+            end_date: recurrence.masterEndDate,
+          },
+        });
+      }
+
+      setPendingSeriesAction(null);
+      setSheet({ kind: 'day', iso: event.iso });
+    } catch {
+      show(
+        action.kind === 'delete' ? t('calendarDeleteError') : t('calendarSaveError'),
+        'danger',
+      );
     }
   };
 
@@ -152,16 +337,16 @@ export function CalendarScreen(): React.JSX.Element {
     ? year === todayYear && monthIndex === todayMonth
       ? today
       : monthIso(year, monthIndex, 1)
-    : weekStartIso;
+    : activeWeekStartIso;
 
   return (
     <div className={screen.screen}>
       <AppHeader
-        kicker={isMonth ? t('calKicker') : `${t('calWeekKicker')} ${isoWeekNumber(weekStartIso)}`}
-        title={isMonth ? monthTitle(year, monthIndex, lang) : weekRangeLabel(weekStartIso, lang)}
+        kicker={isMonth ? t('calKicker') : `${t('calWeekKicker')} ${isoWeekNumber(activeWeekStartIso)}`}
+        title={isMonth ? monthTitle(year, monthIndex, lang) : weekRangeLabel(activeWeekStartIso, lang)}
         range={{
-          onPrev: () => (isMonth ? shiftMonth(-1) : setWeekStartIso(addDaysIso(weekStartIso, -7))),
-          onNext: () => (isMonth ? shiftMonth(1) : setWeekStartIso(addDaysIso(weekStartIso, 7))),
+          onPrev: () => (isMonth ? shiftMonth(-1) : setWeekStartIso(addDaysIso(activeWeekStartIso, -7))),
+          onNext: () => (isMonth ? shiftMonth(1) : setWeekStartIso(addDaysIso(activeWeekStartIso, 7))),
           onToday: goToday,
           prevLabel: isMonth ? t('calPrevMonth') : t('calPrevWeek'),
           nextLabel: isMonth ? t('calNextMonth') : t('calNextWeek'),
@@ -191,14 +376,14 @@ export function CalendarScreen(): React.JSX.Element {
           <MonthView
             year={year}
             monthIndex={monthIndex}
-            weekStart="mo"
+            weekStart={weekStart}
             today={today}
             events={events}
             onSelectDay={(iso) => setSheet({ kind: 'day', iso })}
           />
         ) : (
           <WeekView
-            weekStartIso={weekStartIso}
+            weekStartIso={activeWeekStartIso}
             today={today}
             events={events}
             nightExpanded={nightExpanded}
@@ -232,20 +417,30 @@ export function CalendarScreen(): React.JSX.Element {
       />
 
       <EventSheet
-        open={sheet?.kind === 'event'}
+        open={sheet?.kind === 'event' && pendingSeriesAction === null}
         event={sheet?.kind === 'event' ? sheet.event : null}
         // Zurueck auf das Tages-Sheet, wie in der Vorlage (Z. 1559).
         onClose={() => setSheet(sheet?.kind === 'event' ? { kind: 'day', iso: sheet.iso } : null)}
         onSave={(draft) => void saveExisting(draft)}
         onDelete={() => void deleteExisting()}
       />
+
+      <RecurrenceScopeDialog
+        open={pendingSeriesAction !== null}
+        canChooseFuture={
+          pendingSeriesAction?.event.recurrence !== undefined &&
+          pendingSeriesAction.event.recurrence.originalOccurrenceDate >
+            pendingSeriesAction.event.recurrence.masterStartDate
+        }
+        onClose={() => setPendingSeriesAction(null)}
+        onSelect={(scope) => void applySeriesScope(scope)}
+      />
     </div>
   );
 }
 
 /**
- * The current compact form has one time. Timed events receive one hour while
- * all-day events use the full local day. Midnight rollover advances end_date.
+ * Converts the explicit form range to the database representation.
  */
 function eventTimes(draft: EventDraft): {
   startDate: string;
@@ -253,17 +448,19 @@ function eventTimes(draft: EventDraft): {
   endDate: string;
   endTime: string;
 } {
-  if (draft.time === '') {
-    return { startDate: draft.iso, startTime: '00:00', endDate: draft.iso, endTime: '23:59' };
+  if (draft.allDay) {
+    return {
+      startDate: draft.iso,
+      startTime: '00:00',
+      endDate: draft.endIso,
+      endTime: '23:59',
+    };
   }
-  const [hours = '0', minutes = '0'] = draft.time.split(':');
-  const total = Number(hours) * 60 + Number(minutes) + 60;
-  const nextDay = total >= 24 * 60;
   return {
     startDate: draft.iso,
     startTime: draft.time,
-    endDate: nextDay ? addDaysIso(draft.iso, 1) : draft.iso,
-    endTime: `${String(Math.floor((total % (24 * 60)) / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`,
+    endDate: draft.endIso,
+    endTime: draft.endTime,
   };
 }
 
@@ -278,6 +475,14 @@ function createEventInput(draft: EventDraft, userId: string): CreateEventInput {
     end_time: times.endTime,
     belongs_to: draft.slot === 'bday' ? 'both' : draft.slot,
     created_by: userId,
+    notes: draft.notes || null,
+    recurrence_type: draft.recurrenceType || null,
+    recurrence_interval: draft.recurrenceType ? draft.recurrenceInterval : null,
+    recurrence_end_date:
+      draft.recurrenceType && draft.recurrenceEndDate ? draft.recurrenceEndDate : null,
+    reminder_enabled: draft.reminderEnabled,
+    reminder_offset_minutes: draft.reminderEnabled ? draft.reminderOffsetMinutes : null,
+    reminder_offsets: draft.reminderEnabled ? [draft.reminderOffsetMinutes] : null,
   };
 }
 
@@ -286,7 +491,31 @@ function updateEventInput(draft: EventDraft): UpdateEventInput {
   return changes;
 }
 
-function eventFromRow(row: EventsRow, viewerId: string): CalendarEvent {
+function eventFromDraft(id: string, draft: EventDraft): CalendarEvent {
+  const times = eventTimes(draft);
+  return {
+    id,
+    iso: times.startDate,
+    endIso: times.endDate,
+    title: draft.title,
+    start: draft.allDay ? '' : times.startTime,
+    end: draft.allDay ? '' : times.endTime,
+    slot: draft.slot,
+    location: draft.location,
+    ...(draft.notes ? { notes: draft.notes } : {}),
+    recurrenceType: draft.recurrenceType || null,
+    recurrenceInterval: draft.recurrenceInterval,
+    recurrenceEndDate: draft.recurrenceEndDate,
+    reminderEnabled: draft.reminderEnabled,
+    reminderOffsetMinutes: draft.reminderOffsetMinutes,
+  };
+}
+
+function eventFromRow(
+  row: EventsRow,
+  viewerId: string,
+  recurrence?: CalendarEvent['recurrence'],
+): CalendarEvent {
   const belongsTo: BelongsTo =
     row.belongs_to === 'user1' || row.belongs_to === 'user2' || row.belongs_to === 'both'
       ? row.belongs_to
@@ -302,6 +531,208 @@ function eventFromRow(row: EventsRow, viewerId: string): CalendarEvent {
     slot: row.event_type === 'birthday' ? 'bday' : displaySlot(belongsTo, row.created_by, viewerId),
     location: row.location ?? '',
     ...(row.notes ? { notes: row.notes } : {}),
+    recurrenceType: isRecurrenceType(row.recurrence_type) ? row.recurrence_type : null,
+    recurrenceInterval: row.recurrence_interval ?? 1,
+    recurrenceEndDate: row.recurrence_end_date ?? '',
+    reminderEnabled: row.reminder_enabled === true,
+    reminderOffsetMinutes: row.reminder_offset_minutes ?? 1440,
+    ...(recurrence ? { recurrence } : {}),
+  };
+}
+
+type RecurringEventsRow = EventsRow & { recurrence_type: CoreRecurrenceType };
+
+function isRecurringRow(row: EventsRow): row is RecurringEventsRow {
+  return isRecurrenceType(row.recurrence_type);
+}
+
+function isRecurrenceType(value: string | null): value is CoreRecurrenceType {
+  return value === 'daily' || value === 'weekly' || value === 'monthly' || value === 'yearly';
+}
+
+function eventsForRange(
+  rows: readonly EventsRow[],
+  exceptionRows: readonly RecurringEventExceptionsRow[],
+  rangeStart: string,
+  rangeEnd: string,
+  viewerId: string,
+): CalendarEvent[] {
+  const recurring = rows.filter(isRecurringRow);
+  const oneTime = rows.filter((row) => !isRecurringRow(row));
+  const masterIds = new Set(recurring.map((row) => row.id));
+  const exceptions: CoreRecurringEventException<RecurringEventsRow>[] = exceptionRows
+    .filter((row) => masterIds.has(row.master_event_id))
+    .map((row) => ({
+      id: row.id,
+      master_event_id: row.master_event_id,
+      original_occurrence_date: row.original_occurrence_date,
+      is_deleted: row.is_deleted,
+      override_event_data: isJsonObject(row.override_event_data)
+        ? (row.override_event_data as Partial<RecurringEventsRow>)
+        : null,
+    }));
+  const occurrences = expandRecurringEvents(
+    recurring,
+    { startDate: rangeStart, endDate: rangeEnd },
+    exceptions,
+  );
+  const masters = new Map(recurring.map((master) => [master.id, master]));
+
+  return [
+    ...oneTime.map((row) => eventFromRow(row, viewerId)),
+    ...occurrences.map((occurrence) =>
+      occurrenceEvent(occurrence, masters.get(occurrence.id)!, viewerId),
+    ),
+  ].sort(
+    (left, right) =>
+      left.iso.localeCompare(right.iso) ||
+      left.start.localeCompare(right.start) ||
+      left.title.localeCompare(right.title),
+  );
+}
+
+function occurrenceEvent(
+  occurrence: RecurrenceOccurrence<RecurringEventsRow>,
+  master: RecurringEventsRow,
+  viewerId: string,
+): CalendarEvent {
+  return eventFromRow(occurrence, viewerId, {
+    masterId: occurrence.id,
+    masterStartDate: master.start_date,
+    masterEndDate: master.end_date,
+    originalOccurrenceDate: occurrence.originalOccurrenceDate,
+    exceptionId: occurrence.exceptionId,
+    isOverride: occurrence.isExceptionOverride,
+  });
+}
+
+function occurrenceOverride(draft: EventDraft): RecurringEventOverrideData {
+  const times = eventTimes(draft);
+  return {
+    name: draft.title,
+    location: draft.location || null,
+    start_date: times.startDate,
+    start_time: times.startTime,
+    end_date: times.endDate,
+    end_time: times.endTime,
+    notes: draft.notes || null,
+    belongs_to: draft.slot === 'bday' ? 'both' : draft.slot,
+    reminder_enabled: draft.reminderEnabled,
+    reminder_offset_minutes: draft.reminderEnabled ? draft.reminderOffsetMinutes : null,
+    reminder_offsets: draft.reminderEnabled ? [draft.reminderOffsetMinutes] : null,
+  };
+}
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function projectPendingMutations(
+  serverEvents: readonly EventsRow[],
+  serverExceptions: readonly RecurringEventExceptionsRow[],
+  mutations: readonly EventMutation[],
+  calendarId: string,
+): { events: EventsRow[]; exceptions: RecurringEventExceptionsRow[] } {
+  let events = serverEvents.map((event) => ({ ...event }));
+  let exceptions = serverExceptions.map((exception) => ({ ...exception }));
+
+  for (const mutation of mutations) {
+    switch (mutation.kind) {
+      case 'event.create':
+        events = [...events, rowFromPendingCreate(mutation.tempId, calendarId, mutation.input)];
+        break;
+      case 'event.update':
+        events = events.map((event) =>
+          event.id === mutation.eventId ? { ...event, ...mutation.changes } : event,
+        );
+        break;
+      case 'event.delete':
+        events = events.filter((event) => event.id !== mutation.eventId);
+        break;
+      case 'exception.create':
+        exceptions = [
+          ...exceptions,
+          {
+            id: mutation.tempId,
+            calendar_id: calendarId,
+            created_by: mutation.input.createdBy,
+            master_event_id: mutation.input.masterEventId,
+            original_occurrence_date: mutation.input.originalOccurrenceDate,
+            is_deleted: mutation.input.isDeleted,
+            override_event_data:
+              'overrideEventData' in mutation.input
+                ? (mutation.input.overrideEventData ?? null)
+                : null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ];
+        break;
+      case 'exception.update':
+        exceptions = exceptions.map((exception) =>
+          exception.id === mutation.input.id
+            ? {
+                ...exception,
+                ...(mutation.input.originalOccurrenceDate
+                  ? { original_occurrence_date: mutation.input.originalOccurrenceDate }
+                  : {}),
+                ...(mutation.input.isDeleted === undefined
+                  ? {}
+                  : { is_deleted: mutation.input.isDeleted }),
+                ...('overrideEventData' in mutation.input
+                  ? { override_event_data: mutation.input.overrideEventData ?? null }
+                  : {}),
+              }
+            : exception,
+        );
+        break;
+      case 'exception.delete':
+        exceptions = exceptions.filter((exception) => exception.id !== mutation.input.id);
+        break;
+      case 'series.splitFuture':
+        // The server performs this transaction atomically. Until it can flush,
+        // keep the last complete local series snapshot instead of inventing IDs.
+        break;
+    }
+  }
+
+  return { events, exceptions };
+}
+
+function rowFromPendingCreate(
+  id: string,
+  calendarId: string,
+  input: Omit<CreateEventInput, 'id'>,
+): EventsRow {
+  return {
+    id,
+    calendar_id: calendarId,
+    name: input.name,
+    location: input.location ?? null,
+    start_date: input.start_date,
+    start_time: input.start_time,
+    end_date: input.end_date,
+    end_time: input.end_time,
+    notes: input.notes ?? null,
+    belongs_to: input.belongs_to,
+    created_by: input.created_by ?? null,
+    created_at: input.created_at ?? new Date().toISOString(),
+    updated_at: input.updated_at ?? new Date().toISOString(),
+    recurrence_type: input.recurrence_type ?? null,
+    recurrence_end_date: input.recurrence_end_date ?? null,
+    parent_event_id: input.parent_event_id ?? null,
+    google_event_id: input.google_event_id ?? null,
+    recurrence_interval: input.recurrence_interval ?? null,
+    reminder_enabled: input.reminder_enabled ?? false,
+    reminder_offset_minutes: input.reminder_offset_minutes ?? null,
+    reminder_offsets: input.reminder_offsets ?? null,
+    event_type: input.event_type ?? 'default',
+    is_special_auto: input.is_special_auto ?? false,
+    special_key: input.special_key ?? null,
+    subtitle: input.subtitle ?? null,
+    short_description: input.short_description ?? null,
+    extended_data: input.extended_data ?? null,
+    category: input.category ?? null,
   };
 }
 

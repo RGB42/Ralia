@@ -97,15 +97,20 @@ describe('TodoSheet', () => {
 });
 
 describe('PlanSheet', () => {
+  const days = Array.from({ length: 7 }, (_, index) => ({
+    iso: `2026-08-${String(10 + index).padStart(2, '0')}`,
+    label: `Tag ${index + 1}`,
+  }));
+
   it('wechselt zwischen Mahlzeit und Aufgabe und zeigt die Personenwahl nur bei Aufgabe', async () => {
-    wrap(<PlanSheet open onClose={() => {}} onSave={() => {}} />);
+    wrap(<PlanSheet open days={days} onClose={() => {}} onSave={() => {}} />);
     expect(screen.queryByText('Wer macht es?')).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Aufgabe', pressed: false }));
     expect(screen.getByText('Wer macht es?')).toBeInTheDocument();
   });
 
   it('bietet sieben Tage zur Wahl', () => {
-    wrap(<PlanSheet open onClose={() => {}} onSave={() => {}} />);
+    wrap(<PlanSheet open days={days} onClose={() => {}} onSave={() => {}} />);
     expect(screen.getAllByTestId('plan-day-chip')).toHaveLength(7);
   });
 });
@@ -133,13 +138,12 @@ describe('ExpenseSheet', () => {
   it('bietet Kategorien, Zahler und Aufteilung an', () => {
     renderExpense();
     expect(screen.getAllByTestId('category-chip')).toHaveLength(5);
-    expect(screen.getAllByTestId('split-chip')).toHaveLength(3);
-    // „Gem. Konto" gibt es zweimal - als Zahler und als Aufteilung. Die
-    // Gruppennamen machen beide unterscheidbar, hier wie fuer Screenreader.
+    expect(screen.getAllByTestId('split-chip')).toHaveLength(2);
+    // Zahler sind echte Profile, nicht ein nicht persistierbares Gemeinschaftskonto.
     const payers = screen.getByRole('group', { name: 'Bezahlt von' });
-    expect(within(payers).getByRole('button', { name: 'Gem. Konto' })).toBeInTheDocument();
+    expect(within(payers).getByRole('button', { name: 'Mich' })).toBeInTheDocument();
     const split = screen.getByRole('group', { name: 'Aufteilung' });
-    expect(within(split).getByRole('button', { name: 'Gem. Konto' })).toBeInTheDocument();
+    expect(within(split).getByRole('button', { name: '50/50' })).toBeInTheDocument();
   });
 
   it('speichert nicht ohne Betrag', async () => {

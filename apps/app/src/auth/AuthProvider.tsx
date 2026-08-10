@@ -106,7 +106,7 @@ export interface AuthProviderProps {
 }
 
 export function AuthProvider({ children, initialHref }: AuthProviderProps): React.JSX.Element {
-  const { config } = useBoot();
+  const { config, outbox } = useBoot();
   const [session, setSession] = useState<SessionState>({ status: 'signed-out' });
   const [loading, setLoading] = useState(true);
   const [pendingRecovery, setPendingRecovery] = useState(false);
@@ -181,9 +181,17 @@ export function AuthProvider({ children, initialHref }: AuthProviderProps): Reac
       storage: globalThis.localStorage,
       isOnline: () => globalThis.navigator?.onLine !== false,
     });
+    if (next.status === 'signed-in') {
+      const { identity } = next;
+      outbox.activateScope(identity.userId, identity.calendarId);
+      await outbox.claimLegacy(identity.userId, [identity.userId, identity.calendarId]);
+      void outbox.flush().catch(() => undefined);
+    } else {
+      outbox.deactivateScope();
+    }
     setSession(next);
     return next;
-  }, [client, profiles]);
+  }, [client, outbox, profiles]);
 
   /**
    * Rücksprung-URL genau einmal lesen, vor allem anderen.
@@ -242,10 +250,13 @@ export function AuthProvider({ children, initialHref }: AuthProviderProps): Reac
   useEffect(() => {
     const { data } = client.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') setPendingRecovery(true);
-      if (event === 'SIGNED_OUT') setSession({ status: 'signed-out' });
+      if (event === 'SIGNED_OUT') {
+        outbox.deactivateScope();
+        setSession({ status: 'signed-out' });
+      }
     });
     return () => data.subscription.unsubscribe();
-  }, [client]);
+  }, [client, outbox]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -323,6 +334,7 @@ export function AuthProvider({ children, initialHref }: AuthProviderProps): Reac
          * das Telefon des Partners aus der Sitzung werfen, wenn dort dasselbe
          * Konto läuft.
          */
+        outbox.deactivateScope();
         await client.auth.signOut({ scope: 'local' }).catch(() => undefined);
         clearAuthData(globalThis.localStorage);
         resetMailLinkClient();
@@ -359,6 +371,8 @@ export function AuthProvider({ children, initialHref }: AuthProviderProps): Reac
             calendarId: computeCalendarId(profile.id, result.partner.id),
           },
         };
+        outbox.activateScope(profile.id, nextSession.identity.calendarId);
+        await outbox.claimLegacy(profile.id, [profile.id, nextSession.identity.calendarId]);
         writeIdentitySnapshot(globalThis.localStorage, profile, result.partner);
         setSession(nextSession);
         return { ok: true, partner: result.partner };
@@ -386,7 +400,7 @@ export function AuthProvider({ children, initialHref }: AuthProviderProps): Reac
         return { ok: true };
       },
     }),
-    [session, loading, pendingRecovery, callbackErrorKey, client, mailClient, partners, refresh],
+    [session, loading, pendingRecovery, callbackErrorKey, client, mailClient, outbox, partners, refresh],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

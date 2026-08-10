@@ -5,6 +5,7 @@ import {
   type FlushOutcome,
   type FlushSummary,
   type NewOutboxRecord,
+  OUTBOX_DOMAINS,
   type OutboxDomain,
   type OutboxExecutor,
   type OutboxRecord,
@@ -19,14 +20,25 @@ export interface OutboxOptions {
   databaseName?: string;
 }
 
+interface ActiveScope {
+  ownerUserId: string;
+  calendarId: string;
+  revision: number;
+}
+
+interface FlushRun {
+  scope: ActiveScope;
+  promise: Promise<FlushSummary>;
+}
+
 /**
  * Durable queue of mutations awaiting the server.
  *
- * Ordering guarantee: within one (domain, calendarId) queue, records flush in
- * enqueue order and a failure stops that queue. This matters because mutations
- * are not independent — an update to a row created offline must never reach the
- * server before the insert that creates it. Different queues are independent
- * and do not block each other.
+ * Ordering guarantee: within one (ownerUserId, domain, calendarId) queue,
+ * records flush in enqueue order and a failure stops that queue. This matters
+ * because mutations are not independent — an update to a row created offline
+ * must never reach the server before the insert that creates it. Different
+ * domain queues inside the active account/calendar scope are independent.
  */
 export class Outbox {
   private readonly now: () => number;
@@ -34,12 +46,28 @@ export class Outbox {
   private database: RaliaDatabase | undefined;
   private opening: Promise<RaliaDatabase> | undefined;
   private readonly executors = new Map<OutboxDomain, OutboxExecutor<never>>();
-  private flushing: Promise<FlushSummary> | undefined;
+  private activeScope: ActiveScope | undefined;
+  private scopeRevision = 0;
+  private flushing: FlushRun | undefined;
 
   constructor(options: OutboxOptions = {}) {
     this.now = options.now ?? Date.now;
     this.database = options.database;
     this.databaseName = options.databaseName;
+  }
+
+  /** Activates exactly one account/calendar pair for normal queue operations. */
+  activateScope(ownerUserId: string, calendarId: string): void {
+    assertNonEmpty('ownerUserId', ownerUserId);
+    assertNonEmpty('calendarId', calendarId);
+    this.scopeRevision += 1;
+    this.activeScope = { ownerUserId, calendarId, revision: this.scopeRevision };
+  }
+
+  /** Drops access to the current scope without deleting any durable records. */
+  deactivateScope(): void {
+    this.scopeRevision += 1;
+    this.activeScope = undefined;
   }
 
   /** Registers the function that talks to the server for one domain. */
@@ -57,22 +85,58 @@ export class Outbox {
     return this.opening;
   }
 
-  /** Appends a mutation to the end of its queue. */
+  /** Appends a mutation to the active account/calendar queue. */
   async enqueue<TMutation>(
     domain: OutboxDomain,
     calendarId: string,
     mutation: TMutation,
     options: { legacy?: boolean; enqueuedAt?: number } = {},
   ): Promise<OutboxRecord<TMutation>> {
+    if (options.legacy === true) {
+      return this.enqueueLegacy(domain, calendarId, mutation, options);
+    }
+
+    const scope = this.requireActiveScope(calendarId);
+    return this.insert(domain, calendarId, mutation, scope.ownerUserId, false, options.enqueuedAt);
+  }
+
+  /**
+   * Appends an unclaimed migration record before authentication is available.
+   * Such records are invisible to normal operations until claimLegacy() assigns
+   * a non-empty owner.
+   */
+  async enqueueLegacy<TMutation>(
+    domain: OutboxDomain,
+    calendarId: string,
+    mutation: TMutation,
+    options: { enqueuedAt?: number } = {},
+  ): Promise<OutboxRecord<TMutation>> {
+    assertNonEmpty('calendarId', calendarId);
+    if (this.activeScope) {
+      throw new Error('Legacy records can only be enqueued before an outbox scope is active');
+    }
+
+    return this.insert(domain, calendarId, mutation, '', true, options.enqueuedAt);
+  }
+
+  private async insert<TMutation>(
+    domain: OutboxDomain,
+    calendarId: string,
+    mutation: TMutation,
+    ownerUserId: string,
+    legacy: boolean,
+    enqueuedAt?: number,
+  ): Promise<OutboxRecord<TMutation>> {
     const db = await this.db();
     const record: NewOutboxRecord<TMutation> = {
+      ownerUserId,
       domain,
       calendarId,
       mutation,
-      enqueuedAt: options.enqueuedAt ?? this.now(),
+      enqueuedAt: enqueuedAt ?? this.now(),
       attempts: 0,
       retryAfter: 0,
-      legacy: options.legacy ?? false,
+      legacy,
       lastError: null,
     };
     const id = await db.add('outbox', forInsert(record));
@@ -84,12 +148,14 @@ export class Outbox {
     domain: OutboxDomain,
     calendarId: string,
   ): Promise<OutboxRecord<TMutation>[]> {
+    const scope = this.requireActiveScope(calendarId);
     const db = await this.db();
-    const range = IDBKeyRange.bound(
-      [domain, calendarId, -Infinity],
-      [domain, calendarId, Infinity],
+    const rows = await db.getAllFromIndex(
+      'outbox',
+      'by-owner-domain-calendar',
+      queueRange(scope.ownerUserId, domain, calendarId),
     );
-    const rows = await db.getAllFromIndex('outbox', 'by-domain-calendar', range);
+    this.assertScopeActive(scope);
     return rows as OutboxRecord<TMutation>[];
   }
 
@@ -106,13 +172,11 @@ export class Outbox {
     calendarId: string,
     mutations: readonly TMutation[],
   ): Promise<OutboxRecord<TMutation>[]> {
+    const scope = this.requireActiveScope(calendarId);
     const db = await this.db();
     const tx = db.transaction('outbox', 'readwrite');
-    const index = tx.store.index('by-domain-calendar');
-    const range = IDBKeyRange.bound(
-      [domain, calendarId, -Infinity],
-      [domain, calendarId, Infinity],
-    );
+    const index = tx.store.index('by-owner-domain-calendar');
+    const range = queueRange(scope.ownerUserId, domain, calendarId);
 
     const existing = await index.getAll(range);
     for (const row of existing) {
@@ -124,6 +188,7 @@ export class Outbox {
     const written: OutboxRecord<TMutation>[] = [];
     for (const [offset, mutation] of mutations.entries()) {
       const record: NewOutboxRecord<TMutation> = {
+        ownerUserId: scope.ownerUserId,
         domain,
         calendarId,
         mutation,
@@ -138,83 +203,151 @@ export class Outbox {
     }
 
     await tx.done;
+    this.assertScopeActive(scope);
     return written;
   }
 
-  /** Total pending records across all queues. */
+  /** Total pending records in the active account/calendar scope. */
   async size(): Promise<number> {
+    const scope = this.requireActiveScope();
     const db = await this.db();
-    return db.count('outbox');
-  }
-
-  /** Pending record count for one domain, across all calendars. */
-  async sizeOf(domain: OutboxDomain): Promise<number> {
-    const db = await this.db();
-    const rows = await db.getAllFromIndex(
-      'outbox',
-      'by-domain-calendar',
-      IDBKeyRange.bound([domain, '', -Infinity], [domain, '￿', Infinity]),
+    const tx = db.transaction('outbox');
+    const index = tx.store.index('by-owner-domain-calendar');
+    const counts = await Promise.all(
+      OUTBOX_DOMAINS.map((domain) =>
+        index.count(queueRange(scope.ownerUserId, domain, scope.calendarId)),
+      ),
     );
-    return rows.length;
+    await tx.done;
+    this.assertScopeActive(scope);
+    return counts.reduce((total, count) => total + count, 0);
   }
 
-  async clear(domain?: OutboxDomain): Promise<void> {
+  /** Pending record count for one domain in the active scope. */
+  async sizeOf(domain: OutboxDomain): Promise<number> {
+    const scope = this.requireActiveScope();
     const db = await this.db();
-    if (!domain) {
-      await db.clear('outbox');
-      return;
-    }
+    const count = await db.countFromIndex(
+      'outbox',
+      'by-owner-domain-calendar',
+      queueRange(scope.ownerUserId, domain, scope.calendarId),
+    );
+    this.assertScopeActive(scope);
+    return count;
+  }
+
+  /** Deletes only records belonging to the active account/calendar scope. */
+  async clear(domain?: OutboxDomain): Promise<void> {
+    const scope = this.requireActiveScope();
+    const db = await this.db();
     const tx = db.transaction('outbox', 'readwrite');
-    const rows = await tx.store
-      .index('by-domain-calendar')
-      .getAll(IDBKeyRange.bound([domain, '', -Infinity], [domain, '￿', Infinity]));
-    for (const row of rows) {
-      await tx.store.delete(row.id);
+    const index = tx.store.index('by-owner-domain-calendar');
+    const domains = domain ? [domain] : OUTBOX_DOMAINS;
+    for (const scopedDomain of domains) {
+      const rows = await index.getAll(
+        queueRange(scope.ownerUserId, scopedDomain, scope.calendarId),
+      );
+      for (const row of rows) {
+        await tx.store.delete(row.id);
+      }
     }
     await tx.done;
   }
 
   /**
-   * Attempts to drain every queue.
-   *
-   * Concurrent calls share one run — the lifecycle binder can fire `online`,
-   * `visibilitychange` and the interval within milliseconds of each other, and
-   * two overlapping drains would send the same mutation twice.
+   * Atomically assigns unclaimed records from explicitly allowed calendars.
+   * Existing owners and records from every other calendar remain untouched.
    */
-  async flush(): Promise<FlushSummary> {
-    this.flushing ??= this.runFlush().finally(() => {
-      this.flushing = undefined;
-    });
-    return this.flushing;
-  }
+  async claimLegacy(ownerUserId: string, allowedCalendarIds: readonly string[]): Promise<number> {
+    assertNonEmpty('ownerUserId', ownerUserId);
+    const calendars = [...new Set(allowedCalendarIds)];
+    for (const calendarId of calendars) assertNonEmpty('allowedCalendarIds entry', calendarId);
+    if (calendars.length === 0) return 0;
 
-  private async runFlush(): Promise<FlushSummary> {
-    const summary = emptyFlushSummary();
     const db = await this.db();
-    const all = await db.getAllFromIndex('outbox', 'by-enqueued-at');
+    const tx = db.transaction('outbox', 'readwrite');
+    const index = tx.store.index('by-owner-domain-calendar');
+    let claimed = 0;
 
-    // Group into independent queues; a stalled queue must not block the others.
-    const queues = new Map<string, OutboxRecord[]>();
-    for (const record of all) {
-      // NUL (\0) is the separator, not a placeholder: neither `domain` (a
-      // fixed enum value) nor `calendarId` can contain it, so the composite
-      // key never collides. Do not swap this for a visible character such as
-      // ':' — calendarId is free-form and could legitimately contain one.
-      const key = `${record.domain}\0${record.calendarId}`;
-      const bucket = queues.get(key);
-      if (bucket) bucket.push(record);
-      else queues.set(key, [record]);
+    for (const calendarId of calendars) {
+      for (const domain of OUTBOX_DOMAINS) {
+        const rows = await index.getAll(queueRange('', domain, calendarId));
+        for (const row of rows) {
+          await tx.store.put({ ...row, ownerUserId });
+          claimed += 1;
+        }
+      }
     }
 
-    for (const records of queues.values()) {
-      await this.drainQueue(records, summary);
+    await tx.done;
+    return claimed;
+  }
+
+  /**
+   * Attempts to drain the active account/calendar scope.
+   *
+   * Concurrent calls for that scope share one run. A scope switch waits for an
+   * older run to stop before starting another, preventing duplicate sends while
+   * authentication is changing.
+   */
+  async flush(): Promise<FlushSummary> {
+    const scope = this.requireActiveScope();
+
+    while (this.flushing) {
+      const running = this.flushing;
+      if (sameScopeRevision(running.scope, scope)) return running.promise;
+      try {
+        await running.promise;
+      } catch {
+        // The failed run belongs to an older scope; the current one still gets
+        // its own attempt if it remained active.
+      }
+      this.assertScopeActive(scope);
+    }
+
+    const promise = this.runFlush(scope);
+    this.flushing = { scope, promise };
+    try {
+      return await promise;
+    } finally {
+      if (this.flushing?.promise === promise) this.flushing = undefined;
+    }
+  }
+
+  private async runFlush(scope: ActiveScope): Promise<FlushSummary> {
+    const summary = emptyFlushSummary();
+    const db = await this.db();
+    const tx = db.transaction('outbox');
+    const index = tx.store.index('by-owner-domain-calendar');
+    const queues = await Promise.all(
+      OUTBOX_DOMAINS.map((domain) =>
+        index.getAll(queueRange(scope.ownerUserId, domain, scope.calendarId)),
+      ),
+    );
+    await tx.done;
+
+    for (const records of queues) {
+      if (!this.isScopeActive(scope)) {
+        summary.deferred += records.length;
+        continue;
+      }
+      await this.drainQueue(records, summary, scope);
     }
 
     return summary;
   }
 
-  private async drainQueue(records: OutboxRecord[], summary: FlushSummary): Promise<void> {
-    for (const record of records) {
+  private async drainQueue(
+    records: OutboxRecord[],
+    summary: FlushSummary,
+    scope: ActiveScope,
+  ): Promise<void> {
+    for (const [index, record] of records.entries()) {
+      if (!this.isScopeActive(scope)) {
+        summary.deferred += records.length - index;
+        return;
+      }
+
       const executor = this.executors.get(record.domain);
       if (!executor) {
         // No executor registered yet — the owning sub-project is not loaded.
@@ -281,6 +414,42 @@ export class Outbox {
     };
     await db.put('outbox', next);
   }
+
+  private requireActiveScope(calendarId?: string): ActiveScope {
+    const scope = this.activeScope;
+    if (!scope) throw new Error('No active outbox scope');
+    if (calendarId !== undefined && calendarId !== scope.calendarId) {
+      throw new Error('The requested calendar does not match the active outbox scope');
+    }
+    return scope;
+  }
+
+  private assertScopeActive(scope: ActiveScope): void {
+    if (!this.isScopeActive(scope)) throw new Error('The active outbox scope changed');
+  }
+
+  private isScopeActive(scope: ActiveScope): boolean {
+    return this.activeScope !== undefined && sameScopeRevision(this.activeScope, scope);
+  }
+}
+
+function queueRange(ownerUserId: string, domain: OutboxDomain, calendarId: string): IDBKeyRange {
+  return IDBKeyRange.bound(
+    [ownerUserId, domain, calendarId, -Infinity],
+    [ownerUserId, domain, calendarId, Infinity],
+  );
+}
+
+function sameScopeRevision(left: ActiveScope, right: ActiveScope): boolean {
+  return (
+    left.revision === right.revision &&
+    left.ownerUserId === right.ownerUserId &&
+    left.calendarId === right.calendarId
+  );
+}
+
+function assertNonEmpty(name: string, value: string): void {
+  if (value.length === 0) throw new Error(`${name} must not be empty`);
 }
 
 function describeError(error: unknown): string {

@@ -945,12 +945,15 @@ export type Database = {
       };
       week_plans: {
         Row: {
+          assigned_to: string;
           calendar_id: string;
+          completed_at: string | null;
           created_at: string | null;
           created_by: string;
           day_of_week: number;
           entry_type: string;
           id: string;
+          is_done: boolean;
           notes: string | null;
           sort_order: number | null;
           title: string;
@@ -958,12 +961,15 @@ export type Database = {
           week_start: string;
         };
         Insert: {
+          assigned_to?: string;
           calendar_id: string;
+          completed_at?: string | null;
           created_at?: string | null;
           created_by: string;
           day_of_week: number;
           entry_type: string;
           id?: string;
+          is_done?: boolean;
           notes?: string | null;
           sort_order?: number | null;
           title: string;
@@ -971,12 +977,15 @@ export type Database = {
           week_start: string;
         };
         Update: {
+          assigned_to?: string;
           calendar_id?: string;
+          completed_at?: string | null;
           created_at?: string | null;
           created_by?: string;
           day_of_week?: number;
           entry_type?: string;
           id?: string;
+          is_done?: boolean;
           notes?: string | null;
           sort_order?: number | null;
           title?: string;
@@ -1114,6 +1123,15 @@ export type Database = {
         Returns: number;
       };
       set_shared_anniversary: { Args: { p_date: string }; Returns: undefined };
+      split_recurring_event_future: {
+        Args: {
+          p_delete_future: boolean;
+          p_event_data: Json;
+          p_master_event_id: string;
+          p_original_occurrence_date: string;
+        };
+        Returns: Json;
+      };
     };
     Enums: {
       [_ in never]: never;

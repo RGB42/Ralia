@@ -5,17 +5,23 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../../i18n/I18nProvider.js';
 import { LANG_STORAGE_KEY } from '../../i18n/catalog.js';
 import { MOCK_EVENTS, MOCK_TODAY } from '../../mock/fixtures.js';
+import type { CalendarEvent } from './calendar-event.js';
 import { WeekView } from './WeekView.js';
 
 beforeEach(() => localStorage.setItem(LANG_STORAGE_KEY, 'de'));
 
-function renderWeek(nightExpanded = false, onToggleNight = vi.fn(), onSelectDay = vi.fn()) {
+function renderWeek(
+  nightExpanded = false,
+  onToggleNight = vi.fn(),
+  onSelectDay = vi.fn(),
+  events: readonly CalendarEvent[] = MOCK_EVENTS,
+) {
   render(
     <I18nProvider>
       <WeekView
         weekStartIso="2026-07-27"
         today={MOCK_TODAY}
-        events={MOCK_EVENTS}
+        events={events}
         nightExpanded={nightExpanded}
         onToggleNight={onToggleNight}
         onSelectDay={onSelectDay}
@@ -96,5 +102,25 @@ describe('WeekView', () => {
     const [zahnarzt] = screen.getAllByRole('button', { name: /Zahnarzt/ });
     // Tagesanfang 00:00 statt 06:00 → 09:00 liegt bei neun Stundenhoehen.
     expect(zahnarzt?.style.top).toBe(`${9 * WEEK_HOUR_HEIGHT_PX}px`);
+  });
+
+  it('zeigt einen mehrtaegigen Termin als durchgehenden Wochenbalken', async () => {
+    const onSelectDay = vi.fn();
+    const trip: CalendarEvent = {
+      id: 'trip',
+      iso: '2026-07-25',
+      endIso: '2026-07-30',
+      title: 'Roadtrip',
+      start: '',
+      end: '',
+      slot: 'both',
+      location: '',
+    };
+    renderWeek(false, vi.fn(), onSelectDay, [trip]);
+
+    const segment = screen.getByTestId('week-multi-day-segment');
+    expect(segment).toHaveStyle({ gridColumn: '1 / span 4' });
+    await userEvent.click(segment);
+    expect(onSelectDay).toHaveBeenCalledWith('2026-07-27');
   });
 });

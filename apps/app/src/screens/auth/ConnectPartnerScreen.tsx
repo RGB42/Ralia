@@ -3,6 +3,7 @@ import { useId, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../../auth/useAuth.js';
 import { useT } from '../../i18n/useT.js';
+import { useAppPreferences } from '../../preferences/AppPreferencesProvider.js';
 import styles from './AuthLayout.module.css';
 import { AuthLayout } from './AuthLayout.js';
 
@@ -18,6 +19,7 @@ export function ConnectPartnerScreen(): React.JSX.Element {
   const navigate = useNavigate();
   const { show } = useToast();
   const { session, connectPartner } = useAuth();
+  const { update: updatePreferences } = useAppPreferences();
 
   const [code, setCode] = useState('');
   const [errorKey, setErrorKey] = useState<string | null>(null);
@@ -41,6 +43,7 @@ export function ConnectPartnerScreen(): React.JSX.Element {
       setErrorKey(result.messageKey);
       return;
     }
+    await updatePreferences({ solo_mode: false });
     show(`${t('connectSuccess')} ${result.partner?.name ?? ''}`.trim(), 'info');
     void navigate('/kalender', { replace: true });
   }
@@ -108,7 +111,11 @@ export function ConnectPartnerScreen(): React.JSX.Element {
         <button
           type="button"
           className={styles.link}
-          onClick={() => void navigate('/kalender', { replace: true })}
+          onClick={() => {
+            void updatePreferences({ solo_mode: true }).finally(() =>
+              navigate('/kalender', { replace: true }),
+            );
+          }}
         >
           {t('connectSkip')}
         </button>

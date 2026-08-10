@@ -1,7 +1,7 @@
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { pinLanguage, renderAppAt } from '../../test-harness.js';
+import { pinLanguage, renderAppAt, TEST_PROFILE } from '../../test-harness.js';
 
 beforeEach(() => {
   localStorage.clear();
@@ -83,6 +83,6 @@ describe('SyncScreen', () => {
   it('kehrt ueber Zurueck zu den Einstellungen', async () => {
     renderSync();
     await userEvent.click(await screen.findByRole('button', { name: 'Zurück' }));
-    expect(await screen.findByText('Jonas Berger')).toBeInTheDocument();
+    expect(await screen.findByText(TEST_PROFILE.name ?? '')).toBeInTheDocument();
   });
 });

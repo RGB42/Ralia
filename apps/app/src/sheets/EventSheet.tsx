@@ -35,8 +35,17 @@ export function EventSheet({
           title: event.title,
           iso: event.iso,
           time: event.start,
+          endIso: event.endIso ?? event.iso,
+          endTime: event.end,
+          allDay: event.start === '',
           slot: event.slot,
           location: event.location,
+          notes: event.notes ?? '',
+          recurrenceType: event.recurrenceType ?? '',
+          recurrenceInterval: event.recurrenceInterval ?? 1,
+          recurrenceEndDate: event.recurrenceEndDate ?? '',
+          reminderEnabled: event.reminderEnabled ?? false,
+          reminderOffsetMinutes: event.reminderOffsetMinutes ?? 1440,
           toGoogle: true,
         }}
         withLocation

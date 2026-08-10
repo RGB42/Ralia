@@ -65,4 +65,26 @@ describe('CalendarScreen repository wiring', () => {
       expect.objectContaining({ startDate: expect.any(String), endDate: expect.any(String) }),
     );
   });
+
+  it('expands recurring masters across the visible month', async () => {
+    const today = new Date();
+    const monthStart = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
+    const recurring = {
+      ...eventRow(monthStart),
+      recurrence_type: 'daily',
+      recurrence_interval: 1,
+      recurrence_end_date: null,
+    };
+    const events: EventRepo = {
+      list: async () => [recurring],
+      create: async () => recurring,
+      update: async () => recurring,
+      delete: async () => undefined,
+    };
+
+    pinLanguage('de');
+    renderAppAt('/kalender', { data: { events } });
+
+    expect((await screen.findAllByRole('button', { name: /1 Termin/ })).length).toBeGreaterThan(1);
+  });
 });

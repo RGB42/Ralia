@@ -1,8 +1,8 @@
 import { BottomSheet, Button, Chip, FieldLabel, Input, PersonChip } from '@ralia/ui';
 import type { PersonSlot } from '@ralia/ui';
-import { useId, useState } from 'react';
+import { useContext, useId, useState } from 'react';
+import { AuthContext } from '../auth/AuthProvider.js';
 import { useT } from '../i18n/useT.js';
-import { MOCK_PLANNER, MOCK_PROFILE } from '../mock/fixtures.js';
 import styles from './sheets.module.css';
 
 export type PlanEntryKind = 'meal' | 'task';
@@ -16,8 +16,10 @@ export interface PlanDraft {
 
 export interface PlanSheetProps {
   open: boolean;
+  days: readonly { iso: string; label: string }[];
   defaultDayIndex?: number;
   defaultKind?: PlanEntryKind;
+  initialText?: string;
   onClose(): void;
   onSave(draft: PlanDraft): void;
 }
@@ -25,21 +27,25 @@ export interface PlanSheetProps {
 /** Vorlage Z. 819–856. */
 export function PlanSheet({
   open,
+  days,
   defaultDayIndex = 0,
   defaultKind = 'meal',
+  initialText = '',
   onClose,
   onSave,
 }: PlanSheetProps): React.JSX.Element {
   const { t } = useT();
+  const auth = useContext(AuthContext);
   const baseId = useId();
   const [kind, setKind] = useState<PlanEntryKind>(defaultKind);
   const [dayIndex, setDayIndex] = useState(defaultDayIndex);
-  const [text, setText] = useState('');
+  const [text, setText] = useState(initialText);
   const [slot, setSlot] = useState<PersonSlot>('u1');
 
+  const identity = auth?.session.status === 'signed-in' ? auth.session.identity : null;
   const people: readonly { slot: PersonSlot; label: string }[] = [
-    { slot: 'u1', label: MOCK_PROFILE.me.name.split(' ')[0] ?? 'u1' },
-    { slot: 'u2', label: MOCK_PROFILE.partner.name.split(' ')[0] ?? 'u2' },
+    { slot: 'u1', label: identity?.profile.name?.split(' ')[0] || t('me') },
+    { slot: 'u2', label: identity?.partner?.name?.split(' ')[0] || t('partner') },
     { slot: 'both', label: t('calLegendBoth') },
   ];
 
@@ -74,11 +80,11 @@ export function PlanSheet({
         <div>
           <FieldLabel>{t('sheetDay')}</FieldLabel>
           <div className={styles.chips}>
-            {MOCK_PLANNER.map((day, index) => (
-              <span key={day.weekday} data-testid="plan-day-chip">
+            {days.map((day, index) => (
+              <span key={day.iso} data-testid="plan-day-chip">
                 <Chip
                   active={index === dayIndex}
-                  label={`${day.weekday} ${day.dayOfMonth}`}
+                  label={day.label}
                   onClick={() => setDayIndex(index)}
                 />
               </span>

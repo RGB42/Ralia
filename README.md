@@ -4,7 +4,7 @@ Teile Deine Tage gemeinsam — Kalender, Organizer und Haushaltskasse für Paare
 
 Eine Codebasis für **Android**, **iOS** und **Web** mit Marketing-Homepage.
 
-> **Status: SP0 und SP1 abgeschlossen, SP2 bis SP4 in Umsetzung.** `npm run dev` startet die App unter `/app/`. Anmeldung, Identität, Partner-Verbindung und Jahrestag kommen aus Supabase. Kalendertermine sowie Todo-Gruppen und -Einträge besitzen inzwischen echte, kalendergebundene Repositories und Schreibpfade. Die Serien-Engine, Wochenplan- und Geld-Repositories sowie das erweiterte Finanzschema stehen; ihre vollständige UI-Anbindung, Realtime und Offline-Outbox folgen noch.
+> **Status: SP0 und SP1 abgeschlossen, SP2 bis SP4 in Umsetzung.** `npm run dev` startet die App unter `/app/`. Anmeldung, Identität, Partner-Verbindung und Jahrestag kommen aus Supabase. Der Kalender besitzt CRUD, mehrtägige Wochenbalken, Serien und Exceptions, Realtime sowie eine kontogebundene Offline-Outbox. Todo-Gruppen und -Einträge arbeiten ebenfalls mit echten, kalendergebundenen Repositories. Der Wochenplaner speichert Mahlzeiten, Aufgaben, Zuständigkeiten und Abschlussstatus. Die Haushaltskasse speichert Ausgaben, Kategorien, Budgets, individuelle Anteile und Ausgleichstransaktionen; die Bilanz wird centgenau berechnet.
 >
 > [SP0-Abnahmeprotokoll](docs/superpowers/plans/2026-08-03-sp0-abnahme.md) · [SP1-Spec](docs/superpowers/specs/2026-08-05-sp1-auth-partner-design.md) · [SP1-Plan](docs/superpowers/plans/2026-08-05-sp1-auth-partner.md) · [SP1-Abnahme](docs/superpowers/plans/2026-08-05-sp1-abnahme.md)
 
@@ -45,7 +45,7 @@ Der Quellcode der Edge Function liegt nicht in diesem Repo. Wir konsumieren sie,
 ```bash
 npm install
 npm run dev       # Vite, http://localhost:5173/app/
-npm test          # Vitest — 701 Tests
+npm test          # Vitest — 848 Tests
 npm run typecheck # tsc --noEmit, strict
 npm run lint      # ESLint
 npm run verify    # typecheck + lint + test + build
