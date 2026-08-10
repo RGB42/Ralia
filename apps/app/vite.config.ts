@@ -7,7 +7,7 @@ const resolvePath = (relative: string) => fileURLToPath(new URL(relative, import
 export default defineConfig({
   // Web serviert die App unter /app/*; / gehoert der Marketing-Site (SP8).
   // SP7 stellt fuer Capacitor auf './' um. VITE_BASE_PATH ueberschreibt das fuer
-  // GitHub Pages, wo das Repo unter /Ralia/ statt an der Domainwurzel liegt.
+  // Render (render.yaml), wo diese Site allein an der Domainwurzel liegt.
   base: process.env.VITE_BASE_PATH ?? '/app/',
   plugins: [react()],
   resolve: {
