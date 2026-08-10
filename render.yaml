@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: ralia-app
+    env: static
+    buildCommand: npm ci && npm run build --workspace @ralia/app
+    staticPublishPath: apps/app/dist
+    envVars:
+      # Render bedient die Site an der Domainwurzel, nicht unter /app/ wie die
+      # spaetere Produktion (siehe apps/app/vite.config.ts).
+      - key: VITE_BASE_PATH
+        value: /
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
