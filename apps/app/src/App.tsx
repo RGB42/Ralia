@@ -5,7 +5,11 @@ import { BootGate } from './boot/BootGate.js';
 import { I18nProvider } from './i18n/I18nProvider.js';
 import { routes } from './routes/router.js';
 
-const router = createBrowserRouter(routes, { basename: '/app' });
+// BASE_URL kommt aus vite.config.ts (Standard '/app/'); GitHub Pages baut mit
+// VITE_BASE_PATH='/Ralia/app/', deshalb wird der Router-Basename daraus abgeleitet
+// statt fest verdrahtet, damit beide nie auseinanderlaufen.
+const basename = import.meta.env.BASE_URL.replace(/\/$/, '');
+const router = createBrowserRouter(routes, { basename });
 
 /**
  * Reihenfolge der Provider ist bindend:
