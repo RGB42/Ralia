@@ -930,43 +930,53 @@ export type Database = {
         Row: {
           amount: number;
           calendar_id: string;
-          category: string | null;
+          category: string;
           created_at: string | null;
+          for_user_id: string | null;
           id: string;
           notes: string | null;
           paid_at: string;
           paid_by: string;
-          split_type: string | null;
+          split_type: string;
           title: string;
           updated_at: string | null;
         };
         Insert: {
           amount: number;
           calendar_id: string;
-          category?: string | null;
+          category?: string;
           created_at?: string | null;
+          for_user_id?: string | null;
           id?: string;
           notes?: string | null;
           paid_at?: string;
           paid_by: string;
-          split_type?: string | null;
+          split_type?: string;
           title: string;
           updated_at?: string | null;
         };
         Update: {
           amount?: number;
           calendar_id?: string;
-          category?: string | null;
+          category?: string;
           created_at?: string | null;
+          for_user_id?: string | null;
           id?: string;
           notes?: string | null;
           paid_at?: string;
           paid_by?: string;
-          split_type?: string | null;
+          split_type?: string;
           title?: string;
           updated_at?: string | null;
         };
         Relationships: [
+          {
+            foreignKeyName: 'shared_expenses_for_user_id_fkey';
+            columns: ['for_user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
           {
             foreignKeyName: 'shared_expenses_paid_by_fkey';
             columns: ['paid_by'];

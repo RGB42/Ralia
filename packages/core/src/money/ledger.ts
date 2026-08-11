@@ -21,6 +21,8 @@ export interface LedgerExpense extends ExpenseAggregationInput {
   id: string;
   paidBy: string;
   splitType: ExpenseSplitType;
+  /** The sole person this expense is for; shared expenses have no recipient. */
+  forUserId?: string;
   /** Exact obligations. A shared expense without these is split 50/50. */
   shares?: readonly LedgerShare[];
 }
@@ -132,7 +134,9 @@ function participantIds(rawUserIds: readonly string[]): string[] {
   const userIds = rawUserIds.map((userId) => assertText(userId, 'userId')).sort(compareText);
   for (let index = 1; index < userIds.length; index += 1) {
     if (userIds[index] === userIds[index - 1]) {
-      throw new RangeError(`userIds contains the participant ${JSON.stringify(userIds[index])} twice`);
+      throw new RangeError(
+        `userIds contains the participant ${JSON.stringify(userIds[index])} twice`,
+      );
     }
   }
   return userIds;
@@ -166,7 +170,9 @@ function addExplicitShares(
 ): void {
   const shares = expense.shares;
   if (shares === undefined || shares.length === 0) {
-    throw new RangeError(`expense ${JSON.stringify(expenseId)} must have at least one explicit share`);
+    throw new RangeError(
+      `expense ${JSON.stringify(expenseId)} must have at least one explicit share`,
+    );
   }
 
   let splitTotal = 0n;
@@ -174,7 +180,9 @@ function addExplicitShares(
   for (const share of shares) {
     const userId = assertParticipant(balances, share.userId, 'share.userId');
     if (shareUsers.has(userId)) {
-      throw new RangeError(`expense ${JSON.stringify(expenseId)} has duplicate shares for ${userId}`);
+      throw new RangeError(
+        `expense ${JSON.stringify(expenseId)} has duplicate shares for ${userId}`,
+      );
     }
     shareUsers.add(userId);
 
@@ -275,9 +283,15 @@ export function calculateLedger(input: LedgerInput): LedgerResult {
 
     if (expense.splitType === 'single') {
       if (expense.shares !== undefined) {
-        throw new RangeError(`single expense ${JSON.stringify(expenseId)} cannot have explicit shares`);
+        throw new RangeError(
+          `single expense ${JSON.stringify(expenseId)} cannot have explicit shares`,
+        );
       }
-      addOwed(balances, payer, amount);
+      const recipient =
+        expense.forUserId === undefined
+          ? payer
+          : assertParticipant(balances, expense.forUserId, 'expense.forUserId');
+      addOwed(balances, recipient, amount);
       continue;
     }
 
@@ -352,7 +366,8 @@ function monthFromDate(date: string | undefined): string {
 
 function categoryFromExpense(category: string | null | undefined): string {
   if (category === null || category === undefined) return UNCATEGORIZED_CATEGORY;
-  if (typeof category !== 'string') throw new TypeError('expense.category must be a string or null');
+  if (typeof category !== 'string')
+    throw new TypeError('expense.category must be a string or null');
   const normalized = category.trim();
   return normalized.length === 0 ? UNCATEGORIZED_CATEGORY : normalized;
 }

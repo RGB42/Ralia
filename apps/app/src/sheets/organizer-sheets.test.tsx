@@ -135,15 +135,14 @@ describe('ExpenseSheet', () => {
     return onSave;
   }
 
-  it('bietet Kategorien, Zahler und Aufteilung an', () => {
+  it('bietet Kategorien, Zahler und Empfaenger an', () => {
     renderExpense();
     expect(screen.getAllByTestId('category-chip')).toHaveLength(5);
-    expect(screen.getAllByTestId('split-chip')).toHaveLength(2);
-    // Zahler sind echte Profile, nicht ein nicht persistierbares Gemeinschaftskonto.
+    expect(screen.getAllByTestId('recipient-chip')).toHaveLength(1);
     const payers = screen.getByRole('group', { name: 'Bezahlt von' });
     expect(within(payers).getByRole('button', { name: 'Mich' })).toBeInTheDocument();
-    const split = screen.getByRole('group', { name: 'Aufteilung' });
-    expect(within(split).getByRole('button', { name: '50/50' })).toBeInTheDocument();
+    const recipients = screen.getByRole('group', { name: 'Für wen?' });
+    expect(within(recipients).getByRole('button', { name: 'Selbst' })).toBeInTheDocument();
   });
 
   it('speichert nicht ohne Betrag', async () => {

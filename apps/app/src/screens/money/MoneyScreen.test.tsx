@@ -1,5 +1,4 @@
 import type {
-  ExpenseBudgetsRow,
   ExpenseCategoriesRow,
   ProfilesRow,
   SessionState,
@@ -40,19 +39,8 @@ const CATEGORIES: ExpenseCategoriesRow[] = [
     calendar_id: PAIRED_SESSION.identity.calendarId,
     name: 'Lebensmittel',
     color: '#3b82f6',
-    monthly_limit: 120,
+    monthly_limit: null,
     sort_order: 0,
-    created_by: TEST_USER_ID,
-    created_at: '2026-08-01T10:00:00Z',
-    updated_at: '2026-08-01T10:00:00Z',
-  },
-  {
-    id: 'free',
-    calendar_id: PAIRED_SESSION.identity.calendarId,
-    name: 'Freizeit',
-    color: '#ec4899',
-    monthly_limit: 80,
-    sort_order: 1,
     created_by: TEST_USER_ID,
     created_at: '2026-08-01T10:00:00Z',
     updated_at: '2026-08-01T10:00:00Z',
@@ -66,8 +54,9 @@ const EXPENSES: SharedExpensesRow[] = [
     title: 'Wocheneinkauf',
     amount: 100,
     paid_by: TEST_USER_ID,
+    for_user_id: null,
     category: 'Lebensmittel',
-    paid_at: '2026-08-10',
+    paid_at: currentDateIso(),
     notes: null,
     split_type: 'shared',
     created_at: '2026-08-10T10:00:00Z',
@@ -79,8 +68,9 @@ const EXPENSES: SharedExpensesRow[] = [
     title: 'Kinokarte',
     amount: 40,
     paid_by: TEST_PARTNER_ID,
+    for_user_id: TEST_PARTNER_ID,
     category: 'Freizeit',
-    paid_at: '2026-08-09',
+    paid_at: currentDateIso(),
     notes: 'Nur Jonas',
     split_type: 'single',
     created_at: '2026-08-09T10:00:00Z',
@@ -88,34 +78,27 @@ const EXPENSES: SharedExpensesRow[] = [
   },
 ];
 
-const BUDGET: ExpenseBudgetsRow = {
-  id: 'budget',
-  calendar_id: PAIRED_SESSION.identity.calendarId,
-  month_start: currentMonthStart(),
-  amount: 200,
-  created_by: TEST_USER_ID,
-  created_at: '2026-08-01T10:00:00Z',
-  updated_at: '2026-08-01T10:00:00Z',
-};
-
 beforeEach(() => pinLanguage('de'));
 
 function renderMoney() {
-  const createSettlement = vi.fn();
+  const listExpenses = vi.fn(async () => EXPENSES);
   const createExpense = vi.fn();
+  const updateExpense = vi.fn();
   const createCategory = vi.fn();
-  const updateCategory = vi.fn();
-  const createSplit = vi.fn();
-  const app = renderAppAt('/geld', {
+  const createSettlement = vi.fn();
+  renderAppAt('/geld', {
     auth: { session: PAIRED_SESSION },
     data: {
       expenses: {
-        list: async () => EXPENSES,
+        list: listExpenses,
         create: async (input) => {
           createExpense(input);
           return { ...EXPENSES[0]!, id: 'new-expense', ...input, amount: Number(input.amount) };
         },
-        update: async () => EXPENSES[0]!,
+        update: async (_calendarId, _id, input) => {
+          updateExpense(input);
+          return { ...EXPENSES[0]!, ...input, amount: Number(input.amount ?? EXPENSES[0]!.amount) };
+        },
         delete: async () => undefined,
       },
       expenseCategories: {
@@ -124,16 +107,7 @@ function renderMoney() {
           createCategory(input);
           return { ...CATEGORIES[0]!, id: 'new-category', name: input.name };
         },
-        update: async (input) => {
-          updateCategory(input);
-          return { ...CATEGORIES[0]!, monthly_limit: Number(input.monthlyLimit) };
-        },
-        delete: async () => undefined,
-      },
-      expenseBudgets: {
-        list: async () => [BUDGET],
-        create: async () => BUDGET,
-        update: async () => BUDGET,
+        update: async () => CATEGORIES[0]!,
         delete: async () => undefined,
       },
       expenseSettlements: {
@@ -154,100 +128,81 @@ function renderMoney() {
         },
         delete: async () => undefined,
       },
-      expenseSplits: {
-        list: async () => [],
-        create: async (input) => {
-          createSplit(input);
-          return {
-            id: `split-${createSplit.mock.calls.length}`,
-            expense_id: input.expenseId,
-            user_id: input.userId,
-            amount: Number(input.amount),
-            created_at: '2026-08-10T10:00:00Z',
-          };
-        },
-        update: async () => {
-          throw new Error('not needed in this test');
-        },
-        delete: async () => undefined,
-      },
     },
   });
-  return { ...app, createSettlement, createExpense, createCategory, updateCategory, createSplit };
+  return { createCategory, createExpense, createSettlement, listExpenses, updateExpense };
 }
 
 describe('MoneyScreen', () => {
-  it('zeigt das Monatsbudget mit Fortschritt', async () => {
-    renderMoney();
-    expect(await screen.findByRole('progressbar', { name: /Budget/ })).toBeInTheDocument();
-    expect(screen.getByText(/200,00/)).toBeInTheDocument();
-  });
-
-  it('aggregiert echte Kategorien aus den Ausgaben', async () => {
-    renderMoney();
-    expect(await screen.findAllByTestId('category-row')).toHaveLength(2);
-    expect(screen.getByText('Lebensmittel')).toBeInTheDocument();
-    expect(screen.getByText('Freizeit')).toBeInTheDocument();
-  });
-
-  it('berechnet die Bilanz des Paares', async () => {
+  it('shows the paid totals and the resulting debt', async () => {
     renderMoney();
     expect(await screen.findByText(/Jonas schuldet Lena/)).toBeInTheDocument();
-    expect(screen.getAllByText(/50,00/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/100,00/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/40,00/).length).toBeGreaterThan(0);
   });
 
-  it('bucht eine echte Ausgleichstransaktion', async () => {
+  it('filters expenses and settlements by the selected period', async () => {
+    const { listExpenses } = renderMoney();
+    await screen.findAllByTestId('expense-row');
+    await userEvent.click(screen.getByRole('button', { name: 'Alle' }));
+    await waitFor(() =>
+      expect(listExpenses).toHaveBeenLastCalledWith(PAIRED_SESSION.identity.calendarId, undefined),
+    );
+  });
+
+  it('books a settlement for the active period', async () => {
     const { createSettlement } = renderMoney();
     await userEvent.click(await screen.findByRole('button', { name: 'Ausgleich buchen' }));
     await userEvent.click(screen.getAllByRole('button', { name: 'Ausgleich buchen' })[1]!);
     await waitFor(() => expect(createSettlement).toHaveBeenCalledOnce());
-    expect(createSettlement.mock.calls[0]?.[0]).toMatchObject({
-      fromUserId: TEST_PARTNER_ID,
-      toUserId: TEST_USER_ID,
-      amount: 50,
-    });
+    expect(createSettlement).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fromUserId: TEST_PARTNER_ID,
+        toUserId: TEST_USER_ID,
+        amount: 50,
+      }),
+    );
   });
 
-  it('listet die echten Ausgaben', async () => {
-    renderMoney();
-    expect(await screen.findAllByTestId('expense-row')).toHaveLength(2);
-    expect(screen.getByText('Wocheneinkauf')).toBeInTheDocument();
-    expect(screen.getByText('Kinokarte')).toBeInTheDocument();
-  });
-
-  it('legt eine Kategorie, Ausgabe und exakte individuelle Anteile an', async () => {
-    const { createCategory, createExpense, createSplit } = renderMoney();
+  it('creates an expense for the partner with a category', async () => {
+    const { createCategory, createExpense } = renderMoney();
     await userEvent.click(await screen.findByRole('button', { name: 'Ausgabe hinzufügen' }));
     await userEvent.type(screen.getByLabelText('Beschreibung'), 'Gemeinsames Geschenk');
     await userEvent.type(screen.getByLabelText(/Betrag/), '100');
     await userEvent.clear(screen.getByRole('textbox', { name: 'Kategorien' }));
     await userEvent.type(screen.getByRole('textbox', { name: 'Kategorien' }), 'Geschenke');
-    await userEvent.click(screen.getByRole('button', { name: 'Eigene Anteile' }));
-    await userEvent.type(screen.getByLabelText('Lena'), '30');
-    await userEvent.type(screen.getByLabelText('Jonas'), '70');
+    await userEvent.click(screen.getByRole('button', { name: 'Partner' }));
     await userEvent.click(screen.getByRole('button', { name: 'Ausgabe speichern' }));
 
     await waitFor(() => expect(createExpense).toHaveBeenCalledOnce());
     expect(createCategory).toHaveBeenCalledWith(expect.objectContaining({ name: 'Geschenke' }));
     expect(createExpense).toHaveBeenCalledWith(
-      expect.objectContaining({ category: 'Geschenke', split_type: 'shared' }),
+      expect.objectContaining({
+        category: 'Geschenke',
+        for_user_id: TEST_PARTNER_ID,
+        split_type: 'single',
+      }),
     );
-    await waitFor(() => expect(createSplit).toHaveBeenCalledTimes(2));
-    expect(createSplit.mock.calls.map(([input]) => input.amount)).toEqual([30, 70]);
   });
 
-  it('speichert ein monatliches Kategorienlimit', async () => {
-    const { updateCategory } = renderMoney();
-    await userEvent.click(await screen.findByRole('button', { name: /Lebensmittel: Kategorie bearbeiten/ }));
-    const limit = screen.getByLabelText('Monatliches Limit');
-    await userEvent.clear(limit);
-    await userEvent.type(limit, '150');
+  it('opens a list entry for editing', async () => {
+    const { updateExpense } = renderMoney();
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Wocheneinkauf: Ausgabe bearbeiten' }),
+    );
+    const title = screen.getByLabelText('Beschreibung');
+    await userEvent.clear(title);
+    await userEvent.type(title, 'Wocheneinkauf aktualisiert');
     await userEvent.click(screen.getByRole('button', { name: 'Speichern' }));
-    await waitFor(() => expect(updateCategory).toHaveBeenCalledWith(expect.objectContaining({ monthlyLimit: 150 })));
+
+    await waitFor(() =>
+      expect(updateExpense).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Wocheneinkauf aktualisiert' }),
+      ),
+    );
   });
 });
 
-function currentMonthStart(): string {
-  const today = new Date();
-  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
+function currentDateIso(): string {
+  return new Date().toISOString().slice(0, 10);
 }

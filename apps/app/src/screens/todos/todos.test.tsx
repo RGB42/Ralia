@@ -56,7 +56,7 @@ describe('TodoDetail', () => {
 
   it('filtert nach Person', async () => {
     renderAt('/todos/einkauf');
-    await userEvent.click(await screen.findByRole('button', { name: 'Jonas' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Lena' }));
     expect(screen.queryByRole('checkbox', { name: /Haferflocken/ })).toBeNull();
     expect(screen.getByRole('checkbox', { name: /Tomaten & Basilikum/ })).toBeInTheDocument();
   });

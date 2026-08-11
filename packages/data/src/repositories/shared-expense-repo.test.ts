@@ -16,6 +16,7 @@ const EXPENSE: SharedExpensesRow = {
   category: 'Lebensmittel',
   created_at: '2026-08-10T08:00:00Z',
   id: EXPENSE_ID,
+  for_user_id: null,
   notes: null,
   paid_at: '2026-08-10',
   paid_by: USER_ID,
@@ -26,7 +27,7 @@ const EXPENSE: SharedExpensesRow = {
 
 function gateway(overrides: Partial<SharedExpenseGateway> = {}): SharedExpenseGateway {
   return {
-    selectByDateRange: vi.fn().mockResolvedValue({ data: [EXPENSE], error: null }),
+    selectByCalendar: vi.fn().mockResolvedValue({ data: [EXPENSE], error: null }),
     insert: vi.fn().mockResolvedValue({ data: EXPENSE, error: null }),
     updateById: vi.fn().mockResolvedValue({ data: EXPENSE, error: null }),
     deleteById: vi.fn().mockResolvedValue({ error: null }),
@@ -66,30 +67,42 @@ describe('shared expense list', () => {
   it('lists through the inclusive calendar and date-range gateway operation', async () => {
     const gw = gateway();
 
-    expect(await createSharedExpenseRepo(gw).list(CALENDAR_ID, '2026-08-01', '2026-08-31')).toEqual(
-      [EXPENSE],
-    );
-    expect(gw.selectByDateRange).toHaveBeenCalledWith(CALENDAR_ID, '2026-08-01', '2026-08-31');
+    expect(
+      await createSharedExpenseRepo(gw).list(CALENDAR_ID, {
+        startDate: '2026-08-01',
+        endDate: '2026-08-31',
+      }),
+    ).toEqual([EXPENSE]);
+    expect(gw.selectByCalendar).toHaveBeenCalledWith(CALENDAR_ID, {
+      startDate: '2026-08-01',
+      endDate: '2026-08-31',
+    });
   });
 
   it('rejects a reversed range without querying', async () => {
     const gw = gateway();
 
     await expect(
-      createSharedExpenseRepo(gw).list(CALENDAR_ID, '2026-09-01', '2026-08-31'),
-    ).rejects.toThrow(/from_date/);
-    expect(gw.selectByDateRange).not.toHaveBeenCalled();
+      createSharedExpenseRepo(gw).list(CALENDAR_ID, {
+        startDate: '2026-09-01',
+        endDate: '2026-08-31',
+      }),
+    ).rejects.toThrow(/start_date/);
+    expect(gw.selectByCalendar).not.toHaveBeenCalled();
   });
 
   it('forwards gateway errors', async () => {
     const gw = gateway({
-      selectByDateRange: vi
+      selectByCalendar: vi
         .fn()
         .mockResolvedValue({ data: null, error: { code: '42501', message: 'denied' } }),
     });
 
     await expect(
-      createSharedExpenseRepo(gw).list(CALENDAR_ID, '2026-08-01', '2026-08-31'),
+      createSharedExpenseRepo(gw).list(CALENDAR_ID, {
+        startDate: '2026-08-01',
+        endDate: '2026-08-31',
+      }),
     ).rejects.toThrow('denied');
   });
 });
@@ -104,6 +117,7 @@ describe('shared expense mutations', () => {
       notes: null,
       paid_at: '2026-08-10',
       paid_by: USER_ID,
+      for_user_id: null,
       split_type: 'shared',
       title: 'Einkauf',
     });
@@ -116,6 +130,7 @@ describe('shared expense mutations', () => {
       notes: null,
       paid_at: '2026-08-10',
       paid_by: USER_ID,
+      for_user_id: null,
       split_type: 'shared',
       title: 'Einkauf',
     });
@@ -126,13 +141,13 @@ describe('shared expense mutations', () => {
 
     await createSharedExpenseRepo(gw).update(CALENDAR_ID, EXPENSE_ID, {
       amount: '19.95',
-      category: null,
+      category: 'Freizeit',
       notes: null,
     });
 
     expect(gw.updateById).toHaveBeenCalledWith(CALENDAR_ID, EXPENSE_ID, {
       amount: 19.95,
-      category: null,
+      category: 'Freizeit',
       notes: null,
     });
   });
@@ -171,7 +186,10 @@ describe('shared expense mutations', () => {
       createSharedExpenseRepo(gw).create({
         amount: '42.50',
         calendar_id: CALENDAR_ID,
+        category: 'Lebensmittel',
+        for_user_id: USER_ID,
         paid_by: USER_ID,
+        split_type: 'single',
         title: 'Einkauf',
       }),
     ).rejects.toThrow(/not returned/);

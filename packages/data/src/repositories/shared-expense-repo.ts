@@ -18,25 +18,40 @@ export interface SharedExpenseGatewayError {
 
 export type SharedExpenseCreateInput = Omit<
   SharedExpenseInsert,
-  'amount' | 'created_at' | 'id' | 'split_type' | 'updated_at'
+  'amount' | 'category' | 'created_at' | 'for_user_id' | 'id' | 'split_type' | 'updated_at'
 > & {
   amount: DecimalInput;
-  split_type?: SplitType | null;
+  category: string;
+  for_user_id: string | null;
+  split_type: SplitType;
 };
 
 export type SharedExpenseUpdateInput = Omit<
   SharedExpenseUpdate,
-  'amount' | 'calendar_id' | 'created_at' | 'id' | 'split_type' | 'updated_at'
+  | 'amount'
+  | 'calendar_id'
+  | 'category'
+  | 'created_at'
+  | 'for_user_id'
+  | 'id'
+  | 'split_type'
+  | 'updated_at'
 > & {
   amount?: DecimalInput;
-  split_type?: SplitType | null;
+  category?: string;
+  for_user_id?: string | null;
+  split_type?: SplitType;
 };
 
+export interface SharedExpenseDateRange {
+  startDate: string;
+  endDate: string;
+}
+
 export interface SharedExpenseGateway {
-  selectByDateRange(
+  selectByCalendar(
     calendarId: string,
-    fromDate: string,
-    throughDate: string,
+    range?: SharedExpenseDateRange,
   ): Promise<{ data: SharedExpensesRow[] | null; error: SharedExpenseGatewayError | null }>;
   insert(
     row: SharedExpenseInsert,
@@ -50,7 +65,7 @@ export interface SharedExpenseGateway {
 }
 
 export interface SharedExpenseRepo {
-  list(calendarId: string, fromDate: string, throughDate: string): Promise<SharedExpensesRow[]>;
+  list(calendarId: string, range?: SharedExpenseDateRange): Promise<SharedExpensesRow[]>;
   create(input: SharedExpenseCreateInput): Promise<SharedExpensesRow>;
   update(
     calendarId: string,
@@ -106,18 +121,29 @@ function requireText(value: string, field: string): void {
   if (value.trim() === '') throw new TypeError(`${field} must not be empty.`);
 }
 
-function requireSplitType(value: string | null): void {
+function requireSplitType(value: string | null): asserts value is SplitType {
   if (value !== null && value !== 'single' && value !== 'shared') {
     throw new TypeError('split_type must be single, shared, or null.');
   }
 }
 
+function requireRecipient(splitType: SplitType, forUserId: string | null): void {
+  if (splitType === 'shared' && forUserId !== null) {
+    throw new TypeError('shared expenses must not have a single recipient.');
+  }
+  if (splitType === 'single' && (forUserId === null || forUserId.trim() === '')) {
+    throw new TypeError('single expenses need a recipient.');
+  }
+}
+
 function createRow(input: SharedExpenseCreateInput): SharedExpenseInsert {
   requireText(input.calendar_id, 'calendar_id');
+  requireText(input.category, 'category');
   requireText(input.paid_by, 'paid_by');
   requireText(input.title, 'title');
   if (input.paid_at !== undefined) requireText(input.paid_at, 'paid_at');
-  if (input.split_type !== undefined) requireSplitType(input.split_type);
+  requireSplitType(input.split_type);
+  requireRecipient(input.split_type, input.for_user_id);
 
   const row: SharedExpenseInsert = {
     amount: parseExpenseAmount(input.amount),
@@ -125,10 +151,11 @@ function createRow(input: SharedExpenseCreateInput): SharedExpenseInsert {
     paid_by: input.paid_by,
     title: input.title,
   };
-  if (input.category !== undefined) row.category = input.category;
+  row.category = input.category;
   if (input.notes !== undefined) row.notes = input.notes;
   if (input.paid_at !== undefined) row.paid_at = input.paid_at;
-  if (input.split_type !== undefined) row.split_type = input.split_type;
+  row.for_user_id = input.for_user_id;
+  row.split_type = input.split_type;
   return row;
 }
 
@@ -136,7 +163,10 @@ function updateRow(input: SharedExpenseUpdateInput): SharedExpenseUpdate {
   const row: SharedExpenseUpdate = {};
 
   if (input.amount !== undefined) row.amount = parseExpenseAmount(input.amount);
-  if (input.category !== undefined) row.category = input.category;
+  if (input.category !== undefined) {
+    requireText(input.category, 'category');
+    row.category = input.category;
+  }
   if (input.notes !== undefined) row.notes = input.notes;
   if (input.paid_at !== undefined) {
     requireText(input.paid_at, 'paid_at');
@@ -149,6 +179,13 @@ function updateRow(input: SharedExpenseUpdateInput): SharedExpenseUpdate {
   if (input.split_type !== undefined) {
     requireSplitType(input.split_type);
     row.split_type = input.split_type;
+  }
+  if (input.for_user_id !== undefined) {
+    if (input.for_user_id !== null) requireText(input.for_user_id, 'for_user_id');
+    row.for_user_id = input.for_user_id;
+  }
+  if (input.split_type !== undefined && input.for_user_id !== undefined) {
+    requireRecipient(input.split_type, input.for_user_id);
   }
   if (input.title !== undefined) {
     requireText(input.title, 'title');
@@ -163,15 +200,17 @@ function updateRow(input: SharedExpenseUpdateInput): SharedExpenseUpdate {
 
 export function createSharedExpenseRepo(gateway: SharedExpenseGateway): SharedExpenseRepo {
   return {
-    async list(calendarId, fromDate, throughDate) {
+    async list(calendarId, range) {
       requireText(calendarId, 'calendar_id');
-      requireText(fromDate, 'from_date');
-      requireText(throughDate, 'through_date');
-      if (fromDate > throughDate) {
-        throw new RangeError('from_date must not be after through_date.');
+      if (range !== undefined) {
+        requireText(range.startDate, 'start_date');
+        requireText(range.endDate, 'end_date');
+        if (range.startDate > range.endDate) {
+          throw new RangeError('start_date must not be after end_date.');
+        }
       }
 
-      const { data, error } = await gateway.selectByDateRange(calendarId, fromDate, throughDate);
+      const { data, error } = await gateway.selectByCalendar(calendarId, range);
       if (error !== null) fail(error);
       return data ?? [];
     },
@@ -205,15 +244,17 @@ export function createSharedExpenseRepo(gateway: SharedExpenseGateway): SharedEx
 
 export function createSupabaseSharedExpenseRepo(client: RaliaSupabaseClient): SharedExpenseRepo {
   return createSharedExpenseRepo({
-    async selectByDateRange(calendarId, fromDate, throughDate) {
-      const { data, error } = await client
+    async selectByCalendar(calendarId, range) {
+      let query = client
         .from('shared_expenses')
         .select('*')
         .eq('calendar_id', calendarId)
-        .gte('paid_at', fromDate)
-        .lte('paid_at', throughDate)
         .order('paid_at', { ascending: false })
         .order('created_at', { ascending: false });
+      if (range !== undefined) {
+        query = query.gte('paid_at', range.startDate).lte('paid_at', range.endDate);
+      }
+      const { data, error } = await query;
       return { data, error };
     },
 

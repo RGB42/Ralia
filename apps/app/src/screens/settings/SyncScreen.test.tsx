@@ -12,16 +12,16 @@ afterEach(() => vi.unstubAllGlobals());
 const renderSync = () => renderAppAt('/profil/sync');
 
 describe('SyncScreen', () => {
-  it('zeigt zwei verbundene Konten', async () => {
+  it('zeigt das Konto der angemeldeten Person', async () => {
     renderSync();
-    expect(await screen.findAllByTestId('sync-account')).toHaveLength(2);
+    expect(await screen.findAllByTestId('sync-account')).toHaveLength(1);
   });
 
-  it('zeigt fuenf Kalender mit Schaltern', async () => {
+  it('zeigt eigene Kalender mit Schaltern', async () => {
     renderSync();
     // Nur die fuenf Kalender: der Auto-Sync-Schalter sitzt in den
     // Einstellungen, nicht hier (Vorlage Z. 542 gegen Z. 605–615).
-    expect(await screen.findAllByRole('switch')).toHaveLength(5);
+    expect(await screen.findAllByRole('switch')).toHaveLength(3);
   });
 
   it('schaltet einen Kalender aus', async () => {

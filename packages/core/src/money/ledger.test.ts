@@ -29,7 +29,9 @@ describe('calculateLedger', () => {
       { userId: 'alice', paid: 10.01, owed: 5.01, net: 5 },
       { userId: 'bob', paid: 0, owed: 5, net: -5 },
     ]);
-    expect(result.recommendedPayments).toEqual([{ fromUserId: 'bob', toUserId: 'alice', amount: 5 }]);
+    expect(result.recommendedPayments).toEqual([
+      { fromUserId: 'bob', toUserId: 'alice', amount: 5 },
+    ]);
   });
 
   it('assigns a single expense entirely to its payer', () => {
@@ -44,6 +46,24 @@ describe('calculateLedger', () => {
       { userId: 'bob', paid: 3.5, owed: 3.5, net: 0 },
     ]);
     expect(result.recommendedPayments).toEqual([]);
+  });
+
+  it('assigns a single expense to the selected recipient', () => {
+    const result = calculateLedger(
+      ledger({
+        expenses: [
+          { id: 'gift', amount: 20, paidBy: 'alice', splitType: 'single', forUserId: 'bob' },
+        ],
+      }),
+    );
+
+    expect(result.balances).toEqual([
+      { userId: 'alice', paid: 20, owed: 0, net: 20 },
+      { userId: 'bob', paid: 0, owed: 20, net: -20 },
+    ]);
+    expect(result.recommendedPayments).toEqual([
+      { fromUserId: 'bob', toUserId: 'alice', amount: 20 },
+    ]);
   });
 
   it('uses exact explicit shares for more than two participants', () => {
@@ -92,7 +112,9 @@ describe('calculateLedger', () => {
       { userId: 'alice', paid: 0.3, owed: 0.25, net: 0.05 },
       { userId: 'bob', paid: 0.3, owed: 0.35, net: -0.05 },
     ]);
-    expect(result.recommendedPayments).toEqual([{ fromUserId: 'bob', toUserId: 'alice', amount: 0.05 }]);
+    expect(result.recommendedPayments).toEqual([
+      { fromUserId: 'bob', toUserId: 'alice', amount: 0.05 },
+    ]);
   });
 
   it('reduces the outstanding debt by completed settlements without changing expense totals', () => {
@@ -107,7 +129,9 @@ describe('calculateLedger', () => {
       { userId: 'alice', paid: 100, owed: 50, net: 20 },
       { userId: 'bob', paid: 0, owed: 50, net: -20 },
     ]);
-    expect(result.recommendedPayments).toEqual([{ fromUserId: 'bob', toUserId: 'alice', amount: 20 }]);
+    expect(result.recommendedPayments).toEqual([
+      { fromUserId: 'bob', toUserId: 'alice', amount: 20 },
+    ]);
   });
 
   it('reverses the recommended direction when a settlement overpays a debt', () => {
@@ -118,7 +142,9 @@ describe('calculateLedger', () => {
       }),
     );
 
-    expect(result.recommendedPayments).toEqual([{ fromUserId: 'alice', toUserId: 'bob', amount: 30 }]);
+    expect(result.recommendedPayments).toEqual([
+      { fromUserId: 'alice', toUserId: 'bob', amount: 30 },
+    ]);
   });
 
   it.each([
@@ -231,9 +257,12 @@ describe('calculateLedger', () => {
       settlement: { fromUserId: 'alice', toUserId: 'bob', amount: 0 },
       message: /greater than zero/,
     },
-  ])('validates settlement $settlement.fromUserId to $settlement.toUserId', ({ settlement, message }) => {
-    expect(() => calculateLedger(ledger({ settlements: [settlement] }))).toThrow(message);
-  });
+  ])(
+    'validates settlement $settlement.fromUserId to $settlement.toUserId',
+    ({ settlement, message }) => {
+      expect(() => calculateLedger(ledger({ settlements: [settlement] }))).toThrow(message);
+    },
+  );
 
   it('rejects duplicate expense identifiers and duplicate participants', () => {
     expect(() =>

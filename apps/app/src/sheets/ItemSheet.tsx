@@ -1,8 +1,9 @@
 import { BottomSheet, Button, FieldLabel, Input, PersonChip } from '@ralia/ui';
 import type { PersonSlot } from '@ralia/ui';
 import { useId, useState } from 'react';
+import { useAuth } from '../auth/useAuth.js';
 import { useT } from '../i18n/useT.js';
-import { MOCK_PROFILE, type MockTodoItem } from '../mock/fixtures.js';
+import type { MockTodoItem } from '../mock/fixtures.js';
 import styles from './sheets.module.css';
 
 export interface ItemSheetProps {
@@ -22,6 +23,7 @@ export function ItemSheet({
   onDelete,
 }: ItemSheetProps): React.JSX.Element | null {
   const { t } = useT();
+  const { session } = useAuth();
   const baseId = useId();
   const [text, setText] = useState(item?.text ?? '');
   const [note, setNote] = useState(item?.note ?? '');
@@ -29,9 +31,12 @@ export function ItemSheet({
 
   if (!item) return null;
 
+  const identity = session.status === 'signed-in' ? session.identity : null;
   const people: readonly { slot: PersonSlot; label: string }[] = [
-    { slot: 'u1', label: MOCK_PROFILE.me.name.split(' ')[0] ?? 'u1' },
-    { slot: 'u2', label: MOCK_PROFILE.partner.name.split(' ')[0] ?? 'u2' },
+    { slot: 'u1', label: firstName(identity?.profile.name ?? t('me')) },
+    ...(identity?.partner
+      ? [{ slot: 'u2' as const, label: firstName(identity.partner.name ?? t('partner')) }]
+      : []),
   ];
 
   return (
@@ -88,4 +93,8 @@ export function ItemSheet({
       </div>
     </BottomSheet>
   );
+}
+
+function firstName(value: string): string {
+  return value.split(' ')[0] || value;
 }

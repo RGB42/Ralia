@@ -1,6 +1,15 @@
-import { AppHeader, Button, Card, SectionLabel, Toggle, personTokens } from '@ralia/ui';
+import {
+  AppHeader,
+  Button,
+  Card,
+  SectionLabel,
+  Toggle,
+  personTokens,
+  type PersonSlot,
+} from '@ralia/ui';
 import { useState, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router';
+import { useAuth } from '../../auth/useAuth.js';
 import { useT } from '../../i18n/useT.js';
 import {
   MOCK_CALENDARS,
@@ -16,9 +25,29 @@ type ConflictState = 'open' | 'keptRalia' | 'keptGoogle';
 
 export function SyncScreen(): React.JSX.Element {
   const { t } = useT();
+  const { session } = useAuth();
   const navigate = useNavigate();
+  const identity = session.status === 'signed-in' ? session.identity : null;
+  const ownName = firstName(identity?.profile.name ?? t('me'));
+  const partnerName = firstName(identity?.partner?.name ?? t('partner'));
+  const accounts = MOCK_SYNC_ACCOUNTS.filter(
+    (account) => account.slot !== 'u2' || identity?.partner,
+  ).map((account) => ({
+    ...account,
+    email:
+      account.slot === 'u1'
+        ? (identity?.profile.email ?? ownName)
+        : (identity?.partner?.email ?? partnerName),
+    initial: firstInitial(account.slot === 'u1' ? ownName : partnerName),
+  }));
+  const calendarsForPeople = MOCK_CALENDARS.filter(
+    (calendar) => calendar.slot !== 'u2' || identity?.partner,
+  ).map((calendar) => ({
+    ...calendar,
+    label: calendarLabel(calendar.label, calendar.slot, ownName, partnerName),
+  }));
   const [calendars, setCalendars] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(MOCK_CALENDARS.map((cal) => [cal.id, cal.on])),
+    Object.fromEntries(calendarsForPeople.map((calendar) => [calendar.id, calendar.on])),
   );
   const [direction, setDirection] = useState<SyncDirection>('both');
   const [conflict, setConflict] = useState<ConflictState>('open');
@@ -76,7 +105,7 @@ export function SyncScreen(): React.JSX.Element {
             <div className={styles.sectionHead}>
               <SectionLabel>{t('syncAccounts')}</SectionLabel>
             </div>
-            {MOCK_SYNC_ACCOUNTS.map((account) => (
+            {accounts.map((account) => (
               <div key={account.email} className={styles.account} data-testid="sync-account">
                 <span
                   className={styles.badge}
@@ -104,7 +133,7 @@ export function SyncScreen(): React.JSX.Element {
             <div className={styles.sectionHead}>
               <SectionLabel>{t('syncCalendars')}</SectionLabel>
             </div>
-            {MOCK_CALENDARS.map((cal) => (
+            {calendarsForPeople.map((cal) => (
               <div key={cal.id} className={styles.calendar}>
                 <span
                   className={styles.calendarSwatch}
@@ -228,4 +257,23 @@ export function SyncScreen(): React.JSX.Element {
       </div>
     </div>
   );
+}
+
+function calendarLabel(
+  label: string,
+  slot: PersonSlot,
+  ownName: string,
+  partnerName: string,
+): string {
+  if (slot !== 'u1' && slot !== 'u2') return label;
+  const suffix = label.split(' · ')[1];
+  return `${slot === 'u1' ? ownName : partnerName} · ${suffix ?? label}`;
+}
+
+function firstName(value: string): string {
+  return value.split(' ')[0] || value;
+}
+
+function firstInitial(value: string): string {
+  return value.trim().charAt(0).toUpperCase() || '?';
 }

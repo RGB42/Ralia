@@ -1,143 +1,9 @@
-/* Vorlage Z. 360–439. */
-
-.budgetHead {
+.filters {
   display: flex;
-  align-items: baseline;
   gap: 8px;
-}
-
-.budgetLabel {
-  flex: 1;
-}
-
-.budgetPct {
-  font-size: 11.5px;
-  color: var(--ink-500);
-}
-
-.budgetAction {
-  border: none;
-  background: transparent;
-  color: var(--brand);
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 4px;
-}
-
-.budgetAmounts {
-  display: flex;
-  align-items: baseline;
-  gap: 7px;
-  margin-top: 6px;
-}
-
-.budgetSpent {
-  font-size: 27px;
-  font-weight: 600;
-  color: var(--ink-900);
-  letter-spacing: -0.5px;
-}
-
-.budgetOf {
-  font-size: 13px;
-  color: var(--ink-400);
-}
-
-.budgetBar {
-  margin-top: 12px;
-}
-
-.budgetRemain {
-  font-size: 11.5px;
-  color: var(--ink-500);
-  margin-top: 9px;
-}
-
-.categories {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-}
-
-.categoriesHead {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding-left: 2px;
-}
-
-.categoriesLabel {
-  flex: 1;
-}
-
-.miniLegend {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-size: 10px;
-  color: var(--ink-400);
-}
-
-.miniLegendItem {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.miniSwatch {
-  width: 7px;
-  height: 7px;
-  border-radius: 2px;
-}
-
-.category {
-  width: 100%;
-  text-align: left;
-  cursor: pointer;
-  border: 1px solid var(--line);
-  border-radius: 15px;
-  background: var(--surface);
-  padding: 12px 14px;
-}
-
-.categoryHead {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.categoryName {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-900);
-  flex: 1;
-}
-
-.categoryAmount {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--ink-900);
-}
-
-/* Ueber dem Limit: dieselbe Warnfarbe wie die Warnkarte. */
-.categoryOver {
-  color: var(--danger);
-}
-
-.categoryLimit {
-  font-size: 11px;
-  color: var(--ink-400);
-}
-
-.categoryBar {
-  margin-top: 9px;
-}
-
-.categoryNote {
-  font-size: 10.5px;
-  color: var(--ink-400);
-  margin-top: 7px;
+  overflow-x: auto;
+  padding: 1px 2px 3px;
+  scrollbar-width: none;
 }
 
 .balancePair {
@@ -149,9 +15,9 @@
 .balanceCard {
   flex: 1;
   background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 14px;
   padding: 11px 12px;
-  border: 1px solid var(--line);
 }
 
 .balanceWho {
@@ -166,16 +32,22 @@
   border-radius: 3px;
 }
 
-.balanceName {
-  font-size: 11.5px;
+.balanceName,
+.balancePaid,
+.owedHint {
   color: var(--ink-500);
+  font-size: 11px;
 }
 
 .balanceAmount {
+  color: var(--ink-900);
   font-size: 17px;
   font-weight: 600;
-  color: var(--ink-900);
   margin-top: 4px;
+}
+
+.balancePaid {
+  margin-top: 1px;
 }
 
 .owed {
@@ -194,44 +66,32 @@
 }
 
 .owedTitle {
+  color: var(--ink-900);
   font-size: 13px;
   font-weight: 600;
-  color: var(--ink-900);
 }
 
 .owedHint {
-  font-size: 11px;
-  color: var(--ink-500);
   margin-top: 2px;
 }
 
 .owedAmount {
+  color: var(--brand-600);
   font-size: 18px;
   font-weight: 600;
-  color: var(--brand-600);
 }
 
 .settle {
   width: 100%;
   margin-top: 10px;
   border: none;
+  border-radius: 12px;
   background: var(--brand-fill);
   color: #fff;
   cursor: pointer;
   font-size: 12.5px;
   font-weight: 600;
   padding: 11px;
-  border-radius: 12px;
-  transition: filter 0.14s ease;
-}
-
-.settle:hover {
-  filter: brightness(1.09);
-}
-
-.category:hover {
-  background: var(--hov-tint);
-  box-shadow: inset 0 0 0 1px var(--hov-ring);
 }
 
 .settle:disabled {
@@ -252,11 +112,15 @@
 
 .expense {
   display: flex;
+  width: 100%;
   align-items: center;
   gap: 11px;
-  padding: 11px 14px;
+  border: none;
   border-bottom: 1px solid var(--line-soft);
-  transition: background-color 0.14s ease;
+  background: transparent;
+  cursor: pointer;
+  padding: 11px 14px;
+  text-align: left;
 }
 
 .expense:last-child {
@@ -268,41 +132,47 @@
 }
 
 .expenseAvatar {
+  display: flex;
   width: 26px;
   height: 26px;
   flex: none;
+  align-items: center;
+  justify-content: center;
   border-radius: 9px;
   color: #fff;
   font-size: 10px;
   font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .expenseBody {
-  flex: 1;
+  display: block;
   min-width: 0;
+  flex: 1;
+}
+
+.expenseTitle,
+.expenseMeta {
+  display: block;
 }
 
 .expenseTitle {
+  overflow: hidden;
+  color: var(--ink-900);
   font-size: 13px;
   font-weight: 500;
-  color: var(--ink-900);
-  white-space: nowrap;
-  overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .expenseMeta {
-  font-size: 10.5px;
-  color: var(--ink-400);
   margin-top: 1px;
+  color: var(--ink-400);
+  font-size: 10.5px;
 }
 
 .expenseAmount {
+  color: var(--ink-900);
   font-size: 13px;
   font-weight: 600;
-  color: var(--ink-900);
   white-space: nowrap;
 }

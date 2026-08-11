@@ -1,74 +1,52 @@
-import {
-  aggregateExpensesByCategory,
-  calculateLedger,
-  type LedgerExpense,
-  type LedgerSettlement,
-} from '@ralia/core';
-import type {
-  ExpenseBudgetsRow,
-  ExpenseCategoriesRow,
-  ExpenseSettlementsRow,
-  SharedExpensesRow,
-} from '@ralia/data';
-import { AppHeader, Card, Fab, ProgressBar, SectionLabel, personTokens, useToast } from '@ralia/ui';
+import { calculateLedger, type LedgerExpense, type LedgerSettlement } from '@ralia/core';
+import type { ExpenseCategoriesRow, ExpenseSettlementsRow, SharedExpensesRow } from '@ralia/data';
+import { AppHeader, Card, Chip, Fab, SectionLabel, personTokens, useToast } from '@ralia/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../auth/useAuth.js';
 import { useData } from '../../data/DataProvider.js';
 import { useT } from '../../i18n/useT.js';
-import { BudgetSheet } from '../../sheets/BudgetSheet.js';
-import { ExpenseSheet, type ExpenseDraft } from '../../sheets/ExpenseSheet.js';
-import { ExpenseCategorySheet } from '../../sheets/ExpenseCategorySheet.js';
+import {
+  ExpenseSheet,
+  type ExpenseDraft,
+  type ExpenseRecipient,
+} from '../../sheets/ExpenseSheet.js';
 import { SettlementSheet } from '../../sheets/SettlementSheet.js';
 import screen from '../screen.module.css';
-import { addDaysIso, monthTitle } from '../calendar/calendar-labels.js';
 import styles from './MoneyScreen.module.css';
 import { formatEur } from './money-math.js';
+
+type ExpensePeriod = 'thisMonth' | 'lastMonth' | 'twoMonthsAgo' | 'thisYear' | 'all';
+
+const ALL_TIME_RANGE = { startDate: '0001-01-01', endDate: '9999-12-31' };
 
 export function MoneyScreen(): React.JSX.Element {
   const { t, lang } = useT();
   const { show } = useToast();
   const { session } = useAuth();
-  const {
-    expenses: expenseRepo,
-    expenseBudgets,
-    expenseCategories,
-    expenseSettlements,
-    expenseSplits,
-  } = useData();
+  const { expenses: expenseRepo, expenseCategories, expenseSettlements } = useData();
   const identity = session.status === 'signed-in' ? session.identity : null;
-  const [monthStart, setMonthStart] = useState(currentMonthStart);
+  const [period, setPeriod] = useState<ExpensePeriod>('thisMonth');
   const [expenses, setExpenses] = useState<readonly SharedExpensesRow[]>([]);
   const [categories, setCategories] = useState<readonly ExpenseCategoriesRow[]>([]);
-  const [budget, setBudget] = useState<ExpenseBudgetsRow | null>(null);
   const [settlements, setSettlements] = useState<readonly ExpenseSettlementsRow[]>([]);
-  const [splitsByExpense, setSplitsByExpense] = useState<
-    ReadonlyMap<string, readonly { user_id: string; amount: number }[]>
-  >(new Map());
   const [expenseOpen, setExpenseOpen] = useState(false);
-  const [budgetOpen, setBudgetOpen] = useState(false);
+  const [expenseEditing, setExpenseEditing] = useState<SharedExpensesRow | null>(null);
   const [settlementOpen, setSettlementOpen] = useState(false);
-  const [categoryEditing, setCategoryEditing] = useState<string | null>(null);
-  const monthEnd = addDaysIso(nextMonthStart(monthStart), -1);
 
   useEffect(() => {
     if (!identity) return;
     let active = true;
+    const range = dateRangeFor(period);
     void Promise.all([
-      expenseRepo.list(identity.calendarId, monthStart, monthEnd),
+      expenseRepo.list(identity.calendarId, range ?? undefined),
       expenseCategories.list(identity.calendarId),
-      expenseBudgets.list(identity.calendarId),
-      expenseSettlements.list(identity.calendarId, { startDate: monthStart, endDate: monthEnd }),
+      expenseSettlements.list(identity.calendarId, range ?? ALL_TIME_RANGE),
     ])
-      .then(async ([nextExpenses, nextCategories, budgets, nextSettlements]) => {
-        const splitRows = await Promise.all(
-          nextExpenses.map(async (expense) => [expense.id, await expenseSplits.list(expense.id)] as const),
-        );
+      .then(([nextExpenses, nextCategories, nextSettlements]) => {
         if (!active) return;
         setExpenses(nextExpenses);
         setCategories(nextCategories);
-        setBudget(budgets.find((entry) => entry.month_start === monthStart) ?? null);
         setSettlements(nextSettlements);
-        setSplitsByExpense(new Map(splitRows));
       })
       .catch(() => {
         if (active) show(t('moneyLoadError'), 'danger');
@@ -76,64 +54,66 @@ export function MoneyScreen(): React.JSX.Element {
     return () => {
       active = false;
     };
-  }, [expenseBudgets, expenseCategories, expenseRepo, expenseSettlements, expenseSplits, identity, monthEnd, monthStart, show, t]);
+  }, [expenseCategories, expenseRepo, expenseSettlements, identity, period, show, t]);
 
-  const ledgerExpenses: LedgerExpense[] = expenses.map((expense) => ({
-    id: expense.id,
-    amount: expense.amount,
-    paidBy: expense.paid_by,
-    splitType: identity?.partner && expense.split_type === 'shared' ? 'shared' : 'single',
-    category: expense.category,
-    date: expense.paid_at,
-    ...(splitsByExpense.get(expense.id)?.length
-      ? {
-          shares: splitsByExpense.get(expense.id)!.map((split) => ({
-            userId: split.user_id,
-            amount: split.amount,
-          })),
-        }
-      : {}),
-  }));
-  const ledgerSettlements: LedgerSettlement[] = settlements.map((settlement) => ({
-    fromUserId: settlement.from_user_id,
-    toUserId: settlement.to_user_id,
-    amount: settlement.amount,
-  }));
   const ledger = useMemo(() => {
     if (!identity) return null;
-    const participantIds = identity.partner ? [identity.userId, identity.partner.id] : [identity.userId];
+    const userIds = identity.partner ? [identity.userId, identity.partner.id] : [identity.userId];
+    const ledgerExpenses: LedgerExpense[] = expenses.map((expense) => ({
+      id: expense.id,
+      amount: expense.amount,
+      paidBy: expense.paid_by,
+      splitType: identity.partner && expense.for_user_id === null ? 'shared' : 'single',
+      forUserId: expense.for_user_id ?? expense.paid_by,
+    }));
+    const ledgerSettlements: LedgerSettlement[] = settlements.map((settlement) => ({
+      fromUserId: settlement.from_user_id,
+      toUserId: settlement.to_user_id,
+      amount: settlement.amount,
+    }));
     try {
-      return calculateLedger({ userIds: participantIds, expenses: ledgerExpenses, settlements: ledgerSettlements });
+      return calculateLedger({ userIds, expenses: ledgerExpenses, settlements: ledgerSettlements });
     } catch {
       return null;
     }
-  }, [identity, ledgerExpenses, ledgerSettlements]);
+  }, [expenses, identity, settlements]);
 
-  const spent = aggregateExpensesByCategory(
-    expenses.map((expense) => ({ amount: expense.amount, category: expense.category })),
-  ).reduce((total, entry) => total + entry.amount, 0);
-  const budgetAmount = budget?.amount ?? 0;
-  const budgetPct = budgetAmount > 0 ? Math.min(100, (spent / budgetAmount) * 100) : spent > 0 ? 100 : 0;
-  const remaining = Math.max(0, budgetAmount - spent);
-  const categoryAmounts = new Map(
-    aggregateExpensesByCategory(
-      expenses.map((expense) => ({ amount: expense.amount, category: expense.category })),
-    ).map((entry) => [entry.category, entry.amount]),
-  );
-  const categoryNames = uniqueCategoryNames(categories, expenses);
   const recommendation = ledger?.recommendedPayments[0] ?? null;
   const balanceById = new Map(ledger?.balances.map((balance) => [balance.userId, balance]) ?? []);
   const me = identity?.profile ?? null;
   const partner = identity?.partner ?? null;
-  const categoryOptions = categoryNames.map((name) => ({ name }));
+  const categoryOptions = uniqueCategoryNames(categories, expenses).map((name) => ({ name }));
+  const periodOptions: readonly { value: ExpensePeriod; label: string }[] = [
+    { value: 'thisMonth', label: t('moneyThisMonth') },
+    { value: 'lastMonth', label: t('moneyLastMonth') },
+    { value: 'twoMonthsAgo', label: t('moneyTwoMonthsAgo') },
+    { value: 'thisYear', label: t('moneyThisYear') },
+    { value: 'all', label: t('moneyAll') },
+  ];
 
   const saveExpense = async (draft: ExpenseDraft) => {
     if (!identity) return;
-    const paidBy = draft.slot === 'u2' && identity.partner ? identity.partner.id : identity.userId;
+    const paidBy =
+      draft.paidBy === 'u2' && identity.partner ? identity.partner.id : identity.userId;
+    const forUserId = recipientId(draft.recipient, identity.userId, identity.partner?.id);
+    const splitType = forUserId === null && identity.partner ? 'shared' : 'single';
+    const values = {
+      amount: draft.amount,
+      category: draft.category,
+      for_user_id: splitType === 'shared' ? null : (forUserId ?? identity.userId),
+      notes: draft.notes || null,
+      paid_at: draft.paidAt,
+      paid_by: paidBy,
+      split_type: splitType,
+      title: draft.title,
+    } as const;
+
     try {
       if (
-        draft.category !== '' &&
-        !categories.some((category) => category.name.localeCompare(draft.category, undefined, { sensitivity: 'accent' }) === 0)
+        !categories.some(
+          (category) =>
+            category.name.localeCompare(draft.category, undefined, { sensitivity: 'accent' }) === 0,
+        )
       ) {
         const createdCategory = await expenseCategories.create({
           calendarId: identity.calendarId,
@@ -143,87 +123,31 @@ export function MoneyScreen(): React.JSX.Element {
         });
         setCategories((current) => [...current, createdCategory]);
       }
-      const created = await expenseRepo.create({
-        calendar_id: identity.calendarId,
-        title: draft.title,
-        amount: draft.amount,
-        paid_by: paidBy,
-        category: draft.category || null,
-        paid_at: draft.paidAt,
-        notes: draft.notes || null,
-        split_type: draft.split === 'payerOnly' || !identity.partner ? 'single' : 'shared',
-      });
-      if (draft.customShares && identity.partner) {
-        try {
-          const splits = await Promise.all([
-            ...(draft.customShares.u1 > 0
-              ? [expenseSplits.create({ expenseId: created.id, userId: identity.userId, amount: draft.customShares.u1 })]
-              : []),
-            ...(draft.customShares.u2 > 0
-              ? [expenseSplits.create({ expenseId: created.id, userId: identity.partner.id, amount: draft.customShares.u2 })]
-              : []),
-          ]);
-          setSplitsByExpense((current) => new Map(current).set(created.id, splits));
-        } catch (error) {
-          await expenseRepo.delete(identity.calendarId, created.id).catch(() => undefined);
-          throw error;
-        }
+      if (expenseEditing) {
+        const updated = await expenseRepo.update(identity.calendarId, expenseEditing.id, values);
+        setExpenses((current) =>
+          current.map((expense) => (expense.id === updated.id ? updated : expense)),
+        );
+        setExpenseEditing(null);
+      } else {
+        const created = await expenseRepo.create({ calendar_id: identity.calendarId, ...values });
+        setExpenses((current) => [created, ...current]);
+        setExpenseOpen(false);
       }
-      setExpenses((current) => [created, ...current]);
-      setExpenseOpen(false);
     } catch {
       show(t('moneySaveError'), 'danger');
     }
   };
 
-  const saveBudget = async (amount: number) => {
-    if (!identity) return;
-    try {
-      const next = budget
-        ? await expenseBudgets.update({ calendarId: identity.calendarId, id: budget.id, amount })
-        : await expenseBudgets.create({
-            calendarId: identity.calendarId,
-            createdBy: identity.userId,
-            monthStart,
-            amount,
-          });
-      setBudget(next);
-      setBudgetOpen(false);
-    } catch {
-      show(t('moneyBudgetSaveError'), 'danger');
-    }
-  };
-
-  const saveCategory = async ({ name, monthlyLimit }: { name: string; monthlyLimit: number | null }) => {
-    if (!identity || categoryEditing === null) return;
-    const existing = categories.find((entry) => entry.name === categoryEditing);
-    try {
-      const next = existing
-        ? await expenseCategories.update({
-            calendarId: identity.calendarId,
-            id: existing.id,
-            name,
-            monthlyLimit,
-          })
-        : await expenseCategories.create({
-            calendarId: identity.calendarId,
-            createdBy: identity.userId,
-            name,
-            monthlyLimit,
-            sortOrder: categories.length,
-          });
-      setCategories((current) =>
-        existing
-          ? current.map((entry) => (entry.id === next.id ? next : entry))
-          : [...current, next],
-      );
-      setCategoryEditing(null);
-    } catch {
-      show(t('moneyCategorySaveError'), 'danger');
-    }
-  };
-
-  const saveSettlement = async ({ amount, settledAt, notes }: { amount: number; settledAt: string; notes: string }) => {
+  const saveSettlement = async ({
+    amount,
+    settledAt,
+    notes,
+  }: {
+    amount: number;
+    settledAt: string;
+    notes: string;
+  }) => {
     if (!identity || !recommendation) return;
     try {
       const created = await expenseSettlements.create({
@@ -244,125 +168,47 @@ export function MoneyScreen(): React.JSX.Element {
 
   return (
     <div className={screen.screen}>
-      <AppHeader
-        kicker={t('navMoney')}
-        title={monthTitle(Number(monthStart.slice(0, 4)), Number(monthStart.slice(5, 7)) - 1, lang)}
-        range={{
-          onPrev: () => setMonthStart(addDaysIso(monthStart, -1).slice(0, 8) + '01'),
-          onNext: () => setMonthStart(nextMonthStart(monthStart)),
-          onToday: () => setMonthStart(currentMonthStart()),
-          prevLabel: t('calPrevMonth'),
-          nextLabel: t('calNextMonth'),
-          todayLabel: t('today'),
-        }}
-      />
+      <AppHeader kicker={t('navMoney')} title={t('moneyTitle')} />
       <div className={screen.body}>
         <div className={screen.stack}>
-          <Card>
-            <div className={styles.budgetHead}>
-              <span className={styles.budgetLabel}>
-                <SectionLabel>{t('moneyBudget')}</SectionLabel>
-              </span>
-              <button type="button" className={styles.budgetAction} onClick={() => setBudgetOpen(true)}>
-                {budget ? t('moneyEditBudget') : t('moneySetBudget')}
-              </button>
-            </div>
-            <div className={styles.budgetAmounts}>
-              <span className={styles.budgetSpent}>{formatEur(spent, lang)}</span>
-              <span className={styles.budgetOf}>
-                {budgetAmount > 0 ? `${t('moneyOf')} ${formatEur(budgetAmount, lang)}` : t('moneyNoBudget')}
-              </span>
-            </div>
-            <div className={styles.budgetBar}>
-              <ProgressBar
-                height={9}
-                label={t('moneyBudget')}
-                segments={[{ widthPct: budgetPct, color: 'var(--brand)' }]}
+          <div className={styles.filters} role="group" aria-label={t('moneyPeriod')}>
+            {periodOptions.map((option) => (
+              <Chip
+                key={option.value}
+                active={period === option.value}
+                label={option.label}
+                onClick={() => setPeriod(option.value)}
               />
-            </div>
-            <div className={styles.budgetRemain}>
-              {budgetAmount > 0 ? `${formatEur(remaining, lang)} ${t('moneyRemaining')}` : t('moneyNoBudgetHint')}
-            </div>
-          </Card>
-
-          <div className={styles.categories}>
-            <div className={styles.categoriesHead}>
-              <span className={styles.categoriesLabel}>
-                <SectionLabel>{t('moneyCategories')}</SectionLabel>
-              </span>
-              <span className={styles.miniLegend}>
-                {(partner
-                  ? [
-                      { slot: 'u1' as const, label: firstName(me?.name ?? t('me')) },
-                      { slot: 'u2' as const, label: firstName(partner.name ?? t('partner')) },
-                    ]
-                  : [{ slot: 'u1' as const, label: firstName(me?.name ?? t('me')) }]
-                ).map(({ slot, label }) => (
-                  <span key={slot} className={styles.miniLegendItem}>
-                    <span className={styles.miniSwatch} style={{ background: personTokens(slot).bar }} aria-hidden="true" />
-                    {label}
-                  </span>
-                ))}
-              </span>
-            </div>
-
-            {categoryNames.length === 0 ? (
-              <Card padding="12px 14px">{t('moneyNoCategories')}</Card>
-            ) : (
-              categoryNames.map((name) => {
-                const category = categories.find((entry) => entry.name === name);
-                const amount = categoryAmounts.get(name) ?? 0;
-                const limit = category?.monthly_limit ?? 0;
-                const pct = limit > 0 ? Math.min(100, (amount / limit) * 100) : amount > 0 ? 100 : 0;
-                const contributors = new Set(
-                  expenses.filter((expense) => normalizedCategory(expense.category) === name).map((expense) => expense.paid_by),
-                ).size;
-                return (
-                  <button
-                    key={name}
-                    type="button"
-                    className={styles.category}
-                    data-testid="category-row"
-                    onClick={() => setCategoryEditing(name)}
-                    aria-label={`${displayCategory(name, t('moneyUncategorized'))}: ${t('moneyEditCategory')}`}
-                  >
-                    <div className={styles.categoryHead}>
-                      <span className={styles.categoryName}>{displayCategory(name, t('moneyUncategorized'))}</span>
-                      <span className={`${styles.categoryAmount} ${limit > 0 && amount > limit ? styles.categoryOver : ''}`}>
-                        {formatEur(amount, lang)}
-                      </span>
-                      <span className={styles.categoryLimit}>
-                        {limit > 0 ? `/ ${formatEur(limit, lang)}` : t('moneyNoLimit')}
-                      </span>
-                    </div>
-                    <div className={styles.categoryBar}>
-                      <ProgressBar height={7} label={name} segments={[{ widthPct: pct, color: category?.color ?? 'var(--brand)' }]} />
-                    </div>
-                    <div className={styles.categoryNote}>
-                      {contributors} {t('moneyContributors')}
-                    </div>
-                  </button>
-                );
-              })
-            )}
+            ))}
           </div>
 
           <Card tone="brand">
             <SectionLabel>{t('moneyBalance')}</SectionLabel>
             <div className={styles.balancePair}>
-              {[me, partner].filter((profile): profile is NonNullable<typeof profile> => profile !== null).map((profile, index) => {
-                const slot = index === 0 ? 'u1' : 'u2';
-                const balance = balanceById.get(profile.id);
-                return (
-                  <div key={profile.id} className={styles.balanceCard}>
-                    <div className={styles.balanceWho}>
-                      <span className={styles.balanceDot} style={{ background: personTokens(slot).bar }} aria-hidden="true" />
-                      <span className={styles.balanceName}>{firstName(profile.name ?? t('partner'))}</span>
+              {[me, partner]
+                .filter((profile): profile is NonNullable<typeof profile> => profile !== null)
+                .map((profile, index) => {
+                  const slot = index === 0 ? 'u1' : 'u2';
+                  const balance = balanceById.get(profile.id);
+                  return (
+                    <div key={profile.id} className={styles.balanceCard}>
+                      <div className={styles.balanceWho}>
+                        <span
+                          className={styles.balanceDot}
+                          style={{ background: personTokens(slot).bar }}
+                          aria-hidden="true"
+                        />
+                        <span className={styles.balanceName}>
+                          {firstName(profile.name ?? t('partner'))}
+                        </span>
+                      </div>
+                      <div className={styles.balanceAmount}>
+                        {formatEur(balance?.paid ?? 0, lang)}
+                      </div>
+                      <div className={styles.balancePaid}>{t('moneyPaid')}</div>
                     </div>
-                    <div className={styles.balanceAmount}>{formatEur(balance?.paid ?? 0, lang)}</div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
             <div className={styles.owed}>
               <div className={styles.owedText}>
@@ -372,44 +218,62 @@ export function MoneyScreen(): React.JSX.Element {
                     : t('moneyBalanced')}
                 </div>
                 <div className={styles.owedHint}>
-                  {t('moneyAsOf')} {monthTitle(Number(monthStart.slice(0, 4)), Number(monthStart.slice(5, 7)) - 1, lang)} · {expenses.length} {t('moneyExpenses')}
+                  {periodOptions.find((option) => option.value === period)?.label} ·{' '}
+                  {expenses.length} {t('moneyExpenses')}
                 </div>
               </div>
-              <div className={styles.owedAmount}>{formatEur(recommendation?.amount ?? 0, lang)}</div>
+              <div className={styles.owedAmount}>
+                {formatEur(recommendation?.amount ?? 0, lang)}
+              </div>
             </div>
-            <button
-              type="button"
-              className={styles.settle}
-              disabled={!recommendation}
-              onClick={() => setSettlementOpen(true)}
-            >
-              {recommendation ? t('moneySettleUp') : t('moneySettled')}
-            </button>
+            {partner ? (
+              <button
+                type="button"
+                className={styles.settle}
+                disabled={!recommendation}
+                onClick={() => setSettlementOpen(true)}
+              >
+                {recommendation ? t('moneySettleUp') : t('moneySettled')}
+              </button>
+            ) : null}
           </Card>
 
           <Card flush>
             <div className={styles.expensesHead}>
-              <SectionLabel>{t('moneyRecentExpenses')}</SectionLabel>
+              <SectionLabel>{t('moneyExpenses')}</SectionLabel>
             </div>
             {expenses.length === 0 ? (
               <div className={styles.emptyExpenses}>{t('moneyNoExpenses')}</div>
             ) : (
               expenses.map((expense) => {
                 const slot = expense.paid_by === identity?.userId ? 'u1' : 'u2';
-                const initial = slot === 'u1' ? firstInitial(me?.name) : firstInitial(partner?.name);
+                const initial =
+                  slot === 'u1' ? firstInitial(me?.name) : firstInitial(partner?.name);
                 return (
-                  <div key={expense.id} className={styles.expense} data-testid="expense-row">
-                    <span className={styles.expenseAvatar} style={{ background: personTokens(slot).bar }} aria-hidden="true">
+                  <button
+                    key={expense.id}
+                    type="button"
+                    className={styles.expense}
+                    data-testid="expense-row"
+                    onClick={() => setExpenseEditing(expense)}
+                    aria-label={`${expense.title}: ${t('sheetEditExpense')}`}
+                  >
+                    <span
+                      className={styles.expenseAvatar}
+                      style={{ background: personTokens(slot).bar }}
+                      aria-hidden="true"
+                    >
                       {initial}
                     </span>
-                    <div className={styles.expenseBody}>
-                      <div className={styles.expenseTitle}>{expense.title}</div>
-                      <div className={styles.expenseMeta}>
-                        {displayCategory(normalizedCategory(expense.category), t('moneyUncategorized'))} · {formatDate(expense.paid_at, lang)} · {splitsByExpense.get(expense.id)?.length ? t('moneyCustomSplit') : expense.split_type === 'shared' ? '50/50' : t('sheetSplitPayer')}
-                      </div>
-                    </div>
-                    <div className={styles.expenseAmount}>{formatEur(expense.amount, lang)}</div>
-                  </div>
+                    <span className={styles.expenseBody}>
+                      <span className={styles.expenseTitle}>{expense.title}</span>
+                      <span className={styles.expenseMeta}>
+                        {expense.category} · {formatDate(expense.paid_at, lang)} ·{' '}
+                        {recipientLabel(expense.for_user_id, identity?.userId, partner?.id, t)}
+                      </span>
+                    </span>
+                    <span className={styles.expenseAmount}>{formatEur(expense.amount, lang)}</span>
+                  </button>
                 );
               })
             )}
@@ -419,29 +283,16 @@ export function MoneyScreen(): React.JSX.Element {
       <Fab label={t('moneyAddExpense')} onClick={() => setExpenseOpen(true)} />
 
       <ExpenseSheet
-        key={`expense-${expenseOpen}-${categoryNames.join('|')}`}
-        open={expenseOpen}
+        key={expenseEditing ? `edit-${expenseEditing.id}` : `new-${expenseOpen}`}
+        open={expenseOpen || expenseEditing !== null}
         categories={categoryOptions}
-        onClose={() => setExpenseOpen(false)}
+        initial={expenseEditing ? draftFromExpense(expenseEditing, partner?.id) : undefined}
+        onClose={() => {
+          setExpenseOpen(false);
+          setExpenseEditing(null);
+        }}
         onSave={(draft) => void saveExpense(draft)}
       />
-      <BudgetSheet
-        key={`budget-${budgetOpen}-${budget?.id ?? 'new'}`}
-        open={budgetOpen}
-        currentAmount={budget?.amount ?? null}
-        onClose={() => setBudgetOpen(false)}
-        onSave={(amount) => void saveBudget(amount)}
-      />
-      {categoryEditing !== null ? (
-        <ExpenseCategorySheet
-          key={`category-${categoryEditing}`}
-          open
-          initialName={categoryEditing === 'uncategorized' ? '' : categoryEditing}
-          initialLimit={categories.find((entry) => entry.name === categoryEditing)?.monthly_limit ?? null}
-          onClose={() => setCategoryEditing(null)}
-          onSave={(draft) => void saveCategory(draft)}
-        />
-      ) : null}
       {recommendation ? (
         <SettlementSheet
           key={`settlement-${settlementOpen}-${recommendation.amount}`}
@@ -457,32 +308,73 @@ export function MoneyScreen(): React.JSX.Element {
   );
 }
 
-function currentMonthStart(): string {
+function dateRangeFor(period: ExpensePeriod): { startDate: string; endDate: string } | null {
   const today = new Date();
-  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  if (period === 'all') return null;
+  if (period === 'thisYear') return { startDate: `${year}-01-01`, endDate: `${year}-12-31` };
+  const offset = period === 'thisMonth' ? 0 : period === 'lastMonth' ? -1 : -2;
+  const start = new Date(Date.UTC(year, month + offset, 1));
+  const end = new Date(Date.UTC(year, month + offset + 1, 0));
+  return { startDate: isoDate(start), endDate: isoDate(end) };
 }
 
-function nextMonthStart(monthStart: string): string {
-  const year = Number(monthStart.slice(0, 4));
-  const month = Number(monthStart.slice(5, 7));
-  const next = new Date(Date.UTC(year, month, 1));
-  return `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}-01`;
+function isoDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
 }
 
-function uniqueCategoryNames(categories: readonly ExpenseCategoriesRow[], expenses: readonly SharedExpensesRow[]): string[] {
-  return [...new Set([
-    ...categories.map((category) => category.name),
-    ...expenses.map((expense) => normalizedCategory(expense.category)),
-  ])].sort((left, right) => left.localeCompare(right));
+function recipientId(
+  recipient: ExpenseRecipient,
+  userId: string,
+  partnerId?: string,
+): string | null {
+  if (recipient === 'both' && partnerId) return null;
+  if (recipient === 'partner' && partnerId) return partnerId;
+  return userId;
 }
 
-function normalizedCategory(category: string | null): string {
-  const value = category?.trim() ?? '';
-  return value === '' ? 'uncategorized' : value;
+function draftFromExpense(expense: SharedExpensesRow, partnerId?: string): ExpenseDraft {
+  return {
+    title: expense.title,
+    amount: expense.amount,
+    category: expense.category ?? '',
+    paidBy: expense.paid_by === partnerId ? 'u2' : 'u1',
+    recipient:
+      expense.for_user_id === null
+        ? 'both'
+        : expense.for_user_id === partnerId
+          ? 'partner'
+          : 'self',
+    paidAt: expense.paid_at,
+    notes: expense.notes ?? '',
+  };
 }
 
-function displayCategory(category: string, uncategorizedLabel: string): string {
-  return category === 'uncategorized' ? uncategorizedLabel : category;
+function uniqueCategoryNames(
+  categories: readonly ExpenseCategoriesRow[],
+  expenses: readonly SharedExpensesRow[],
+): string[] {
+  return [
+    ...new Set([
+      ...categories.map((category) => category.name),
+      ...expenses
+        .map((expense) => expense.category)
+        .filter((category): category is string => Boolean(category?.trim())),
+    ]),
+  ].sort((left, right) => left.localeCompare(right));
+}
+
+function recipientLabel(
+  forUserId: string | null,
+  userId: string | undefined,
+  partnerId: string | undefined,
+  t: (key: string) => string,
+): string {
+  if (forUserId === null) return t('sheetForBoth');
+  if (forUserId === userId) return t('sheetForSelf');
+  if (forUserId === partnerId) return t('sheetForPartner');
+  return t('sheetForSelf');
 }
 
 function firstName(value: string): string {
