@@ -2,7 +2,9 @@ services:
   - type: web
     name: ralia-app
     env: static
-    buildCommand: npm ci && npm run verify
+    # Die vollstaendige Verify-Suite laeuft in GitHub Actions. Render braucht
+    # fuer die statische Site nur den reproduzierbaren Produktions-Build.
+    buildCommand: npm ci && npm run build
     staticPublishPath: apps/app/dist
     envVars:
       # Render bedient die Site an der Domainwurzel, nicht unter /app/ wie die
