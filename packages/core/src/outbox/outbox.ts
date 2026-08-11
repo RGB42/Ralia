@@ -266,6 +266,27 @@ export class Outbox {
     await tx.done;
   }
 
+  /** Discards unsent mutations for one former shared calendar. */
+  async purgeOwnerCalendar(ownerUserId: string, calendarId: string): Promise<void> {
+    assertNonEmpty('ownerUserId', ownerUserId);
+    assertNonEmpty('calendarId', calendarId);
+    if (
+      this.activeScope?.ownerUserId === ownerUserId &&
+      this.activeScope.calendarId === calendarId
+    ) {
+      this.deactivateScope();
+    }
+
+    const db = await this.db();
+    const tx = db.transaction('outbox', 'readwrite');
+    const index = tx.store.index('by-owner-domain-calendar');
+    for (const domain of OUTBOX_DOMAINS) {
+      const rows = await index.getAll(queueRange(ownerUserId, domain, calendarId));
+      for (const row of rows) await tx.store.delete(row.id);
+    }
+    await tx.done;
+  }
+
   /**
    * Atomically assigns unclaimed records from explicitly allowed calendars.
    * Existing owners and records from every other calendar remain untouched.

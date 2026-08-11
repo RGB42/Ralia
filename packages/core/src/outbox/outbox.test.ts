@@ -332,6 +332,21 @@ describe('Outbox', () => {
         (await scoped.peek<TestMutation>('events', 'shared-cal')).map((r) => r.mutation.kind),
       ).toEqual(['from-b']);
     });
+
+    it('discards a former pair queue without touching another calendar', async () => {
+      const scoped = freshOutbox();
+      scoped.activateScope('user-a', 'pair-a-b');
+      await scoped.enqueue('events', 'pair-a-b', { kind: 'former-pair' });
+      scoped.activateScope('user-a', 'solo-a');
+      await scoped.enqueue('events', 'solo-a', { kind: 'solo' });
+
+      await scoped.purgeOwnerCalendar('user-a', 'pair-a-b');
+
+      scoped.activateScope('user-a', 'pair-a-b');
+      expect(await scoped.size()).toBe(0);
+      scoped.activateScope('user-a', 'solo-a');
+      expect(await scoped.size()).toBe(1);
+    });
   });
 
   describe('claimLegacy', () => {

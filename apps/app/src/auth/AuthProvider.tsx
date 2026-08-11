@@ -379,8 +379,10 @@ export function AuthProvider({ children, initialHref }: AuthProviderProps): Reac
       },
 
       async disconnectPartner() {
+        const previous = session.status === 'signed-in' ? session.identity : null;
         const result = await partners.disconnect();
         if (!result.ok) return result;
+        if (previous) await outbox.purgeOwnerCalendar(previous.userId, previous.calendarId);
         await refresh();
         return { ok: true };
       },
