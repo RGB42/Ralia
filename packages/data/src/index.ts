@@ -16,6 +16,16 @@ export {
 } from './app-api.js';
 
 export {
+  createPrivacyApi,
+  PrivacyApi,
+  PrivacyApiError,
+  type PrivacyApiOptions,
+  type PrivacyApiClient,
+  type PrivacyExportRequest,
+  type PrivacyExportRequests,
+} from './privacy-api.js';
+
+export {
   calendarMembers,
   computeCalendarId,
   displayBelongsTo,
@@ -260,6 +270,8 @@ export type {
   AppPreferencesRow,
   BelongsTo,
   Database,
+  DataExportRequestsRow,
+  DataExportRequestStatus,
   EventReminderJobsRow,
   EventType,
   EventsRow,

@@ -63,6 +63,21 @@ describe('Outbox', () => {
     expect(await outbox.size()).toBe(2);
   });
 
+  it('purges every queue owned by a deleted account without touching another account', async () => {
+    await outbox.enqueue('events', 'cal-1', { kind: 'first' });
+    outbox.activateScope('user-a', 'cal-2');
+    await outbox.enqueue('todos', 'cal-2', { kind: 'second' });
+
+    outbox.activateScope('user-b', 'cal-3');
+    await outbox.enqueue('events', 'cal-3', { kind: 'other-account' });
+
+    await outbox.purgeOwner('user-a');
+    expect(await outbox.size()).toBe(1);
+
+    outbox.activateScope('user-a', 'cal-1');
+    expect(await outbox.size()).toBe(0);
+  });
+
   it('removes accepted records and reports the temp id rebase', async () => {
     await outbox.enqueue<TestMutation>('events', 'cal-1', {
       kind: 'insert',

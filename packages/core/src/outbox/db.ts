@@ -2,7 +2,7 @@ import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { NewOutboxRecord, OutboxDomain, OutboxRecord } from './types.js';
 
 export const OUTBOX_DB_NAME = 'ralia';
-export const OUTBOX_DB_VERSION = 2;
+export const OUTBOX_DB_VERSION = 3;
 
 export interface RaliaDB extends DBSchema {
   outbox: {
@@ -18,6 +18,8 @@ export interface RaliaDB extends DBSchema {
       'by-owner-domain-calendar': [string, OutboxDomain, string, number];
       /** FIFO drain of one queue. */
       'by-domain-calendar': [OutboxDomain, string, number];
+      /** Owner-wide purge for account deletion. */
+      'by-owner': string;
       /** Cheap global counts and full drains. */
       'by-enqueued-at': number;
     };
@@ -57,6 +59,9 @@ export function openRaliaDB(name: string = OUTBOX_DB_NAME): Promise<RaliaDatabas
           'calendarId',
           'enqueuedAt',
         ]);
+      }
+      if (!outboxStore.indexNames.contains('by-owner')) {
+        outboxStore.createIndex('by-owner', 'ownerUserId');
       }
 
       if (oldVersion === 1) {

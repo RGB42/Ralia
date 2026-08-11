@@ -152,6 +152,11 @@
   padding: 12px 15px;
 }
 
+.privacyActions {
+  display: flex;
+  gap: 8px;
+}
+
 /* Kompakter Segment-Schalter der Einstellungszeilen, Vorlage Z. 528. */
 .compactSwitch {
   flex: none;

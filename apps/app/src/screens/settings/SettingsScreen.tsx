@@ -12,14 +12,28 @@ import {
   useTheme,
   useToast,
 } from '@ralia/ui';
-import { useState } from 'react';
+import { PrivacyApiError, type PrivacyExportRequests } from '@ralia/data';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../../auth/useAuth.js';
+import { useBoot } from '../../boot/BootContext.js';
+import { useData } from '../../data/DataProvider.js';
 import { useAppPreferences } from '../../preferences/AppPreferencesProvider.js';
 import type { Lang } from '../../i18n/catalog.js';
 import { useT } from '../../i18n/useT.js';
 import screen from '../screen.module.css';
 import styles from './SettingsScreen.module.css';
+
+async function downloadExport(response: Response): Promise<void> {
+  const disposition = response.headers.get('content-disposition') ?? '';
+  const fileName = disposition.match(/filename="?([^";]+)"?/)?.[1] ?? 'ralia-data.json';
+  const url = URL.createObjectURL(await response.blob());
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
 
 export function SettingsScreen(): React.JSX.Element {
   const { t, lang, setLang } = useT();
@@ -27,15 +41,47 @@ export function SettingsScreen(): React.JSX.Element {
   const { show } = useToast();
   const navigate = useNavigate();
   const { session, signOut, disconnectPartner, setAnniversary } = useAuth();
+  const { privacy } = useData();
+  const { outbox } = useBoot();
   const { preferences, update: updatePreferences } = useAppPreferences();
 
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+  const [confirmAccountDeletion, setConfirmAccountDeletion] = useState(false);
+  const [privacyAction, setPrivacyAction] = useState<'personal' | 'shared' | 'delete' | null>(null);
+  const [privacyRequests, setPrivacyRequests] = useState<PrivacyExportRequests>({
+    incoming: [],
+    outgoing: [],
+  });
 
   const identity = session.status === 'signed-in' ? session.identity : null;
+  const userId = identity?.userId ?? null;
   const inviteCode = identity?.profile.invite_code ?? '';
   const [anniversary, setAnniversaryValue] = useState(identity?.profile.anniversary_date ?? '');
   const pushOn = preferences?.notification_settings.pushEnabled === true;
   const weekStart = preferences?.week_start ?? 'mo';
+  const incomingRequest = privacyRequests.incoming.find(
+    (request) => request.status === 'pending',
+  );
+  const approvedSharedRequest = privacyRequests.outgoing.find(
+    (request) => request.status === 'approved',
+  );
+  const pendingSharedRequest = privacyRequests.outgoing.find(
+    (request) => request.status === 'pending',
+  );
+
+  useEffect(() => {
+    if (!userId || !identity?.partner) return;
+    let active = true;
+    void privacy
+      .listSharedExportRequests()
+      .then((requests) => {
+        if (active) setPrivacyRequests(requests);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [identity?.partner, privacy, userId]);
 
   const savePreferences = async (changes: Parameters<typeof updatePreferences>[0]) => {
     const saved = await updatePreferences(changes);
@@ -86,6 +132,85 @@ export function SettingsScreen(): React.JSX.Element {
     await signOut();
     show(t('authSignedOut'), 'info');
     void navigate('/anmelden', { replace: true });
+  };
+
+  const showPrivacyError = (error: unknown) => {
+    const code = error instanceof PrivacyApiError ? error.code : 'request_failed';
+    const key =
+      code === 'shared_data'
+        ? 'privacyAccountDeleteShared'
+        : code === 'active_subscription'
+          ? 'privacyAccountDeleteSubscription'
+          : 'privacyActionFailed';
+    show(t(key), 'danger');
+  };
+
+  const downloadPersonalExport = async () => {
+    setPrivacyAction('personal');
+    try {
+      await downloadExport(await privacy.personalExport());
+      show(t('privacyPersonalExported'), 'ok');
+    } catch (error) {
+      showPrivacyError(error);
+    } finally {
+      setPrivacyAction(null);
+    }
+  };
+
+  const requestSharedExport = async () => {
+    setPrivacyAction('shared');
+    try {
+      await privacy.requestSharedExport();
+      setPrivacyRequests(await privacy.listSharedExportRequests());
+      show(t('privacySharedRequested'), 'ok');
+    } catch (error) {
+      showPrivacyError(error);
+    } finally {
+      setPrivacyAction(null);
+    }
+  };
+
+  const downloadSharedExport = async (requestId: string) => {
+    setPrivacyAction('shared');
+    try {
+      await downloadExport(await privacy.sharedExport(requestId));
+      show(t('privacySharedExported'), 'ok');
+    } catch (error) {
+      showPrivacyError(error);
+    } finally {
+      setPrivacyAction(null);
+    }
+  };
+
+  const resolveSharedExportRequest = async (requestId: string, resolution: 'approve' | 'reject') => {
+    setPrivacyAction('shared');
+    try {
+      await privacy.resolveSharedExportRequest(requestId, resolution);
+      setPrivacyRequests(await privacy.listSharedExportRequests());
+      show(t(resolution === 'approve' ? 'privacySharedApproved' : 'privacySharedRejected'), 'ok');
+    } catch (error) {
+      showPrivacyError(error);
+    } finally {
+      setPrivacyAction(null);
+    }
+  };
+
+  const doDeleteAccount = async () => {
+    if (!userId) return;
+    setConfirmAccountDeletion(false);
+    setPrivacyAction('delete');
+    try {
+      await privacy.deleteAccount();
+      // A missing or blocked IndexedDB must not leave a server-deleted account signed in.
+      await outbox.purgeOwner(userId).catch(() => undefined);
+      await signOut();
+      show(t('privacyAccountDeleted'), 'ok');
+      void navigate('/anmelden', { replace: true });
+    } catch (error) {
+      showPrivacyError(error);
+    } finally {
+      setPrivacyAction(null);
+    }
   };
 
   return (
@@ -250,6 +375,94 @@ export function SettingsScreen(): React.JSX.Element {
             />
           </Card>
 
+          <Card flush>
+            <div className={styles.sectionHead}>
+              <SectionLabel>{t('privacyTitle')}</SectionLabel>
+            </div>
+            <ListRow title={t('privacyPersonalExport')} hint={t('privacyPersonalHint')}>
+              <Button
+                variant="secondary"
+                disabled={privacyAction !== null}
+                onClick={() => void downloadPersonalExport()}
+              >
+                {t('privacyDownload')}
+              </Button>
+            </ListRow>
+            <ListRow
+              title={t('privacySharedExport')}
+              hint={identity?.partner ? t('privacySharedHint') : t('privacySharedUnavailable')}
+              last
+            >
+              {identity?.partner ? (
+                approvedSharedRequest ? (
+                  <Button
+                    variant="secondary"
+                    disabled={privacyAction !== null}
+                    onClick={() => void downloadSharedExport(approvedSharedRequest.id)}
+                  >
+                    {t('privacyDownload')}
+                  </Button>
+                ) : pendingSharedRequest ? (
+                  <span className={styles.value}>{t('privacySharedPending')}</span>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    disabled={privacyAction !== null}
+                    onClick={() => void requestSharedExport()}
+                  >
+                    {t('privacyRequestApproval')}
+                  </Button>
+                )
+              ) : null}
+            </ListRow>
+          </Card>
+
+          {incomingRequest ? (
+            <Card flush>
+              <div className={styles.sectionHead}>
+                <SectionLabel>{t('privacyApprovalTitle')}</SectionLabel>
+              </div>
+              <ListRow title={t('privacyIncomingRequest')} hint={t('privacyIncomingHint')} last>
+                <div className={styles.privacyActions}>
+                  <Button
+                    variant="secondary"
+                    disabled={privacyAction !== null}
+                    onClick={() => void resolveSharedExportRequest(incomingRequest.id, 'reject')}
+                  >
+                    {t('privacyReject')}
+                  </Button>
+                  <Button
+                    disabled={privacyAction !== null}
+                    onClick={() => void resolveSharedExportRequest(incomingRequest.id, 'approve')}
+                  >
+                    {t('privacyApprove')}
+                  </Button>
+                </div>
+              </ListRow>
+            </Card>
+          ) : null}
+
+          <Card flush>
+            <div className={styles.sectionHead}>
+              <SectionLabel>{t('privacyDangerTitle')}</SectionLabel>
+            </div>
+            <ListRow
+              title={t('privacyAccountDelete')}
+              hint={identity?.partner ? t('privacyAccountDeletePartnerHint') : t('privacyAccountDeleteHint')}
+              last
+            >
+              {!identity?.partner ? (
+                <Button
+                  variant="danger"
+                  disabled={privacyAction !== null}
+                  onClick={() => setConfirmAccountDeletion(true)}
+                >
+                  {t('privacyAccountDelete')}
+                </Button>
+              ) : null}
+            </ListRow>
+          </Card>
+
           {/*
            * Die Vorlage hat „Abmelden" als Teil einer Textzeile
            * („Ralia 2.0 · Datenschutz · Abmelden"). Ein Abmelden, das man nur
@@ -274,6 +487,16 @@ export function SettingsScreen(): React.JSX.Element {
         tone="danger"
         onConfirm={() => void doDisconnect()}
         onCancel={() => setConfirmDisconnect(false)}
+      />
+      <ConfirmDialog
+        open={confirmAccountDeletion}
+        title={t('privacyAccountDelete')}
+        message={t('privacyAccountDeleteConfirm')}
+        confirmLabel={t('privacyAccountDelete')}
+        cancelLabel={t('back')}
+        tone="danger"
+        onConfirm={() => void doDeleteAccount()}
+        onCancel={() => setConfirmAccountDeletion(false)}
       />
     </div>
   );

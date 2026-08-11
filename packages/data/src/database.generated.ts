@@ -212,6 +212,39 @@ export type Database = {
         };
         Relationships: [];
       };
+      data_export_requests: {
+        Row: {
+          calendar_id: string;
+          created_at: string;
+          expires_at: string;
+          id: string;
+          partner_user_id: string;
+          requester_user_id: string;
+          resolved_at: string | null;
+          status: string;
+        };
+        Insert: {
+          calendar_id: string;
+          created_at?: string;
+          expires_at?: string;
+          id?: string;
+          partner_user_id: string;
+          requester_user_id: string;
+          resolved_at?: string | null;
+          status?: string;
+        };
+        Update: {
+          calendar_id?: string;
+          created_at?: string;
+          expires_at?: string;
+          id?: string;
+          partner_user_id?: string;
+          requester_user_id?: string;
+          resolved_at?: string | null;
+          status?: string;
+        };
+        Relationships: [];
+      };
       event_reminder_jobs: {
         Row: {
           attempts: number;
@@ -999,6 +1032,7 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      account_deletion_status: { Args: { p_user_id: string }; Returns: string };
       claim_due_event_reminder_jobs: {
         Args: { p_limit?: number };
         Returns: {

@@ -71,6 +71,7 @@ export type PushSubscriptionsRow = Tables<'push_subscriptions'>;
 export type SentEventRemindersRow = Tables<'sent_event_reminders'>;
 export type EventReminderJobsRow = Tables<'event_reminder_jobs'>;
 export type AppPreferencesRow = Tables<'app_preferences'>;
+export type DataExportRequestsRow = Tables<'data_export_requests'>;
 export type ExpenseBudgetsRow = Tables<'expense_budgets'>;
 export type ExpenseCategoriesRow = Tables<'expense_categories'>;
 export type ExpenseSettlementsRow = Tables<'expense_settlements'>;
@@ -164,6 +165,12 @@ export type WeekPlanEntryType = NarrowOf<Col<WeekPlansRow, 'entry_type'>, 'meal'
 export type ReminderJobStatus = NarrowOf<
   Col<EventReminderJobsRow, 'status'>,
   'pending' | 'processing' | 'sent' | 'failed' | 'canceled'
+>;
+
+/** Belegt durch `data_export_requests_status_check`. */
+export type DataExportRequestStatus = NarrowOf<
+  Col<DataExportRequestsRow, 'status'>,
+  'pending' | 'approved' | 'rejected'
 >;
 
 /**

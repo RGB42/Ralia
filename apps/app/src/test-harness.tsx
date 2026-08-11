@@ -5,11 +5,14 @@ import type {
   SessionState,
   WeekPlansRow,
 } from '@ralia/data';
+import { bootstrapConfig } from '@ralia/data';
+import { Outbox, type OutboxOptions } from '@ralia/core';
 import { ThemeProvider, ToastProvider } from '@ralia/ui';
 import { render } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 import { vi } from 'vitest';
 import { AuthContext, type ActionResult, type AuthContextValue } from './auth/AuthProvider.js';
+import { BootContext } from './boot/BootContext.js';
 import { DataContext, type DataServices } from './data/DataProvider.js';
 import { I18nProvider } from './i18n/I18nProvider.js';
 import { LANG_STORAGE_KEY } from './i18n/catalog.js';
@@ -172,6 +175,25 @@ export function dataDouble(overrides: Partial<DataServices> = {}): DataServices 
         created_at: '2026-08-10T10:00:00Z',
         updated_at: '2026-08-10T10:00:00Z',
       }),
+    },
+    privacy: {
+      personalExport: async () => {
+        throw new Error('Unexpected privacy export in test');
+      },
+      sharedExport: async () => {
+        throw new Error('Unexpected shared export in test');
+      },
+      requestSharedExport: async () => ({
+        id: 'export-request',
+        expiresAt: '2026-08-12T10:00:00Z',
+        pushDelivered: false,
+      }),
+      listSharedExportRequests: async () => ({ incoming: [], outgoing: [] }),
+      resolveSharedExportRequest: async (_id, resolution) => ({
+        id: 'export-request',
+        status: resolution === 'approve' ? 'approved' : 'rejected',
+      }),
+      deleteAccount: async () => ({ success: true }),
     },
     events: {
       list: async () => [],
@@ -366,6 +388,10 @@ export function authDouble(overrides: Partial<AuthContextValue> = {}): AuthConte
   };
 }
 
+export function outboxDouble(options: OutboxOptions = {}): Outbox {
+  return new Outbox({ databaseName: 'ralia-test-harness', ...options });
+}
+
 export interface RenderAppOptions {
   auth?: Partial<AuthContextValue>;
   data?: Partial<DataServices>;
@@ -388,11 +414,13 @@ export function renderAppAt(path: string, options: RenderAppOptions = {}) {
       <I18nProvider>
         <ToastProvider>
           <AuthContext.Provider value={authDouble(options.auth)}>
-            <DataContext.Provider value={dataDouble(options.data)}>
-              <AppPreferencesContext.Provider value={appPreferencesDouble(options.preferences)}>
-                <RouterProvider router={router} />
-              </AppPreferencesContext.Provider>
-            </DataContext.Provider>
+            <BootContext.Provider value={{ config: bootstrapConfig(), outbox: outboxDouble() }}>
+              <DataContext.Provider value={dataDouble(options.data)}>
+                <AppPreferencesContext.Provider value={appPreferencesDouble(options.preferences)}>
+                  <RouterProvider router={router} />
+                </AppPreferencesContext.Provider>
+              </DataContext.Provider>
+            </BootContext.Provider>
           </AuthContext.Provider>
         </ToastProvider>
       </I18nProvider>

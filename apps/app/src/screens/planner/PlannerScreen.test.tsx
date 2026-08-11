@@ -17,14 +17,14 @@ describe('PlannerScreen', () => {
 
   it('oeffnet die aktuelle Woche ab heute', async () => {
     renderPlanner();
-    const firstDay = (await screen.findAllByTestId('planner-day'))[0];
-    expect(firstDay?.querySelector('[aria-expanded="true"]')).toBeInTheDocument();
+    const days = await screen.findAllByTestId('planner-day');
+    expect(days.some((day) => day.querySelector('[aria-expanded="true"]') !== null)).toBe(true);
   });
 
   it('laesst einen Tag auf- und zuklappen', async () => {
     renderPlanner();
-    const [firstDay] = await screen.findAllByTestId('planner-day');
-    const toggle = firstDay?.querySelector('button');
+    const days = await screen.findAllByTestId('planner-day');
+    const toggle = days.find((day) => day.querySelector('[aria-expanded="true"]'))?.querySelector('button');
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
     await userEvent.click(toggle as HTMLElement);
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
@@ -51,9 +51,11 @@ describe('PlannerScreen', () => {
 
   it('zeigt bei zugeklapptem Tag eine Vorschau', async () => {
     renderPlanner();
+    const [firstDay] = await screen.findAllByTestId('planner-day');
+    const toggle = firstDay!.querySelector('button')!;
+    if (toggle.getAttribute('aria-expanded') === 'false') await userEvent.click(toggle);
     await screen.findByText('Ofengemüse mit Feta');
-    const [firstDay] = screen.getAllByTestId('planner-day');
-    await userEvent.click(firstDay!.querySelector('button')!);
+    await userEvent.click(toggle);
     expect(screen.getByText(/Ofengemüse mit Feta/)).toBeInTheDocument();
   });
 

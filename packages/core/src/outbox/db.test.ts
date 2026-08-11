@@ -60,13 +60,14 @@ describe('outbox database migration', () => {
     upgraded.close();
   });
 
-  it('creates new databases directly at v2 with the owner-scoped index', async () => {
+  it('creates new databases directly at v3 with the owner-scoped indexes', async () => {
     const db = await openRaliaDB(databaseName());
 
-    expect(db.version).toBe(2);
+    expect(db.version).toBe(3);
     expect(db.transaction('outbox').store.indexNames.contains('by-owner-domain-calendar')).toBe(
       true,
     );
+    expect(db.transaction('outbox').store.indexNames.contains('by-owner')).toBe(true);
     db.close();
   });
 });

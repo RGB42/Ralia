@@ -1,12 +1,14 @@
 import { THEME_ATTRIBUTE, THEME_STORAGE_KEY, ThemeProvider, ToastProvider } from '@ralia/ui';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthContext, type AuthContextValue } from '../../auth/AuthProvider.js';
+import { BootContext } from '../../boot/BootContext.js';
+import { DataContext, type DataServices } from '../../data/DataProvider.js';
 import { I18nProvider } from '../../i18n/I18nProvider.js';
 import { LANG_STORAGE_KEY } from '../../i18n/catalog.js';
-import { authDouble, signedInState, TEST_PROFILE } from '../../test-harness.js';
+import { authDouble, dataDouble, outboxDouble, signedInState, TEST_PROFILE } from '../../test-harness.js';
 import {
   appPreferencesDouble,
   TEST_PARTNER_ID,
@@ -18,6 +20,7 @@ import { SettingsScreen } from './SettingsScreen.js';
 function renderScreen(
   auth: Partial<AuthContextValue> = {},
   preferences: Partial<AppPreferencesValue> = {},
+  data: Partial<DataServices> = {},
 ) {
   vi.stubGlobal('matchMedia', () => ({
     matches: false,
@@ -31,9 +34,25 @@ function renderScreen(
         <I18nProvider>
           <ToastProvider>
             <AuthContext.Provider value={authDouble(auth)}>
-              <AppPreferencesContext.Provider value={appPreferencesDouble(preferences)}>
-                <SettingsScreen />
-              </AppPreferencesContext.Provider>
+              <BootContext.Provider
+                value={{
+                  config: {
+                    supabaseUrl: 'https://example.supabase.co',
+                    supabaseAnonKey: 'publishable-key',
+                    googleClientId: null,
+                    googleRedirectUri: null,
+                    vapidPublicKey: null,
+                    billingEnabled: false,
+                  },
+                  outbox: outboxDouble(),
+                }}
+              >
+                <DataContext.Provider value={dataDouble(data)}>
+                  <AppPreferencesContext.Provider value={appPreferencesDouble(preferences)}>
+                    <SettingsScreen />
+                  </AppPreferencesContext.Provider>
+                </DataContext.Provider>
+              </BootContext.Provider>
             </AuthContext.Provider>
           </ToastProvider>
         </I18nProvider>
@@ -124,6 +143,74 @@ describe('SettingsScreen', () => {
     expect(
       screen.getByRole('button', { name: /Kalender & Konflikte verwalten/ }),
     ).toBeInTheDocument();
+  });
+
+  it('fragt den Partner vor einem gemeinsamen Datenexport um Freigabe', async () => {
+    const requestSharedExport = vi.fn().mockResolvedValue({
+      id: 'request-1',
+      expiresAt: '2026-08-12T10:00:00Z',
+      pushDelivered: true,
+    });
+    const listSharedExportRequests = vi
+      .fn()
+      .mockResolvedValue({ incoming: [], outgoing: [] });
+    renderScreen(
+      { session: pairedSession() },
+      {},
+      { privacy: { ...dataDouble().privacy, requestSharedExport, listSharedExportRequests } },
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Freigabe anfragen' }));
+
+    expect(requestSharedExport).toHaveBeenCalledTimes(1);
+  });
+
+  it('zeigt dem Partner eine eingegangene Freigabeanfrage', async () => {
+    const resolveSharedExportRequest = vi.fn().mockResolvedValue({
+      id: 'request-1',
+      status: 'approved',
+    });
+    const listSharedExportRequests = vi
+      .fn()
+      .mockResolvedValue({
+        incoming: [
+          {
+            id: 'request-1',
+            status: 'pending',
+            expiresAt: '2026-08-12T10:00:00Z',
+            createdAt: '2026-08-10T10:00:00Z',
+          },
+        ],
+        outgoing: [],
+      });
+    renderScreen(
+      { session: pairedSession() },
+      {},
+      { privacy: { ...dataDouble().privacy, resolveSharedExportRequest, listSharedExportRequests } },
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Freigeben' }));
+
+    expect(resolveSharedExportRequest).toHaveBeenCalledWith('request-1', 'approve');
+  });
+
+  it('loescht ein Solo-Konto erst nach der Bestaetigung', async () => {
+    const deleteAccount = vi.fn().mockResolvedValue({ success: true });
+    const signOut = vi.fn().mockResolvedValue(undefined);
+    renderScreen(
+      { signOut },
+      {},
+      { privacy: { ...dataDouble().privacy, deleteAccount } },
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Konto löschen' }));
+    expect(deleteAccount).not.toHaveBeenCalled();
+
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Konto löschen' }));
+
+    expect(deleteAccount).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(signOut).toHaveBeenCalledTimes(1));
   });
 
   it('zeigt den Einladungscode aus der Sitzung, nicht aus den Fixtures', () => {

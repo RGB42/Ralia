@@ -1,5 +1,6 @@
 import {
   createSupabaseAppPreferencesRepo,
+  createPrivacyApi,
   createEventOutboxExecutor,
   createSupabaseEventRepo,
   createSupabaseExpenseBudgetsRepo,
@@ -15,6 +16,7 @@ import {
   getSupabaseClient,
   subscribeToEventRealtime,
   type AppPreferencesRepo,
+  type PrivacyApiClient,
   type EventRepo,
   type ExpenseBudgetsRepo,
   type ExpenseCategoriesRepo,
@@ -37,6 +39,7 @@ import { useBoot } from '../boot/BootContext.js';
 
 export interface DataServices {
   appPreferences: AppPreferencesRepo;
+  privacy: PrivacyApiClient;
   events: EventRepo;
   eventQueue: {
     enqueue(calendarId: string, mutation: EventMutation): Promise<void>;
@@ -70,6 +73,11 @@ export function DataProvider({ children }: { children: ReactNode }): React.JSX.E
     });
     return {
       appPreferences: createSupabaseAppPreferencesRepo(client),
+      privacy: createPrivacyApi({
+        supabaseUrl: config.supabaseUrl,
+        anonKey: config.supabaseAnonKey,
+        getAccessToken: async () => (await client.auth.getSession()).data.session?.access_token ?? null,
+      }),
       events: createSupabaseEventRepo(client),
       eventQueue: {
         async enqueue(calendarId, mutation) {

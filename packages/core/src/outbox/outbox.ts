@@ -254,6 +254,18 @@ export class Outbox {
     await tx.done;
   }
 
+  /** Removes every durable mutation ever attributed to one account. */
+  async purgeOwner(ownerUserId: string): Promise<void> {
+    assertNonEmpty('ownerUserId', ownerUserId);
+    if (this.activeScope?.ownerUserId === ownerUserId) this.deactivateScope();
+
+    const db = await this.db();
+    const tx = db.transaction('outbox', 'readwrite');
+    const rows = await tx.store.index('by-owner').getAll(ownerUserId);
+    for (const row of rows) await tx.store.delete(row.id);
+    await tx.done;
+  }
+
   /**
    * Atomically assigns unclaimed records from explicitly allowed calendars.
    * Existing owners and records from every other calendar remain untouched.
