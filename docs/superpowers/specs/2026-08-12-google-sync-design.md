@@ -19,10 +19,10 @@ ersten echten Lauf jeder Bindung (Abschnitt 4).
 
 ## Abgrenzung
 
-**In Scope:** OAuth-Verbindung, sechs Betriebsarten aus Richtung × Takt, Zielwahl mit
-Bestätigung, Abgleich von Einzelterminen und Serien inklusive Ausnahmen, Löschungen im
-Sync-Modus, Konflikterkennung mit Nutzerentscheidung, Probelauf, Statusanzeige, Fehler- und
-Änderungsprotokoll.
+**In Scope:** OAuth-Verbindung, sechs Betriebsarten aus Richtung × Takt, ein von Ralia
+angelegter Zielkalender, Auswahl der Import-Quellen, Abgleich von Einzelterminen und Serien
+inklusive Ausnahmen, Löschungen im Sync-Modus, Konflikterkennung mit Nutzerentscheidung,
+Probelauf, Statusanzeige, Fehler- und Änderungsprotokoll.
 
 **Nicht in Scope für v1:** ICS-Import/-Export und Feed-URL (eigener Zyklus), Google-Push
 über `watch`-Kanäle (Polling reicht bei zehn Minuten), Teilnehmer, Gäste,
@@ -95,55 +95,40 @@ ein anderer Eintrag. Sag Bescheid, wenn er raus soll.
 Genau eine Betriebsart ist zur Zeit aktiv. Ein Wechsel wirft die Zuordnungen nicht weg,
 er ändert nur, welche Richtungen der nächste Lauf ausführt.
 
-#### Der Scope hängt an der Betriebsart
+#### Zwei Scope-Stufen, und Ralia legt sein Ziel selbst an
 
-Hier liegt die unangenehme Wahrheit dieses Entwurfs, und sie folgt direkt aus der
-Forderung, das Ziel selbst wählen zu dürfen.
+Ursprünglich sah dieser Entwurf vor, dass der Nutzer den Zielkalender frei wählen darf.
+Das ist am 2026-08-12 auf Anweisung des Produktverantwortlichen **gestrichen**, weil es den
+Umfang gesprengt hätte. Der Grund im Klartext:
 
 `calendar.app.created` gibt Zugriff **ausschließlich auf Kalender, die die App selbst
-angelegt hat**. Ein Kalender, den Du in Google von Hand anlegst — auch wenn er „Ralia"
-heißt —, ist für Ralia damit unsichtbar. Wer das Ziel selbst bestimmen will, muss mehr
-gewähren. Das ist keine Designentscheidung, das ist Googles Zuschnitt.
+angelegt hat**. Ein Kalender, den der Nutzer in Google von Hand anlegt oder auswählt — auch
+einer namens „Ralia" —, ist damit unsichtbar. Eine freie Zielwahl hätte den vollen
+`calendar`-Scope erzwungen: Lese- und Schreibzugriff auf **alle** Kalender des Nutzers, für
+ein Feature, das genau einen davon braucht. Dazu kämen die Sonderfälle, die daran hängen —
+fremde Termine im Zielkalender, ein vom Nutzer gelöschter Zielkalender, ein umbenannter.
 
-Deshalb drei Stufen, jede erst angefragt, wenn sie wirklich gebraucht wird:
+Entscheidung: **Ralia legt den Kalender „Ralia" immer selbst an.** Keine Zielwahl, kein
+Bestätigungsdialog über fremde Kalender, kein `calendar`-Scope. Was bleibt, sind zwei
+Stufen:
 
-| Stufe | Scope                              | Wofür                                                         | Was Ralia sieht                     |
-| ----- | ---------------------------------- | ------------------------------------------------------------- | ----------------------------------- |
-| 1     | `calendar.app.created`             | Export und Sync auf den Kalender, den **Ralia selbst anlegt** | nur diesen einen Kalender           |
-| 2     | `+ calendar.readonly`              | jeder **Import**; außerdem die Kalenderliste zur Auswahl      | alle Kalender lesend                |
-| 3     | `+ calendar` (statt `app.created`) | Export/Sync auf einen **selbst gewählten** Kalender           | alle Kalender lesend und schreibend |
+| Stufe | Scope                  | Wofür                                                 | Was Ralia sieht           |
+| ----- | ---------------------- | ----------------------------------------------------- | ------------------------- |
+| 1     | `calendar.app.created` | Export und Sync auf den von Ralia angelegten Kalender | nur diesen einen Kalender |
+| 2     | `+ calendar.readonly`  | **Import** aus den übrigen Kalendern des Nutzers      | alle Kalender lesend      |
 
-Stufe 1 ist der Vorgabeweg: Ralia legt den Kalender „Ralia" selbst an, und der Zugriff
-endet an dessen Rand. Wer nur exportieren oder syncen will, bleibt dauerhaft dort.
+Stufe 1 kommt beim Verbinden. Stufe 2 wird über einen zweiten Zustimmungsdialog
+nachgefordert, in dem Moment, in dem der Nutzer eine Betriebsart mit Import wählt — mit
+`include_granted_scopes=true`, damit Stufe 1 erhalten bleibt. Wer nur exportiert oder
+synct, bleibt dauerhaft auf Stufe 1.
 
-Stufe 2 und 3 werden über einen zweiten Zustimmungsdialog nachgefordert, in dem Moment, in
-dem der Nutzer eine Betriebsart wählt, die sie braucht — mit `include_granted_scopes=true`,
-damit die vorhandene Zustimmung erhalten bleibt. Der Screen benennt vorher im Klartext, was
-die Stufe kostet. Niemand rutscht unbemerkt auf Stufe 3.
+**Ralia hat damit auf keinen fremden Google-Kalender je Schreibzugriff.** Das ist die
+stärkste Zusicherung dieses Entwurfs und der Grund, warum die Streichung ihn nicht nur
+kleiner, sondern besser macht.
 
-Das ist der Grund, warum die Stufung den Aufwand wert ist, obwohl die Verifizierung
-ohnehin entfällt (2.1): der Schaden eines gestohlenen Tokens bleibt so klein, wie die
-tatsächlich benutzte Betriebsart es zulässt.
-
-#### Das Exportziel wird bestätigt, nicht geraten
-
-Vor dem ersten Export oder Sync steht eine Zielwahl mit genau zwei Wegen:
-
-- **Ralia legt den Kalender an** (Stufe 1, empfohlen). Ein neuer Google-Kalender namens
-  „Ralia", leer, ausschließlich für diesen Zweck.
-- **Einen bestehenden Kalender wählen** (Stufe 3). Die Liste kommt aus Google, der Nutzer
-  wählt, und bestätigt einen Satz, der den Kalender beim Namen nennt: „In _Familie_ werden
-  ab jetzt Ralia-Termine angelegt und geändert."
-
-Für einen selbst gewählten Kalender gilt zusätzlich:
-
-- Im **Export** rührt Ralia fremde Termine dort nicht an. Was Ralia nicht selbst angelegt
-  hat, wird nicht gelesen, nicht geändert, nicht gelöscht.
-- Im **Sync** werden auch die fremden Termine dieses Kalenders nach Ralia importiert — das
-  ist die Bedeutung von Sync, und der Bestätigungssatz sagt es entsprechend deutlich.
-
-Der Unterschied ist der Grund, warum die Bestätigung je Betriebsart neu eingeholt wird und
-nicht einmalig beim Verbinden.
+Was der Nutzer verliert: er kann seine Ralia-Termine nicht in einen bestehenden Kalender
+schreiben lassen. Wer sie dort haben will, kann den Ralia-Kalender in Google einblenden —
+das kostet keinen Zugriff und löst dasselbe Problem.
 
 ### 2.3 OAuth: Authorization Code mit PKCE, vollständig serverseitig
 
@@ -254,10 +239,9 @@ Entscheidung: `events.google_event_id` wird von v1 **nicht gelesen und nicht ges
 Die Spalte bleibt stehen — sie zu leeren würde Information vernichten, die sich nicht
 zurückholen lässt.
 
-Das gilt auch, wenn der Nutzer auf Stufe 3 seinen primären Kalender als Ziel wählt. Die
-Alt-IDs stammen aus einem anderen Abgleich mit anderer Semantik; sie als Zuordnung zu
-übernehmen hieße, einer Datenlage zu vertrauen, die seit dem Abschalten von 1.x niemand
-mehr gepflegt hat. Ralia legt in dem Fall neue Termine an und lässt die alten liegen.
+Seit der Streichung der freien Zielwahl (2.2) ist das ohnehin die einzig mögliche Antwort:
+Ralia hat auf den primären Kalender gar keinen Zugriff mehr, weder lesend noch schreibend.
+Die Alt-IDs zeigen auf Termine, die für v1 unerreichbar sind.
 
 Folge, die vor dem ersten Verbinden bekannt sein muss: die alten Ralia-Termine liegen
 weiterhin im primären Google-Kalender und werden nicht mehr aktualisiert. Wer sie nicht
@@ -387,8 +371,9 @@ Dasselbe umgekehrt im Export: eine in Google gelöschte Kopie ist kein Auftrag, 
 in Ralia zu vernichten.
 
 Betroffen sind in allen Fällen ausschließlich Termine mit einem Mapping dieser Verbindung.
-Was Ralia nie angelegt hat, kann Ralia auch nicht löschen — das schützt insbesondere fremde
-Termine in einem selbst gewählten Zielkalender (2.2).
+Was Ralia nie angelegt hat, kann Ralia auch nicht löschen. Auf der Google-Seite kommt dazu,
+dass der Zielkalender ausschließlich Ralia gehört (2.2) — fremde Termine liegen dort gar
+nicht erst.
 
 ### 2.13 Poller nach dem Muster des Reminder-Workers
 
@@ -446,20 +431,17 @@ private.google_connections
   -- eine aktive Verbindung je Nutzer (partieller Unique-Index)
 
 private.google_calendar_bindings
-  id, connection_id, calendar_id (Ralia), google_calendar_id (das Ziel aus 2.2),
-  target_origin ('app_created' | 'user_chosen'),
-  target_confirmed_at, target_confirmed_label,   -- was der Nutzer bestaetigt hat
+  id, connection_id, calendar_id (Ralia),
+  google_calendar_id (der von Ralia angelegte Kalender),
+  import_source_calendar_ids text[],   -- Quellen fuer den Import, Stufe 2
   mode ('import' | 'export' | 'sync'),
   schedule ('off' | 'active' | 'paused'),
+  first_real_run_allowed_at,           -- erst nach bestandenem Probelauf gesetzt
   sync_token, locked_at, is_active, last_full_sync_at, last_run_at
   -- eine aktive Bindung je (connection_id, calendar_id)
   -- `mode` und `schedule` sind getrennt: einmalige Laeufe gehen in jeder
   --   Betriebsart, auch waehrend `schedule = 'paused'`.
-  -- `target_origin` entscheidet ueber die Loeschregeln fuer fremde Termine (2.12)
-  --   und darueber, welcher Scope noetig ist (2.2).
-  -- `target_confirmed_label` haelt den Kalendernamen fest, den der Nutzer
-  --   bestaetigt hat. Benennt er ihn in Google spaeter um, laesst sich zeigen,
-  --   worauf sich die Zustimmung eigentlich bezog.
+  -- Kein `target_origin`: das Ziel ist immer der von Ralia angelegte Kalender (2.2).
 
 private.google_event_mappings
   id, binding_id, ralia_event_id, google_event_id,
@@ -517,11 +499,10 @@ Ein Lauf je Bindung, in dieser Reihenfolge. Welche Schritte laufen, entscheidet 
 1. **Sperren.** `locked_at` setzen. Ist die Bindung schon gesperrt, verwirft sich der Lauf.
 2. **Zugang herstellen.** Access-Token aus dem Refresh-Token. Bei `invalid_grant`:
    Verbindung auf `needs_reauth`, Lauf beenden, im Screen zum Neuverbinden auffordern.
-3. **Ziel prüfen.** Existiert `google_calendar_id` nicht mehr? Bei `target_origin =
-'app_created'` einen neuen anlegen und die Bindung umschreiben, Mappings der alten
-   deaktivieren. Bei `'user_chosen'` **nicht** — dann bricht der Lauf ab und der Screen
-   verlangt eine neue Zielwahl. Ralia legt keinen Kalender an, den der Nutzer sich selbst
-   ausgesucht und dann gelöscht hat.
+3. **Ziel prüfen.** Existiert `google_calendar_id` nicht mehr — vom Nutzer in Google
+   gelöscht —, legt der Lauf einen neuen Kalender „Ralia" an, schreibt die Bindung um und
+   deaktiviert die Mappings der alten. Sonst zeigten sie auf Termine, die es nicht mehr
+   gibt.
 4. **Importieren** — nur bei `mode` in (`import`, `sync`). `events.list` mit `syncToken`,
    sonst Vollabgleich. Je Google-Termin das Mapping suchen, Hashes vergleichen, nach 2.9
    handeln. Löschungen nach 2.12.
@@ -594,11 +575,11 @@ Zustände:
 
 Zwei Entscheidungen, nicht sechs Knöpfe: erst **Richtung**, dann **Takt**.
 
-| Richtung                | zeigt zusätzlich                                |
-| ----------------------- | ----------------------------------------------- |
-| Import — Google → Ralia | Auswahl der Quell-Kalender; Hinweis auf Stufe 2 |
-| Sync — beidseitig       | Zielwahl; Hinweis auf Stufe 1 oder 3            |
-| Export — Ralia → Google | Zielwahl; Hinweis auf Stufe 1 oder 3            |
+| Richtung                | zeigt zusätzlich                                                |
+| ----------------------- | --------------------------------------------------------------- |
+| Import — Google → Ralia | Auswahl der Quell-Kalender; fordert Stufe 2 an                  |
+| Sync — beidseitig       | den Ralia-Kalender als Ziel; Quellwahl wie beim Import; Stufe 2 |
+| Export — Ralia → Google | den Ralia-Kalender als Ziel; bleibt auf Stufe 1                 |
 
 Darunter der Takt: **Einmal jetzt** oder **Alle 10 Minuten**. Läuft ein Takt, steht an
 derselben Stelle _Pausieren_ beziehungsweise _Fortsetzen_; _Einmal jetzt_ bleibt daneben
@@ -684,9 +665,9 @@ gegen den produktiven Kalender verbunden — und dort beginnt es wieder mit dem 
    _Fortsetzen_ nimmt ihn ohne Dubletten wieder auf; _Einmal jetzt_ funktioniert auch
    während der Pause.
 5. **Einmaliger und regelmäßiger Sync** gleichen beide Richtungen ab.
-6. **Export** verlangt vorher eine bestätigte Zielwahl. Bei einem selbst gewählten Kalender
-   nennt die Bestätigung den Kalender beim Namen, und fremde Termine darin bleiben
-   unberührt.
+6. **Export** legt beim ersten Lauf einen Google-Kalender „Ralia" an und schreibt
+   ausschließlich dorthin. Löscht der Nutzer ihn in Google, legt der nächste Lauf einen
+   neuen an, statt zu scheitern.
 7. Ein Wechsel der Betriebsart wirft keine Zuordnung weg — nach dem Wechsel entstehen keine
    Dubletten.
 8. Eine Serie geht mit Regel und Enddatum hinüber; eine gelöschte Instanz bleibt gelöscht.
@@ -713,11 +694,10 @@ gegen den produktiven Kalender verbunden — und dort beginnt es wieder mit dem 
 1. **Regelmäßiger Export** — von mir ergänzt, um das Loch in der Matrix aus 2.2 zu
    schließen. Gefordert waren fünf Betriebsarten, gebaut werden sechs. Kostet nichts extra;
    sag Bescheid, wenn er raus soll.
-2. **Stufe 3 ist unvermeidlich, wenn das Ziel frei wählbar sein soll.** Wer einen eigenen
-   Kalender als Ziel bestimmt, gibt Ralia Lese- und Schreibzugriff auf **alle** seine
-   Google-Kalender — Googles Zuschnitt lässt es nicht kleiner. Der Vorgabeweg (Ralia legt
-   den Kalender an, Stufe 1) vermeidet das vollständig. Die Entscheidung fällt nicht hier,
-   sondern im Screen, in dem Moment, in dem sie ansteht.
+2. **Die freie Zielwahl ist gestrichen** (2.2). Ralia legt seinen Kalender selbst an und
+   bekommt nie Schreibzugriff auf einen fremden. Wer die Ralia-Termine in einem bestehenden
+   Kalender sehen will, blendet den Ralia-Kalender in Google ein — das kostet keinen
+   Zugriff.
 
 ## 10. Erledigt
 
