@@ -25,7 +25,9 @@ export interface BootDeps {
   storage?: KeyValueStorage & Pick<Storage, 'setItem'>;
   /** Liefert die Runtime-Konfiguration, ueblicherweise `GET /config`. */
   loadRuntimeConfig?: () => Promise<Partial<RuntimeConfig>>;
-  serviceWorker?: { getRegistrations(): Promise<{ unregister(): Promise<boolean> }[]> } | undefined;
+  serviceWorker?:
+    | { getRegistrations(): Promise<{ scriptURL: string; unregister(): Promise<boolean> }[]> }
+    | undefined;
   caches?: { keys(): Promise<string[]>; delete(key: string): Promise<boolean> } | undefined;
   /** Vorgebaute Outbox — Tests isolieren damit die IndexedDB. */
   outbox?: Outbox;
@@ -75,22 +77,46 @@ function message(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/** Der eigene Service Worker. Nur fuer Push, ohne Cache. */
+export const RALIA_SW_PATH = 'sw.js';
+
 /**
  * Raeumt den Service Worker der Vorgaengerversion ab.
  *
  * Ralia 1.x lief am gleichen Origin und hat dort einen SW mit eigenen Caches
  * registriert. Bleibt er stehen, beantwortet er Anfragen aus altem Bestand und
  * die neue App sieht Geisterdaten. Jeder Fehler hier wird zur Warnung, nicht
- * zum Abbruch — ein haengender alter SW darf den Start nicht verhindern.
+ * zum Abbruch — ein haengender alter SW darf den Start nicht verhindern. Der
+ * eigene SW unter RALIA_SW_PATH ist von der Abmeldung ausgenommen, sonst waere
+ * Push nach jedem Reload tot.
  */
 async function clearLegacyServiceWorker(deps: BootDeps, warnings: string[]): Promise<void> {
+  const nativeServiceWorker = globalThis.navigator?.serviceWorker;
   const serviceWorker =
-    'serviceWorker' in deps ? deps.serviceWorker : globalThis.navigator?.serviceWorker;
+    'serviceWorker' in deps
+      ? deps.serviceWorker
+      : nativeServiceWorker && {
+          // Die echte ServiceWorkerRegistration hat kein scriptURL direkt —
+          // das sitzt auf active/waiting/installing. Ohne diese Abbildung
+          // liefe die Ausnahme oben im echten Browser nie an.
+          getRegistrations: async () =>
+            (await nativeServiceWorker.getRegistrations()).map((registration) => ({
+              scriptURL:
+                registration.active?.scriptURL ??
+                registration.waiting?.scriptURL ??
+                registration.installing?.scriptURL ??
+                '',
+              unregister: () => registration.unregister(),
+            })),
+        };
   const cacheStorage = 'caches' in deps ? deps.caches : globalThis.caches;
 
   try {
     if (serviceWorker) {
       for (const registration of await serviceWorker.getRegistrations()) {
+        // Der eigene SW bleibt stehen. Ohne diese Ausnahme meldet der Boot ihn
+        // bei jedem Start ab, und Push waere nach jedem Reload tot.
+        if (registration.scriptURL?.endsWith(`/${RALIA_SW_PATH}`)) continue;
         await registration.unregister();
       }
     }

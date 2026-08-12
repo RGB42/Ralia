@@ -148,12 +148,37 @@ describe('runBoot', () => {
       ...baseDeps(),
       storage: memoryStorage(),
       loadRuntimeConfig: async () => okConfig,
-      serviceWorker: { getRegistrations: async () => [{ unregister }] },
+      serviceWorker: {
+        getRegistrations: async () => [
+          { scriptURL: 'https://ralia.test/service-worker.js', unregister },
+        ],
+      },
       caches: { keys: async () => ['ralia-static-v3', 'fremd-cache'], delete: deleteCache },
     });
     expect(unregister).toHaveBeenCalledOnce();
     expect(deleteCache).toHaveBeenCalledWith('ralia-static-v3');
     expect(deleteCache).not.toHaveBeenCalledWith('fremd-cache');
+  });
+
+  it('meldet den eigenen Service Worker nicht ab', async () => {
+    const eigener = {
+      scriptURL: 'https://ralia.test/sw.js',
+      unregister: vi.fn(async () => true),
+    };
+    const fremder = {
+      scriptURL: 'https://ralia.test/service-worker.js',
+      unregister: vi.fn(async () => true),
+    };
+
+    await runBoot({
+      ...baseDeps(),
+      storage: memoryStorage(),
+      loadRuntimeConfig: async () => okConfig,
+      serviceWorker: { getRegistrations: async () => [eigener, fremder] },
+    });
+
+    expect(fremder.unregister).toHaveBeenCalled();
+    expect(eigener.unregister).not.toHaveBeenCalled();
   });
 
   it('scheitert nicht, wenn Service Worker und Caches fehlen', async () => {
