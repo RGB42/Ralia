@@ -6,7 +6,8 @@ import { AuthContext } from '../auth/AuthProvider.js';
 import { useT } from '../i18n/useT.js';
 import styles from './sheets.module.css';
 
-export type ExpenseRecipient = 'self' | 'partner' | 'both';
+/** Relative display slots; the saved expense always stores an absolute user ID. */
+export type ExpenseRecipient = 'u1' | 'u2' | 'both';
 
 export interface ExpenseCategoryOption {
   name: string;
@@ -59,21 +60,21 @@ export function ExpenseSheet({
   const [notes, setNotes] = useState(initial?.notes ?? '');
 
   const people: readonly { slot: PersonSlot; label: string }[] = [
-    { slot: 'u1', label: identity?.profile.name?.split(' ')[0] || t('me') },
+    { slot: 'u1', label: firstName(identity?.profile.name, t('me')) },
     ...(identity?.partner
-      ? [{ slot: 'u2' as const, label: identity.partner.name?.split(' ')[0] || t('partner') }]
+      ? [{ slot: 'u2' as const, label: firstName(identity.partner.name, t('partner')) }]
       : []),
   ];
   const recipients: readonly { value: ExpenseRecipient; label: string }[] = [
-    { value: 'self', label: t('sheetForSelf') },
+    { value: 'u1', label: firstName(identity?.profile.name, t('me')) },
     ...(identity?.partner
       ? [
-          { value: 'partner' as const, label: t('sheetForPartner') },
+          { value: 'u2' as const, label: firstName(identity.partner.name, t('partner')) },
           { value: 'both' as const, label: t('sheetForBoth') },
         ]
       : []),
   ];
-  const validRecipient = recipients.some((entry) => entry.value === recipient) ? recipient : 'self';
+  const validRecipient = recipients.some((entry) => entry.value === recipient) ? recipient : 'u1';
 
   return (
     <BottomSheet
@@ -194,6 +195,10 @@ export function ExpenseSheet({
       </div>
     </BottomSheet>
   );
+}
+
+function firstName(value: string | null | undefined, fallback: string): string {
+  return value?.trim().split(/\s+/u)[0] || fallback;
 }
 
 function localTodayIso(): string {

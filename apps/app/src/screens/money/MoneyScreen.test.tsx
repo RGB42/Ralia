@@ -4,7 +4,7 @@ import type {
   SessionState,
   SharedExpensesRow,
 } from '@ralia/data';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -29,6 +29,17 @@ const PAIRED_SESSION: SessionState = {
     userId: TEST_USER_ID,
     profile: { ...TEST_PROFILE, partner_id: TEST_PARTNER_ID },
     partner: PARTNER,
+    calendarId: [TEST_USER_ID, TEST_PARTNER_ID].sort().join('_'),
+  },
+};
+
+const PARTNER_SESSION: SessionState = {
+  status: 'signed-in',
+  offline: false,
+  identity: {
+    userId: TEST_PARTNER_ID,
+    profile: PARTNER,
+    partner: { ...TEST_PROFILE, partner_id: TEST_PARTNER_ID },
     calendarId: [TEST_USER_ID, TEST_PARTNER_ID].sort().join('_'),
   },
 };
@@ -80,14 +91,14 @@ const EXPENSES: SharedExpensesRow[] = [
 
 beforeEach(() => pinLanguage('de'));
 
-function renderMoney() {
+function renderMoney(session: SessionState = PAIRED_SESSION) {
   const listExpenses = vi.fn(async () => EXPENSES);
   const createExpense = vi.fn();
   const updateExpense = vi.fn();
   const createCategory = vi.fn();
   const createSettlement = vi.fn();
   renderAppAt('/geld', {
-    auth: { session: PAIRED_SESSION },
+    auth: { session },
     data: {
       expenses: {
         list: listExpenses,
@@ -164,14 +175,18 @@ describe('MoneyScreen', () => {
     );
   });
 
-  it('creates an expense for the partner with a category', async () => {
+  it('creates an expense for the selected person with a category', async () => {
     const { createCategory, createExpense } = renderMoney();
     await userEvent.click(await screen.findByRole('button', { name: 'Ausgabe hinzufügen' }));
     await userEvent.type(screen.getByLabelText('Beschreibung'), 'Gemeinsames Geschenk');
     await userEvent.type(screen.getByLabelText(/Betrag/), '100');
     await userEvent.clear(screen.getByRole('textbox', { name: 'Kategorien' }));
     await userEvent.type(screen.getByRole('textbox', { name: 'Kategorien' }), 'Geschenke');
-    await userEvent.click(screen.getByRole('button', { name: 'Partner' }));
+    await userEvent.click(
+      within(screen.getByRole('group', { name: 'Für wen?' })).getByRole('button', {
+        name: 'Jonas',
+      }),
+    );
     await userEvent.click(screen.getByRole('button', { name: 'Ausgabe speichern' }));
 
     await waitFor(() => expect(createExpense).toHaveBeenCalledOnce());
@@ -182,6 +197,30 @@ describe('MoneyScreen', () => {
         for_user_id: TEST_PARTNER_ID,
         split_type: 'single',
       }),
+    );
+  });
+
+  it('keeps recipient names and settlement direction stable in the partner view', async () => {
+    const { createExpense } = renderMoney(PARTNER_SESSION);
+
+    expect(await screen.findByText(/Jonas schuldet Lena/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Freizeit.*Jonas/, { selector: '[class*="expenseMeta"]' }),
+    ).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole('button', { name: 'Ausgabe hinzufügen' }));
+    await userEvent.type(screen.getByLabelText('Beschreibung'), 'Geschenk');
+    await userEvent.type(screen.getByLabelText(/Betrag/), '20');
+    await userEvent.click(
+      within(screen.getByRole('group', { name: 'Für wen?' })).getByRole('button', {
+        name: 'Lena',
+      }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Ausgabe speichern' }));
+
+    await waitFor(() =>
+      expect(createExpense).toHaveBeenCalledWith(
+        expect.objectContaining({ for_user_id: TEST_USER_ID }),
+      ),
     );
   });
 

@@ -63,8 +63,10 @@ export function MoneyScreen(): React.JSX.Element {
       id: expense.id,
       amount: expense.amount,
       paidBy: expense.paid_by,
-      splitType: identity.partner && expense.for_user_id === null ? 'shared' : 'single',
-      forUserId: expense.for_user_id ?? expense.paid_by,
+      splitType: expense.split_type === 'shared' ? 'shared' : 'single',
+      ...(expense.split_type === 'single'
+        ? { forUserId: expense.for_user_id ?? expense.paid_by }
+        : {}),
     }));
     const ledgerSettlements: LedgerSettlement[] = settlements.map((settlement) => ({
       fromUserId: settlement.from_user_id,
@@ -95,7 +97,7 @@ export function MoneyScreen(): React.JSX.Element {
     if (!identity) return;
     const paidBy =
       draft.paidBy === 'u2' && identity.partner ? identity.partner.id : identity.userId;
-    const forUserId = recipientId(draft.recipient, identity.userId, identity.partner?.id);
+    const forUserId = recipientUserId(draft.recipient, identity.userId, identity.partner?.id);
     const splitType = forUserId === null && identity.partner ? 'shared' : 'single';
     const values = {
       amount: draft.amount,
@@ -199,7 +201,7 @@ export function MoneyScreen(): React.JSX.Element {
                           aria-hidden="true"
                         />
                         <span className={styles.balanceName}>
-                          {firstName(profile.name ?? t('partner'))}
+                          {firstName(profile.name, t('partner'))}
                         </span>
                       </div>
                       <div className={styles.balanceAmount}>
@@ -269,7 +271,14 @@ export function MoneyScreen(): React.JSX.Element {
                       <span className={styles.expenseTitle}>{expense.title}</span>
                       <span className={styles.expenseMeta}>
                         {expense.category} · {formatDate(expense.paid_at, lang)} ·{' '}
-                        {recipientLabel(expense.for_user_id, identity?.userId, partner?.id, t)}
+                        {recipientLabel(
+                          expense.for_user_id,
+                          identity?.userId,
+                          partner?.id,
+                          firstName(me?.name, t('me')),
+                          firstName(partner?.name, t('partner')),
+                          t,
+                        )}
                       </span>
                     </span>
                     <span className={styles.expenseAmount}>{formatEur(expense.amount, lang)}</span>
@@ -286,7 +295,11 @@ export function MoneyScreen(): React.JSX.Element {
         key={expenseEditing ? `edit-${expenseEditing.id}` : `new-${expenseOpen}`}
         open={expenseOpen || expenseEditing !== null}
         categories={categoryOptions}
-        initial={expenseEditing ? draftFromExpense(expenseEditing, partner?.id) : undefined}
+        initial={
+          expenseEditing
+            ? draftFromExpense(expenseEditing, identity?.userId, partner?.id)
+            : undefined
+        }
         onClose={() => {
           setExpenseOpen(false);
           setExpenseEditing(null);
@@ -324,28 +337,27 @@ function isoDate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-function recipientId(
+function recipientUserId(
   recipient: ExpenseRecipient,
   userId: string,
   partnerId?: string,
 ): string | null {
   if (recipient === 'both' && partnerId) return null;
-  if (recipient === 'partner' && partnerId) return partnerId;
+  if (recipient === 'u2' && partnerId) return partnerId;
   return userId;
 }
 
-function draftFromExpense(expense: SharedExpensesRow, partnerId?: string): ExpenseDraft {
+function draftFromExpense(
+  expense: SharedExpensesRow,
+  userId?: string,
+  partnerId?: string,
+): ExpenseDraft {
   return {
     title: expense.title,
     amount: expense.amount,
     category: expense.category ?? '',
     paidBy: expense.paid_by === partnerId ? 'u2' : 'u1',
-    recipient:
-      expense.for_user_id === null
-        ? 'both'
-        : expense.for_user_id === partnerId
-          ? 'partner'
-          : 'self',
+    recipient: expense.for_user_id === null ? 'both' : expense.for_user_id === userId ? 'u1' : 'u2',
     paidAt: expense.paid_at,
     notes: expense.notes ?? '',
   };
@@ -369,16 +381,18 @@ function recipientLabel(
   forUserId: string | null,
   userId: string | undefined,
   partnerId: string | undefined,
+  userName: string,
+  partnerName: string,
   t: (key: string) => string,
 ): string {
   if (forUserId === null) return t('sheetForBoth');
-  if (forUserId === userId) return t('sheetForSelf');
-  if (forUserId === partnerId) return t('sheetForPartner');
-  return t('sheetForSelf');
+  if (forUserId === userId) return userName;
+  if (forUserId === partnerId) return partnerName;
+  return userName;
 }
 
-function firstName(value: string): string {
-  return value.split(' ')[0] || value;
+function firstName(value: string | null | undefined, fallback: string): string {
+  return value?.trim().split(/\s+/u)[0] || fallback;
 }
 
 function firstInitial(value: string | null | undefined): string {
@@ -391,8 +405,8 @@ function nameFor(
   partner: { id: string; name: string | null } | null,
   fallback: string,
 ): string {
-  if (userId === me?.id) return firstName(me.name ?? fallback);
-  if (userId === partner?.id) return firstName(partner.name ?? fallback);
+  if (userId === me?.id) return firstName(me.name, fallback);
+  if (userId === partner?.id) return firstName(partner.name, fallback);
   return fallback;
 }
 

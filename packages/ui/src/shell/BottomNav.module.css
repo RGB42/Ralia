@@ -1,9 +1,11 @@
 /* Vorlage Z. 683–704, plus Safe-Area-Polster unten. */
 
 .bottomNav {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: stretch;
   gap: 2px;
+  width: 100%;
   padding: 7px 8px calc(9px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--line);
   background: var(--surface);

@@ -142,7 +142,7 @@ describe('ExpenseSheet', () => {
     const payers = screen.getByRole('group', { name: 'Bezahlt von' });
     expect(within(payers).getByRole('button', { name: 'Mich' })).toBeInTheDocument();
     const recipients = screen.getByRole('group', { name: 'Für wen?' });
-    expect(within(recipients).getByRole('button', { name: 'Selbst' })).toBeInTheDocument();
+    expect(within(recipients).getByRole('button', { name: 'Mich' })).toBeInTheDocument();
   });
 
   it('speichert nicht ohne Betrag', async () => {
