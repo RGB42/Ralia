@@ -266,7 +266,14 @@
     "connectSuccess": "Verbunden mit",
     "settingsAnniversary": "Jahrestag",
     "settingsAnniversaryHint": "Wird jährlich im Kalender angelegt",
-    "settingsPreferencesError": "Die Einstellungen konnten nicht gespeichert werden."
+    "settingsPreferencesError": "Die Einstellungen konnten nicht gespeichert werden.",
+    "errorCrashed": "Etwas ist schiefgelaufen.",
+    "reloadApp": "App neu laden",
+    "name": "Name",
+    "enableReminder": "Erinnerung aktivieren",
+    "repeatPattern": "Wiederholungsmuster",
+    "resendVerification": "Verifizierungs-Email erneut senden",
+    "verificationEmailSent": "Verifizierungs-Email gesendet! Überprüfe deinen Posteingang."
   },
   "en": {
     "bootFailed": "The app could not start.",
@@ -535,6 +542,13 @@
     "connectSuccess": "Connected with",
     "settingsAnniversary": "Anniversary",
     "settingsAnniversaryHint": "Added to the calendar every year",
-    "settingsPreferencesError": "The settings could not be saved."
+    "settingsPreferencesError": "The settings could not be saved.",
+    "errorCrashed": "Something went wrong.",
+    "reloadApp": "Reload app",
+    "name": "Name",
+    "enableReminder": "Enable reminder",
+    "repeatPattern": "Repeat Pattern",
+    "resendVerification": "Resend Verification Email",
+    "verificationEmailSent": "Verification email sent! Check your inbox."
   }
 }

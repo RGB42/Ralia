@@ -23,6 +23,9 @@ export default defineConfig({
       { find: /^@ralia\/ui$/, replacement: resolvePath('../../packages/ui/src/index.ts') },
     ],
   },
-  build: { outDir: 'dist', sourcemap: true },
+  // Keine Sourcemap: Render veroeffentlicht dist vollstaendig, die .map laege
+  // damit oeffentlich neben dem Bundle. 'hidden' hilft nicht — die Datei
+  // entstuende trotzdem. Der Dev-Server hat davon unabhaengig Sourcemaps.
+  build: { outDir: 'dist', sourcemap: false },
   server: { port: 5173 },
 });

@@ -134,10 +134,10 @@ describe('NewEventSheet', () => {
     await userEvent.type(screen.getByLabelText('Zeit'), '18:00');
     await userEvent.type(screen.getByLabelText('Endzeit *'), '19:30');
     await userEvent.type(screen.getByLabelText('Notizen / Kommentare'), 'Sporttasche');
-    await userEvent.selectOptions(screen.getByLabelText('🔄 Wiederholungsmuster'), 'weekly');
+    await userEvent.selectOptions(screen.getByLabelText('Wiederholungsmuster'), 'weekly');
     await userEvent.clear(screen.getByLabelText('Wiederholungsintervall'));
     await userEvent.type(screen.getByLabelText('Wiederholungsintervall'), '2');
-    await userEvent.click(screen.getByRole('switch', { name: '🔔 Erinnerung aktivieren' }));
+    await userEvent.click(screen.getByRole('switch', { name: 'Erinnerung aktivieren' }));
     await userEvent.selectOptions(screen.getByLabelText('Erinnere mich vorher'), '60');
     await userEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
