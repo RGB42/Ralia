@@ -2,9 +2,11 @@
 
 Teile Deine Tage gemeinsam — Kalender, Organizer und Haushaltskasse für Paare.
 
-Eine Codebasis für **Android**, **iOS** und **Web** mit Marketing-Homepage.
+Programmziel ist eine Codebasis für **Android**, **iOS** und **Web** mit Marketing-Homepage. Gebaut und ausgeliefert ist bisher die **Web-App**.
 
-> **Status: SP0 und SP1 abgeschlossen, SP2 bis SP4 in Umsetzung.** `npm run dev` startet die App unter `/app/`. Anmeldung, Identität, Partner-Verbindung und Jahrestag kommen aus Supabase. Der Kalender besitzt CRUD, mehrtägige Wochenbalken, Serien und Exceptions, Realtime sowie eine kontogebundene Offline-Outbox. Todo-Gruppen und -Einträge arbeiten ebenfalls mit echten, kalendergebundenen Repositories. Der Wochenplaner speichert Mahlzeiten, Aufgaben, Zuständigkeiten und Abschlussstatus. Die Haushaltskasse speichert Ausgaben, Kategorien, Budgets, individuelle Anteile und Ausgleichstransaktionen; die Bilanz wird centgenau berechnet.
+> **Status: SP0 bis SP4 abgeschlossen.** `npm run dev` startet die App unter `/app/`. Anmeldung, Identität, Partner-Verbindung und Jahrestag kommen aus Supabase. Der Kalender besitzt CRUD, mehrtägige Wochenbalken, Serien und Exceptions, Realtime sowie eine kontogebundene Offline-Outbox. Todo-Gruppen und -Einträge arbeiten mit echten, kalendergebundenen Repositories. Der Wochenplaner speichert Mahlzeiten, Aufgaben, Zuständigkeiten und Abschlussstatus. Die Haushaltskasse speichert Ausgaben, Kategorien, Budgets, individuelle Anteile und Ausgleichstransaktionen; die Bilanz wird centgenau berechnet.
+>
+> **Noch nicht gebaut:** Google-Sync (der Screen unter `/profil/sync` ist reine Attrappe), Push-Registrierung im Client (die serverseitige Erinnerungs-Pipeline läuft, erreicht aber kein neu installiertes Gerät), PWA-Hülle, native Projekte (SP7) und Marketing-Site (SP8). Der vollständige Befund steht im [Release-Audit](docs/2026-08-12-release-audit.md).
 >
 > [SP0-Abnahmeprotokoll](docs/superpowers/plans/2026-08-03-sp0-abnahme.md) · [SP1-Spec](docs/superpowers/specs/2026-08-05-sp1-auth-partner-design.md) · [SP1-Plan](docs/superpowers/plans/2026-08-05-sp1-auth-partner.md) · [SP1-Abnahme](docs/superpowers/plans/2026-08-05-sp1-abnahme.md)
 
@@ -19,7 +21,7 @@ packages/
   data/     Supabase-Client, generierte DB-Typen, appApi-Wrapper
   ui/       Design-System: Tokens, Primitive, Overlays, AppShell
 apps/
-  app/      React + Vite SPA — Web /app/* und Capacitor-Webroot
+  app/      React + Vite SPA — Web /app/*, spaeter Capacitor-Webroot (SP7)
             boot/      Boot-Reihenfolge, Legacy-Migration, Ladezustand
             i18n/      Kataloge und Provider, DE und EN
             routes/    Router und die Naht zur AppShell
@@ -45,7 +47,7 @@ Der Quellcode der Edge Function liegt nicht in diesem Repo. Wir konsumieren sie,
 ```bash
 npm install
 npm run dev       # Vite, http://localhost:5173/app/
-npm test          # Vitest — 858 Tests
+npm test          # Vitest — 864 Tests
 npm run typecheck # tsc --noEmit, strict
 npm run lint      # ESLint
 npm run verify    # typecheck + lint + test + build
@@ -78,6 +80,7 @@ Das Design stammt aus einem Claude-Design-Prototypen, der versioniert unter [`do
 | [`docs/superpowers/specs/`](docs/superpowers/specs/)                                                   | Programm-Design und Sub-Projekt-Spezifikationen                 |
 | [`docs/superpowers/plans/`](docs/superpowers/plans/)                                                   | Implementierungspläne                                           |
 | [`docs/AI_HANDOFF.md`](docs/AI_HANDOFF.md)                                                             | Aktueller Implementierungsstand und nächste Agenten-Schritte    |
+| [`docs/2026-08-12-release-audit.md`](docs/2026-08-12-release-audit.md)                                 | Befund vor dem ersten Release: Blocker, Lücken, Reihenfolge     |
 | [`docs/design-reference/`](docs/design-reference/)                                                     | Design-Vorlage, Quelle aller Tokens                             |
 | [`docs/superpowers/plans/2026-08-03-sp0-abnahme.md`](docs/superpowers/plans/2026-08-03-sp0-abnahme.md) | Abnahmeprotokoll SP0 gegen die zehn Kriterien des Specs         |
 | [`docs/native-rebuild-reference/`](docs/native-rebuild-reference/)                                     | Quellstand des vorherigen Expo-Anlaufs, als Referenz aufgehoben |
