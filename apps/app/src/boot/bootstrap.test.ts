@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { LEGACY_MIGRATION_META_KEY, Outbox } from '@ralia/core';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runBoot } from './bootstrap.js';
 
 function memoryStorage(initial: Record<string, string> = {}) {
@@ -45,7 +45,47 @@ function baseDeps() {
   };
 }
 
+/**
+ * Wie `baseDeps()`, aber ohne den Schluessel `serviceWorker` — der Boot faellt
+ * dann auf das echte (hier gestubbte) `navigator.serviceWorker` zurueck. Nur
+ * so laesst sich der native Fallback-Zweig in `clearLegacyServiceWorker`
+ * ueberhaupt erreichen.
+ */
+function nativeFallbackDeps() {
+  return {
+    storage: memoryStorage(),
+    loadRuntimeConfig: async () => okConfig,
+    bindLifecycle: false as const,
+    outbox: freshOutbox(),
+    caches: undefined,
+  };
+}
+
+type FakeNativeRegistration = {
+  active: { scriptURL: string } | null;
+  waiting: { scriptURL: string } | null;
+  installing: { scriptURL: string } | null;
+  unregister: () => Promise<boolean>;
+};
+
+/**
+ * Stubbt `navigator.serviceWorker` mit echten `ServiceWorkerRegistration`-
+ * Formen (scriptURL auf active/waiting/installing, nicht auf der Registration
+ * selbst). jsdom kennt die Service-Worker-API nicht, deshalb ist das ein neues
+ * Property, kein Ueberschreiben. `configurable: true` macht es in `afterEach`
+ * wieder loeschbar, damit kein Test in den naechsten traegt.
+ */
+function stubNativeServiceWorker(registrations: FakeNativeRegistration[]) {
+  Object.defineProperty(globalThis.navigator, 'serviceWorker', {
+    configurable: true,
+    value: { getRegistrations: async () => registrations },
+  });
+}
+
 beforeEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  Reflect.deleteProperty(globalThis.navigator, 'serviceWorker');
+});
 
 describe('runBoot', () => {
   it('uebernimmt den Runtime-Key aus /config', async () => {
@@ -179,6 +219,81 @@ describe('runBoot', () => {
 
     expect(fremder.unregister).toHaveBeenCalled();
     expect(eigener.unregister).not.toHaveBeenCalled();
+  });
+
+  it('verschont den eigenen SW auch ueber das echte navigator.serviceWorker, wenn er aktiv ist', async () => {
+    const eigenerUnregister = vi.fn(async () => true);
+    const fremderUnregister = vi.fn(async () => true);
+    stubNativeServiceWorker([
+      {
+        active: { scriptURL: 'https://ralia.test/sw.js' },
+        waiting: null,
+        installing: null,
+        unregister: eigenerUnregister,
+      },
+      {
+        active: { scriptURL: 'https://ralia.test/service-worker.js' },
+        waiting: null,
+        installing: null,
+        unregister: fremderUnregister,
+      },
+    ]);
+
+    await runBoot(nativeFallbackDeps());
+
+    expect(fremderUnregister).toHaveBeenCalled();
+    expect(eigenerUnregister).not.toHaveBeenCalled();
+  });
+
+  it('erkennt den eigenen SW, wenn der Skript-Pfad nur an waiting haengt', async () => {
+    const eigenerUnregister = vi.fn(async () => true);
+    const fremderUnregister = vi.fn(async () => true);
+    stubNativeServiceWorker([
+      {
+        // Noch nicht aktiv — z.B. kurz nach register(), bevor der SW
+        // aktiviert hat. scriptURL sitzt in diesem Moment nur auf waiting.
+        active: null,
+        waiting: { scriptURL: 'https://ralia.test/sw.js' },
+        installing: null,
+        unregister: eigenerUnregister,
+      },
+      {
+        active: { scriptURL: 'https://ralia.test/service-worker.js' },
+        waiting: null,
+        installing: null,
+        unregister: fremderUnregister,
+      },
+    ]);
+
+    await runBoot(nativeFallbackDeps());
+
+    expect(fremderUnregister).toHaveBeenCalled();
+    expect(eigenerUnregister).not.toHaveBeenCalled();
+  });
+
+  it('erkennt den eigenen SW, wenn der Skript-Pfad nur an installing haengt', async () => {
+    const eigenerUnregister = vi.fn(async () => true);
+    const fremderUnregister = vi.fn(async () => true);
+    stubNativeServiceWorker([
+      {
+        // Noch frueher als waiting: der Installations-Schritt laeuft noch.
+        active: null,
+        waiting: null,
+        installing: { scriptURL: 'https://ralia.test/sw.js' },
+        unregister: eigenerUnregister,
+      },
+      {
+        active: { scriptURL: 'https://ralia.test/service-worker.js' },
+        waiting: null,
+        installing: null,
+        unregister: fremderUnregister,
+      },
+    ]);
+
+    await runBoot(nativeFallbackDeps());
+
+    expect(fremderUnregister).toHaveBeenCalled();
+    expect(eigenerUnregister).not.toHaveBeenCalled();
   });
 
   it('scheitert nicht, wenn Service Worker und Caches fehlen', async () => {
