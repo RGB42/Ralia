@@ -1,426 +1,318 @@
-# SP5a — Google-Kalender-Sync v1
+# SP5a — Google-Kalender-Import v1
 
 Stand: 2026-08-12 · Status: Entwurf zur Abnahme · Vorgänger: [Release-Audit](../../2026-08-12-release-audit.md)
 
 ## Ziel
 
-Ein Ralia-Nutzer verbindet sein Google-Konto und bestimmt danach selbst, **was** abgeglichen
-wird und **wie oft**: Import, Export oder beidseitiger Sync, jeweils einmalig auf Knopfdruck
-oder getaktet alle zehn Minuten und jederzeit pausierbar. Nichts läuft, was er nicht
-eingeschaltet hat.
+Ein Ralia-Nutzer verbindet sein Google-Konto, wählt aus, welche seiner Google-Kalender als
+Quelle dienen, und holt deren Termine nach Ralia — **auf Knopfdruck oder alle zehn Minuten**.
+Mehr nicht. Ralia schreibt nichts nach Google und bekommt dort keinen Schreibzugriff.
 
 Der Screen unter `/profil/sync` hört auf, eine funktionierende Synchronisierung
 vorzutäuschen, und zeigt den echten Zustand.
 
-Der Kalender wird seit 2024 produktiv von mehreren Personen genutzt. Der Entwurf ist
-entsprechend darauf ausgelegt, im Zweifel **nichts** zu tun: kein stilles Überschreiben
-(2.10), keine Löschung außerhalb des Sync-Modus (2.12), und ein Pflicht-Probelauf vor dem
-ersten echten Lauf jeder Bindung (Abschnitt 4).
+## Wie dieser Umfang zustande kam
+
+Der ursprüngliche Entwurf war ein bidirektionaler Sync mit sechs Betriebsarten, freier
+Zielwahl, Serien in beide Richtungen und Konfliktauflösung. Er ist in drei Schritten
+zurückgeschnitten worden, jedes Mal auf ausdrückliche Anweisung:
+
+| Gestrichen                    | Warum                                                                                     |
+| ----------------------------- | ----------------------------------------------------------------------------------------- |
+| Freie Wahl des Ziel-Kalenders | hätte den vollen `calendar`-Scope erzwungen — Schreibzugriff auf **alle** Kalender        |
+| Export und beidseitiger Sync  | „Was funktionieren muss, ist der Import"                                                  |
+| Konfliktauflösung             | importierte Termine gehören Google — damit gibt es keine zwei Wahrheiten                  |
+| Serien (Google-RRULE → Ralia) | Googles RRULE kann weit mehr als Ralias vier Typen; ehrliches Übergehen statt Verstümmeln |
+
+Was bleibt, ist die kleinste Fassung, die den Zweck erfüllt — und die einzige, bei der
+Ralia in Google **nur liest**.
 
 ## Abgrenzung
 
-**In Scope:** OAuth-Verbindung, sechs Betriebsarten aus Richtung × Takt, ein von Ralia
-angelegter Zielkalender, Auswahl der Import-Quellen, Abgleich von Einzelterminen und Serien
-inklusive Ausnahmen, Löschungen im Sync-Modus, Konflikterkennung mit Nutzerentscheidung,
-Probelauf, Statusanzeige, Fehler- und Änderungsprotokoll.
+**In Scope:** OAuth-Verbindung, Auswahl der Quell-Kalender, Import von Einzelterminen,
+Laden auf Knopfdruck, Laden alle zehn Minuten mit Pause, Pflicht-Probelauf, Statusanzeige,
+Änderungs- und Fehlerprotokoll.
 
-**Nicht in Scope für v1:** ICS-Import/-Export und Feed-URL (eigener Zyklus), Google-Push
-über `watch`-Kanäle (Polling reicht bei zehn Minuten), Teilnehmer, Gäste,
-Verfügbarkeiten, Anhänge, Farben pro Termin, mehr als ein Google-Konto je Ralia-Nutzer,
-Zeitzonen je Termin, frei wählbare Taktweiten außer den zehn Minuten.
+**Nicht in Scope:** jeder Schreibvorgang nach Google, Serien, Löschen in Ralia, ICS,
+Teilnehmer, Anhänge, mehr als ein Google-Konto je Nutzer, Zeitzonen je Termin, andere
+Taktweiten als zehn Minuten.
+
+## Sicherheitsrahmen
+
+Der Kalender wird seit 2024 produktiv von mehreren Personen genutzt. Daraus folgen drei
+Regeln, die den ganzen Entwurf prägen:
+
+1. **Der Import fasst ausschließlich Termine an, die er selbst angelegt hat.** Ein von Hand
+   in Ralia erstellter Termin wird nie geändert und nie gelöscht — unabhängig davon, was in
+   Google passiert.
+2. **Der erste Lauf jeder Bindung ist ein Probelauf.** Er zeigt, was er täte, und schreibt
+   nichts. Erst danach gibt der Screen den echten Lauf frei.
+3. **Gelöscht wird nie** (Abschnitt 8).
 
 ---
 
 ## 1. Ausgangslage
 
-Geprüft am 2026-08-12 gegen das laufende Projekt, nicht aus dem Handoff übernommen.
+Geprüft am 2026-08-12 gegen das laufende Projekt.
 
-| Befund                                                                                 | Konsequenz                                                                       |
-| -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `SyncScreen.tsx` ist vollständig Attrappe, „Jetzt synchronisieren" ist ein No-op       | Wird ersetzt, nicht erweitert                                                    |
-| Kein `google-sync-api`, kein Token-Schema, kein Mapping                                | Alles neu, quellversioniert                                                      |
-| Alter OAuth-Client nutzt `redirect_uri: "postmessage"`, kein Redirect-URI hinterlegt   | Neuer Client nötig, siehe [Release-Audit 2.1](../../2026-08-12-release-audit.md) |
-| Der alte Host `ralia.onrender.com` antwortet 503                                       | Die alten `/api/google/*`-Routen sind tot                                        |
-| **445 von 709 Events tragen bereits eine `google_event_id`** aus Ralia 1.x             | Migrationsentscheidung nötig, siehe 2.7                                          |
-| `events` speichert `date` + `time without time zone`, keine Zeitzone                   | Zeitzonenentscheidung nötig, siehe 2.5                                           |
-| Es gibt keine `all_day`-Spalte; die Konvention ist uneinheitlich                       | Vorarbeit nötig, siehe 2.6                                                       |
-| `recurrence_type` kennt nur `daily`/`weekly`/`monthly`/`yearly` + Intervall + Enddatum | Google→Ralia ist die verlustbehaftete Richtung                                   |
-| `pg_cron` + `pg_net` treiben bereits `ralia-reminder-worker` jede Minute               | Muster für den Poller steht, wird übernommen                                     |
+| Befund                                                                                   | Konsequenz                                            |
+| ---------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `SyncScreen.tsx` ist vollständig Attrappe, „Jetzt synchronisieren" ist ein No-op         | wird ersetzt, nicht erweitert                         |
+| Kein `google-sync-api`, kein Token-Schema, kein Mapping                                  | alles neu, quellversioniert                           |
+| Der alte Host `ralia.onrender.com` antwortet 503                                         | die alten `/api/google/*`-Routen sind tot             |
+| 445 von 709 Events tragen eine `google_event_id` aus Ralia 1.x                           | wird ignoriert, siehe 7                               |
+| `events` speichert `date` + `time without time zone`, keine Zeitzone                     | Umrechnung nötig, siehe 5                             |
+| Ganztägig ist im Bestand uneinheitlich: 363 als `00:00`–`23:59`, 102 als `00:00`–`00:00` | Vorarbeit nötig, siehe 6                              |
+| `pg_cron` + `pg_net` treiben `ralia-reminder-worker` jede Minute                         | Muster für den Takt steht                             |
+| Trigger `trg_events_rebuild_reminder_jobs` hängt an `events`                             | jeder überflüssige Schreibvorgang hat Folgen, siehe 9 |
 
 ---
 
-## 2. Getroffene Entscheidungen
+## 2. Veröffentlichungsstatus: Produktion, unverifiziert
 
-### 2.1 Veröffentlichungsstatus: Produktion, unverifiziert
-
-Das war die einzige Frage, die das Audit offenlassen musste. Sie ist entschieden.
-
-Google verlangt für sensible Scopes eine Verifizierung, **nennt aber ausdrücklich eine
+Google verlangt für sensible Scopes eine Verifizierung, **nennt aber eine ausdrückliche
 Ausnahme für den privaten Gebrauch**: wer der einzige Nutzer ist oder „a few users, all of
-whom are known personally to you" hat, braucht sie nicht.
+whom are known personally to you" hat, braucht sie nicht. Maßgeblich ist nicht, wie viele
+Leute Ralia benutzen, sondern wie viele ihr Google-Konto verbinden — eine Handvoll
+persönlich bekannte Personen. Die Ausnahme trägt.
 
-Maßgeblich ist dabei nicht, wie viele Leute Ralia benutzen, sondern wie viele ihr
-**Google-Konto verbinden** — nur die erteilen der App eine Zustimmung. Das sind derzeit
-eine Handvoll persönlich bekannte Personen. Die Ausnahme trägt.
-
-Daraus folgt: Veröffentlichungsstatus **In Produktion**, ohne Verifizierung.
-
-Der Status _Testing_ wäre die falsche Wahl: bei externem Nutzertyp widerruft Google dort
-Refresh-Tokens **nach sieben Tagen**. Ein serverseitiger Sync alle zehn Minuten wäre damit
-wöchentlich tot. In Produktion laufen die Tokens nicht ab.
+Der Status _Testing_ wäre falsch: bei externem Nutzertyp widerruft Google dort
+Refresh-Tokens **nach sieben Tagen**, und der Zehn-Minuten-Takt wäre wöchentlich tot. In
+Produktion laufen sie nicht ab.
 
 Der Preis ist ein einmaliger Warnbildschirm beim Verbinden („Google hat diese App nicht
-bestätigt" → _Erweitert_ → _Weiter_) und eine Obergrenze an Konten, die bei dieser Größe
-nicht greift. Das ist der richtige Tausch.
+bestätigt" → _Erweitert_ → _Weiter_). Der Screen kündigt ihn an, statt ihn zu überraschen.
 
-Sollte der Kreis je über „persönlich bekannt" hinauswachsen, ist das der Punkt, an dem die
-Verifizierung nachgeholt werden muss — und mit ihr eine öffentlich erreichbare
-Datenschutzerklärung, die heute bewusst zurückgestellt ist.
+Erledigt am 2026-08-12: neuer OAuth-Client in `ralia-484108`, alter gelöscht, Status auf
+_In Produktion_, `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_TOKEN_KEY` in den
+Supabase-Secrets.
 
-### 2.2 Betriebsarten — und die Scopes, die sie kosten
+---
 
-Der Nutzer bestimmt Richtung und Takt. Das sind zwei unabhängige Achsen:
+## 3. Ein Scope, nur lesend
 
-|                           | einmalig, beliebig wiederholbar | regelmäßig alle 10 min, pausierbar |
-| ------------------------- | ------------------------------- | ---------------------------------- |
-| **Import** Google → Ralia | ✔                               | ✔                                  |
-| **Sync** beidseitig       | ✔                               | ✔                                  |
-| **Export** Ralia → Google | ✔                               | ✔ — ergänzt, siehe unten           |
+```
+https://www.googleapis.com/auth/calendar.readonly
+```
 
-Fünf dieser sechs Felder sind ausdrücklich gefordert. Den regelmäßigen Export habe ich
-ergänzt, weil die Matrix sonst ein Loch hätte, das im Screen sofort auffällt: man dürfte
-den Import takten, den Export aber nicht. Er kostet nichts extra — dieselbe Maschinerie,
-ein anderer Eintrag. Sag Bescheid, wenn er raus soll.
+Das ist alles. Einmal beim Verbinden, keine Nachforderung, keine zweite Stufe.
 
-Genau eine Betriebsart ist zur Zeit aktiv. Ein Wechsel wirft die Zuordnungen nicht weg,
-er ändert nur, welche Richtungen der nächste Lauf ausführt.
+`calendar.readonly` erlaubt das Auflisten der Kalender und das Lesen ihrer Termine — genau
+den Umfang dieses Entwurfs. **Ralia kann in Google nichts anlegen, nichts ändern und nichts
+löschen.** Kein Zugriffsfehler auf unserer Seite kann fremde Google-Daten beschädigen.
 
-#### Zwei Scope-Stufen, und Ralia legt sein Ziel selbst an
+Das ist der eine Punkt, an dem der reduzierte Umfang die Sache echt besser macht und nicht
+nur kleiner: die frühere Fassung brauchte zwei Scope-Stufen und einen nachgeforderten
+Zustimmungsdialog.
 
-Ursprünglich sah dieser Entwurf vor, dass der Nutzer den Zielkalender frei wählen darf.
-Das ist am 2026-08-12 auf Anweisung des Produktverantwortlichen **gestrichen**, weil es den
-Umfang gesprengt hätte. Der Grund im Klartext:
+---
 
-`calendar.app.created` gibt Zugriff **ausschließlich auf Kalender, die die App selbst
-angelegt hat**. Ein Kalender, den der Nutzer in Google von Hand anlegt oder auswählt — auch
-einer namens „Ralia" —, ist damit unsichtbar. Eine freie Zielwahl hätte den vollen
-`calendar`-Scope erzwungen: Lese- und Schreibzugriff auf **alle** Kalender des Nutzers, für
-ein Feature, das genau einen davon braucht. Dazu kämen die Sonderfälle, die daran hängen —
-fremde Termine im Zielkalender, ein vom Nutzer gelöschter Zielkalender, ein umbenannter.
+## 4. OAuth: Authorization Code mit PKCE, serverseitig
 
-Entscheidung: **Ralia legt den Kalender „Ralia" immer selbst an.** Keine Zielwahl, kein
-Bestätigungsdialog über fremde Kalender, kein `calendar`-Scope. Was bleibt, sind zwei
-Stufen:
-
-| Stufe | Scope                  | Wofür                                                 | Was Ralia sieht           |
-| ----- | ---------------------- | ----------------------------------------------------- | ------------------------- |
-| 1     | `calendar.app.created` | Export und Sync auf den von Ralia angelegten Kalender | nur diesen einen Kalender |
-| 2     | `+ calendar.readonly`  | **Import** aus den übrigen Kalendern des Nutzers      | alle Kalender lesend      |
-
-Stufe 1 kommt beim Verbinden. Stufe 2 wird über einen zweiten Zustimmungsdialog
-nachgefordert, in dem Moment, in dem der Nutzer eine Betriebsart mit Import wählt — mit
-`include_granted_scopes=true`, damit Stufe 1 erhalten bleibt. Wer nur exportiert oder
-synct, bleibt dauerhaft auf Stufe 1.
-
-**Ralia hat damit auf keinen fremden Google-Kalender je Schreibzugriff.** Das ist die
-stärkste Zusicherung dieses Entwurfs und der Grund, warum die Streichung ihn nicht nur
-kleiner, sondern besser macht.
-
-Was der Nutzer verliert: er kann seine Ralia-Termine nicht in einen bestehenden Kalender
-schreiben lassen. Wer sie dort haben will, kann den Ralia-Kalender in Google einblenden —
-das kostet keinen Zugriff und löst dasselbe Problem.
-
-### 2.3 OAuth: Authorization Code mit PKCE, vollständig serverseitig
-
-Der Browser sieht nie ein Token. Ablauf:
+Der Browser sieht nie ein Token.
 
 1. Client ruft `POST /google-sync-api/oauth/start` (JWT-geschützt). Der Server erzeugt
    `state`, `code_verifier` und `nonce`, legt sie mit fünf Minuten Frist in
    `private.google_oauth_states` ab und antwortet mit der Google-Autorisierungs-URL.
-2. Der Nutzer autorisiert bei Google. Google leitet auf
-   `GET /google-sync-api/oauth/callback` um.
+2. Der Nutzer autorisiert. Google leitet auf `GET /google-sync-api/callback` um.
 3. Der Server prüft `state`, tauscht Code gegen Tokens, verschlüsselt das Refresh-Token,
    legt die Verbindung an und leitet zurück nach `/profil/sync`.
 
-`access_type=offline`, `prompt=consent` beim ersten Mal (sonst liefert Google kein
-Refresh-Token), `include_granted_scopes=true` für die inkrementelle Erweiterung.
+`access_type=offline` und `prompt=consent`, sonst liefert Google beim zweiten Mal kein
+Refresh-Token und der getaktete Lauf hätte nichts zu erneuern.
 
-Redirect-URI:
+Redirect-URI, exakt:
 `https://nyvripddydrzvfuateea.supabase.co/functions/v1/google-sync-api/callback`
 
-### 2.4 Token-Verwahrung
+**Token-Verwahrung.** Das Refresh-Token liegt AES-GCM-verschlüsselt in
+`private.google_connections`; der Schlüssel kommt aus dem Supabase-Secret
+`GOOGLE_TOKEN_KEY`. **Access-Tokens werden nicht gespeichert** — jeder Lauf holt sich eins
+aus dem Refresh-Token. Das kostet eine Anfrage und spart ein zweites Geheimnis mit
+Ablaufdatum samt der Fehlerklasse, die dazugehört.
 
-- Refresh-Token: AES-GCM-verschlüsselt in `private.google_connections`. Schlüssel aus dem
-  Supabase-Secret `GOOGLE_TOKEN_KEY`, nie im Repo, nie in einer Migration.
-- **Access-Tokens werden nicht gespeichert.** Jeder Lauf holt sich eins aus dem
-  Refresh-Token. Das kostet eine Anfrage und spart ein zweites Geheimnis mit Ablaufdatum
-  samt der Fehlerklasse, die dazugehört.
-- Der Client bekommt nie ein Token zu sehen, weder im Zustand noch im Netzwerkverkehr.
-- `google-sync-api` läuft mit `verify_jwt: true` für alle Nutzerrouten. Nur `oauth/callback`
-  und `run` sind ausgenommen — der Callback kommt von Google ohne JWT und prüft stattdessen
-  `state`, `run` kommt vom Cron und prüft ein Shared Secret im Header.
+---
 
-### 2.5 Zeitzone: eine je Verbindung, nicht je Termin
+## 5. Zeitzone: eine je Verbindung
 
-`events` speichert `date` + `time without time zone`. Das sind schwebende Ortszeiten ohne
-Zeitzone. Google verlangt für jeden Zeitpunkt eine Zone.
+`events` speichert schwebende Ortszeiten ohne Zone. Google liefert Zeitpunkte mit Versatz.
+Die Verbindung trägt deshalb **eine** Zeitzone (`google_connections.time_zone`), gelesen
+beim Verbinden aus den Google-Kalendereinstellungen, Rückfall `Europe/Berlin`.
 
-Entscheidung: die Verbindung trägt **eine** Zeitzone (`private.google_connections.time_zone`),
-gelesen beim Anlegen aus dem Google-Kalender selbst, Rückfall `Europe/Berlin`.
-
-- Export: die schwebende Ralia-Zeit wird in dieser Zone interpretiert.
-- Import: der Google-Zeitpunkt wird in diese Zone umgerechnet, dann wird der Versatz
-  fallengelassen.
+Beim Import wird Googles Zeitpunkt in diese Zone umgerechnet und der Versatz dann
+fallengelassen. Ein Termin, der in Google um 10:00 Uhr Berliner Zeit steht, steht in Ralia
+als `10:00`.
 
 Bewusst **keine** `time_zone`-Spalte auf `events`. Die würde jede Ansicht, jede
-Serien-Expansion und jede Zeile in Produktion berühren — eine Umstellung des ganzen
-Kalendermodells, nicht ein Sync-Feature. Für zwei Personen in einer Zeitzone ist der
-Gewinn null.
+Serien-Expansion und jede Zeile in Produktion berühren — eine Umstellung des
+Kalendermodells, nicht ein Import-Feature.
 
-Die Folge wird offen dokumentiert: legt jemand im Ausland in Google einen Termin an, kommt
-in Ralia die Wanduhrzeit der Verbindungszone an. Wenn das je stört, ist die Zeitzone je
-Termin ein eigenes Projekt.
+Offen dokumentierte Folge: legt jemand in einer anderen Zeitzone einen Termin an, kommt in
+Ralia die Wanduhrzeit der Verbindungszone an.
 
-### 2.6 Ganztägig: eine Ableitung, zwei Konventionen
+---
 
-Hier liegt ein bestehender Fehler, den der Sync sonst nach Google weiterträgt.
+## 6. Ganztägig: eine Ableitung, zwei Konventionen
 
-`database.types.ts` dokumentiert die 1.x-Ableitung als „`start_date === end_date &&
-isMidnight(start_time) && isMidnight(end_time)`" und behauptet, sie liege in `@ralia/core`.
-Sie liegt dort nicht — es gibt sie nirgends. Was es gibt, ist eine andere Regel, direkt in
-[CalendarScreen.tsx:523](../../../apps/app/src/screens/calendar/CalendarScreen.tsx#L523):
-`start_time === '00:00' && end_time === '23:59'`.
+`database.types.ts` dokumentiert eine Ableitung und behauptet, sie liege in `@ralia/core` —
+sie liegt dort nicht. Was existiert, ist eine abweichende Regel in `CalendarScreen.tsx:523`.
+Im Bestand stehen beide Konventionen nebeneinander:
 
-In der Produktionsdatenbank stehen beide Konventionen nebeneinander:
-
-| Muster          | Zeilen | Vom neuen Client als ganztägig erkannt |
+| Muster          | Zeilen | vom neuen Client als ganztägig erkannt |
 | --------------- | ------ | -------------------------------------- |
 | `00:00`–`23:59` | 363    | ja                                     |
 | `00:00`–`00:00` | 102    | **nein**                               |
 
-Die 102 Altzeilen zeigt der neue Client also als Termin von Mitternacht bis Mitternacht.
-Ohne Korrektur exportiert der Sync sie genau so nach Google.
+Die 11 mehrtägigen unter den 102 laufen über 2 bis 21 Tage — ein Termin über drei Wochen
+von Mitternacht bis Mitternacht ist ein Urlaub, kein Zeitfenster. Die Ganztags-Lesart ist
+für alle 102 richtig.
 
-Die 11 mehrtägigen unter ihnen laufen über 2 bis 21 Tage. Ein Termin über drei Wochen von
-Mitternacht bis Mitternacht ist ein Urlaub, kein Zeitfenster — die Ganztags-Lesart ist für
-alle 102 die richtige.
+Entscheidung, freigegeben am 2026-08-12:
 
-Entscheidung, als Vorarbeit vor der Sync-Implementierung, vom Produktverantwortlichen am
-2026-08-12 freigegeben:
-
-- `isAllDay(event)` wandert nach `@ralia/core` — dorthin, wo die Dokumentation sie ohnehin
-  verortet.
-- **Lesen** erkennt beide Konventionen: `00:00`–`23:59` **oder** `00:00`–`00:00`.
-- **Schreiben** erzeugt weiterhin nur `00:00`–`23:59`.
-- Keine Datenmigration. Die Altzeilen bleiben, wie sie sind; sie werden nur richtig
-  gelesen. Das ist umkehrbar, eine Migration wäre es nicht.
+- `isAllDay()` wandert nach `@ralia/core`.
+- **Lesen** erkennt beide Konventionen.
+- **Schreiben** — auch das des Imports — erzeugt nur `00:00`–`23:59`.
+- Keine Datenmigration. Die Altzeilen bleiben, wie sie sind, und werden nur richtig gelesen.
 
 Sichtbare Folge: die 102 Termine stehen künftig als „ganztägig" in der Oberfläche statt als
-„00:00–00:00". Kein Schreibvorgang, keine geänderte Zeile — nur die Anzeige stimmt wieder.
+„00:00–00:00". Kein Schreibvorgang, keine geänderte Zeile.
 
-**Der Vergleichs-Hash normalisiert ganztägig.** Sonst zerstört der Sync genau das, was diese
-Entscheidung bewahren will: Ralia exportiert die Altzeile als Googles `date`, der nächste
-Import liest sie zurück, die Schreibkonvention macht `00:00`–`23:59` daraus — und die
-Altzeile ist umgeschrieben, ohne dass jemand etwas geändert hätte. Der Hash geht deshalb
-über das abgeleitete Merkmal „ganztägig ja/nein" plus die Datumsgrenzen, **nicht** über die
-rohen Uhrzeiten. Beide Konventionen ergeben denselben Hash, der Rückweg erkennt „nichts
-geändert", und keine Zeile wird angefasst.
-
-Ganztägige Termine gehen als Googles `date` (statt `dateTime`) über die Leitung, mit
-exklusivem Enddatum — Googles Konvention, Ralias Enddatum ist inklusiv.
-
-### 2.7 Die 445 Alt-`google_event_id` werden ignoriert
-
-Sie stammen aus dem 1.x-Sync, der in den **primären** Google-Kalender geschrieben hat. v1
-schreibt in das Ziel aus 2.2 — im Vorgabeweg einen eigens angelegten Kalender, auf den
-primären hat Ralia auf Stufe 1 gar keinen Zugriff.
-
-Entscheidung: `events.google_event_id` wird von v1 **nicht gelesen und nicht geschrieben**.
-Die Spalte bleibt stehen — sie zu leeren würde Information vernichten, die sich nicht
-zurückholen lässt.
-
-Seit der Streichung der freien Zielwahl (2.2) ist das ohnehin die einzig mögliche Antwort:
-Ralia hat auf den primären Kalender gar keinen Zugriff mehr, weder lesend noch schreibend.
-Die Alt-IDs zeigen auf Termine, die für v1 unerreichbar sind.
-
-Folge, die vor dem ersten Verbinden bekannt sein muss: die alten Ralia-Termine liegen
-weiterhin im primären Google-Kalender und werden nicht mehr aktualisiert. Wer sie nicht
-doppelt sehen will, löscht sie in Google selbst. Ein Aufräum-Werkzeug dafür wäre nur mit
-Schreibzugriff auf den primären Kalender möglich — den will v1 ausdrücklich nicht haben.
-Das ist der Preis des kleinen Scopes und er ist ihn wert.
-
-### 2.8 Paar-Semantik: die Bindung hängt am Kalender, nicht am Nutzer
-
-Jeder Ralia-Nutzer verbindet sein eigenes Google-Konto und bekommt seinen eigenen
-Google-Kalender „Ralia". Beide Partner spiegeln denselben gemeinsamen Ralia-Kalender in
-zwei verschiedene Google-Kalender. Das ist gewollt: jeder sieht die gemeinsamen Termine in
-seinem eigenen Google.
-
-Die Bindung trägt deshalb **beides**: Verbindung _und_ `calendar_id`. Wechselt der
-Ralia-Kalender — Partner verbinden, Partner trennen —, wechselt die aktive Bindung mit.
-Alte Bindungen und ihre Mappings werden **deaktiviert, nicht gelöscht**, genau wie
-`calendar_memberships` es für die Mitgliedschaft macht. Ein Wiederverbinden desselben Paars
-findet dieselbe Bindung wieder vor und synchronisiert weiter, statt alles doppelt anzulegen.
-
-Beim Trennen wird zusätzlich der Google-Kalender **nicht** geleert. Die Historie bleibt in
-Google stehen; Ralia hört nur auf, sie anzufassen. Alles andere wäre eine Löschung, die der
-Nutzer nicht angeordnet hat.
-
-### 2.9 Änderungserkennung über Inhalts-Hashes, nicht über Zeitstempel
-
-Das ist die Entscheidung, an der Schleifenfreiheit hängt.
-
-Bei einem Paar läuft eine Änderung im Kreis: A ändert in Google → Import nach Ralia →
-Ralias `updated_at` springt → B exportiert nach B-Google → **und A exportiert auch**, denn
-für A hat sich Ralia seit dem letzten Abgleich ja auch geändert. Über Zeitstempel allein
-schriebe A die eigene Änderung nach Google zurück, Google bumpt das `updated`, der nächste
-Lauf importiert wieder — eine Schleife, die nie zur Ruhe kommt.
-
-Deshalb hält jedes Mapping eine **Baseline** aus zwei Hashes: `ralia_hash` und
-`google_hash`, jeweils über den normalisierten fachlichen Inhalt der zuletzt erfolgreich
-abgeglichenen Fassung. Zeitstempel und ETag dienen nur als billiger Vorfilter, entscheiden
-aber nichts.
-
-```
-ralia_geaendert  := hash(ralia_jetzt)  != mapping.ralia_hash
-google_geaendert := hash(google_jetzt) != mapping.google_hash
-```
-
-| Fall                                                  | Verhalten                                  |
-| ----------------------------------------------------- | ------------------------------------------ |
-| keins von beidem                                      | nichts tun                                 |
-| nur Ralia                                             | nach Google schreiben, Baseline neu setzen |
-| nur Google                                            | nach Ralia schreiben, Baseline neu setzen  |
-| beide, aber `hash(ralia_jetzt) == hash(google_jetzt)` | nichts schreiben, nur Baseline neu setzen  |
-| beide, Inhalte verschieden                            | **Konflikt** — keine Seite schreiben       |
-
-Der vierte Fall ist der, der die Schleife oben abschneidet: A exportiert nicht, weil Google
-schon denselben Inhalt hat.
-
-Der Hash geht über die fachlichen Felder, die v1 abgleicht — Name, Ort, Notizen, Start,
-Ende, Ganztags-Kennung, Serienregel —, ausdrücklich **nicht** über `belongs_to`,
-`category`, Erinnerungen oder IDs. Die haben in Google keine Entsprechung und dürfen keinen
-Schreibvorgang auslösen.
-
-### 2.10 Konflikte: der Nutzer entscheidet — in jeder Betriebsart gleich
-
-Kein Last-Write-Wins. Ein Konflikt erzeugt eine Zeile in `google_sync_conflicts` mit beiden
-Fassungen und lässt **beide Seiten unangetastet**. Der betroffene Termin wird für weitere
-automatische Läufe übersprungen, bis entschieden ist — sonst meldete jeder Lauf denselben
-Konflikt neu.
-
-Im Screen stehen zwei Knöpfe: _Ralia behalten_ und _Google behalten_. Die Entscheidung
-schreibt die gewählte Fassung auf die andere Seite, setzt die Baseline und schließt den
-Konflikt.
-
-**Diese Regel gilt auch im Import- und im Export-Modus**, obwohl die Namen etwas anderes
-nahelegen. „Import" heißt nicht „Google gewinnt": hat jemand einen importierten Termin in
-Ralia bearbeitet und Google denselben Termin ebenfalls, dann ist die Ralia-Bearbeitung
-Arbeit, die niemand angeordnet hat wegzuwerfen. Der Import überschreibt sie nicht, er meldet
-den Konflikt.
-
-Eine Betriebsart, in der stillschweigend eine Seite verliert, gibt es also nicht. Das kostet
-gelegentlich eine Rückfrage und spart die Fehlerklasse, bei der Termine ohne Zutun
-verschwinden — bei einem produktiv genutzten Kalender ist das kein Zweifelsfall.
-
-### 2.11 Serien: eng abbilden, Unabbildbares melden statt verstümmeln
-
-Ralia kennt `FREQ` in vier Stufen, ein Intervall und ein Enddatum. Google kennt RRULE
-vollständig. Die Abbildung ist deshalb asymmetrisch.
-
-**Ralia → Google** ist verlustfrei:
-`RRULE:FREQ={DAILY|WEEKLY|MONTHLY|YEARLY};INTERVAL={n}[;UNTIL={recurrence_end_date}]`
-
-**Google → Ralia** akzeptiert nur, was Ralia darstellen kann:
-
-| Google                                                               | Ralia                                       |
-| -------------------------------------------------------------------- | ------------------------------------------- |
-| genau eine `RRULE`, `FREQ` in den vier Stufen                        | übernommen                                  |
-| `INTERVAL`                                                           | übernommen                                  |
-| `UNTIL`                                                              | `recurrence_end_date`                       |
-| `COUNT`                                                              | zu `UNTIL` ausgerechnet — verlustfrei genug |
-| `BYDAY` mit genau dem Wochentag des Masters bei `FREQ=WEEKLY`        | akzeptiert, ist gleichbedeutend             |
-| alles Übrige (`BYSETPOS`, mehrere `BYDAY`, `RDATE`, mehrere `RRULE`) | **nicht importiert**                        |
-
-Nicht Importiertes wird nicht stillschweigend plattgeklopft und nicht als Einzeltermin
-angelegt. Es bekommt eine Zeile in `google_sync_changes` mit `skipped` und einem Grund, und
-der Screen zeigt es an: „3 Google-Serien nutzen Regeln, die Ralia nicht abbilden kann."
-
-Ausnahmen bilden aufeinander ab: Ralias `recurring_event_exceptions` mit
-`original_occurrence_date` entspricht Googles Instanz mit `recurringEventId` +
-`originalStartTime`. `is_deleted` entspricht `status: "cancelled"`, `override_event_data`
-entspricht einer geänderten Instanz. Master und Ausnahme bekommen getrennte Mappings.
-
-### 2.12 Löschungen nur im Sync-Modus
-
-| Betriebsart | Ralia gelöscht   | Google gelöscht       |
-| ----------- | ---------------- | --------------------- |
-| **Sync**    | löscht in Google | löscht in Ralia       |
-| **Import**  | —                | **wird nur gemeldet** |
-| **Export**  | löscht in Google | **wird nur gemeldet** |
-
-Im Sync-Modus gehen Löschungen durch: eine Löschung ist eine ausdrückliche Handlung, sie
-nicht durchzureichen wäre die größere Überraschung.
-
-Im Import-Modus **nicht**. Ein Knopf mit der Aufschrift „Importieren" darf keine Termine
-löschen — auch dann nicht, wenn er zum zweiten Mal gedrückt wird und in Google inzwischen
-etwas fehlt. Der Lauf meldet stattdessen „in Google gelöscht, in Ralia behalten" im
-Protokoll; wer wirklich löschen will, tut es in Ralia oder schaltet auf Sync.
-
-Dasselbe umgekehrt im Export: eine in Google gelöschte Kopie ist kein Auftrag, das Original
-in Ralia zu vernichten.
-
-Betroffen sind in allen Fällen ausschließlich Termine mit einem Mapping dieser Verbindung.
-Was Ralia nie angelegt hat, kann Ralia auch nicht löschen. Auf der Google-Seite kommt dazu,
-dass der Zielkalender ausschließlich Ralia gehört (2.2) — fremde Termine liegen dort gar
-nicht erst.
-
-### 2.13 Poller nach dem Muster des Reminder-Workers
-
-`pg_cron` alle zehn Minuten, `pg_net` ruft `google-sync-api/run` mit einem Shared Secret
-im Header. Genau das Muster, das `ralia-reminder-worker` seit Monaten fehlerfrei fährt —
-kein zweiter Mechanismus für dieselbe Aufgabe.
-
-Der Cron bearbeitet nur Bindungen mit `schedule = 'active'`. `paused` und `off` überspringt
-er, ohne den Zustand anzufassen: Pausieren hält den Takt an, es macht nichts rückgängig und
-wirft keine Zuordnung weg. Fortsetzen nimmt beim gespeicherten `syncToken` wieder auf — war
-er zwischenzeitlich zu alt, fällt der erste Lauf auf einen Vollabgleich zurück, was
-inhaltlich dasselbe Ergebnis liefert.
-
-Einmalige Läufe gehen über dieselbe Route mit `trigger = 'manual'`, unabhängig vom
-Zeitplan. Ein pausierter regelmäßiger Import schließt einen von Hand ausgelösten also nicht
-aus.
-
-Zwei Läufe derselben Bindung dürfen sich nie überlappen — ein Vorschlaghammer-Lock auf der
-Bindung (`locked_at`, wie `event_reminder_jobs` es schon macht) reicht; der zweite Lauf
-verwirft sich selbst statt zu warten.
-
-Der Lauf nutzt Googles `syncToken` je Bindung. Antwortet Google mit `410 Gone`, ist der
-Token verfallen: Vollabgleich, neuer Token. Fehler zählen auf der Verbindung hoch und
-verzögern exponentiell (10 min → 20 → 40 → … → max 6 h); ein erfolgreicher Lauf setzt
-zurück.
-
-### 2.14 `/config` wird nicht angefasst
-
-Google-Sync braucht von `app-api` nichts. Die Client-ID muss der Browser nie kennen, weil
-`oauth/start` die fertige Autorisierungs-URL zurückgibt; den Verbindungszustand liefert
-`public.google_connection_status()`. Es gibt deshalb weder einen neuen Config-Endpunkt noch
-eine Änderung am bestehenden.
-
-Damit hängt dieses Sub-Projekt **nicht** an der Versionierung von `app-api`
-([Release-Audit 2.3](../../2026-08-12-release-audit.md)). Zwei unabhängige Baustellen sind
-besser als eine Reihenschaltung.
-
-Die Felder `googleClientId` und `googleRedirectUri`, die `/config` heute noch ausliefert,
-gehören zum toten 1.x-Flow. Sie verschwinden, wenn `app-api` ohnehin angefasst wird — nicht
-vorher, und nicht als Teil dieses Projekts.
+Googles ganztägige Termine kommen als `start.date` / `end.date` mit **ausschließlichem**
+Ende; Ralias Enddatum ist einschließlich. Ohne den Tag Abzug bekäme jeder importierte
+Ganztags-Termin einen Tag zu viel.
 
 ---
 
-## 3. Datenmodell
+## 7. Die 445 Alt-`google_event_id` werden ignoriert
 
-Alles im Schema `private` — von PostgREST nicht erreichbar, nur die Funktion selbst kommt
-mit dem Service-Role-Key heran. Keine RLS-Policies, weil kein Client-Zugriff existiert.
+Sie stammen aus dem 1.x-Sync und zeigen in den primären Google-Kalender. `events.google_event_id`
+wird von v1 **nicht gelesen und nicht geschrieben**; die Zuordnung liegt ausschließlich in
+`private.google_event_mappings`. Die Spalte bleibt stehen — sie zu leeren würde Information
+vernichten, die sich nicht zurückholen lässt.
+
+Folge: importiert jemand denselben Kalender, aus dem 1.x einst exportiert hat, entstehen
+Dubletten der alten Termine. Wer das nicht will, wählt diesen Kalender nicht als Quelle.
+Der Screen weist beim Auswählen darauf hin.
+
+---
+
+## 8. Was der Import tut — und was nicht
+
+| Fall in Google                       | Was in Ralia passiert                              |
+| ------------------------------------ | -------------------------------------------------- |
+| neuer Termin                         | wird angelegt                                      |
+| Termin geändert                      | die Ralia-Kopie wird überschrieben                 |
+| Termin unverändert                   | nichts                                             |
+| Termin gelöscht                      | **nichts** — nur eine Zeile im Protokoll           |
+| Serie (Master oder Ausnahme)         | **nichts** — übersprungen und im Protokoll benannt |
+| Termin, den Ralia nie importiert hat | unerreichbar — es gibt keine Zuordnung             |
+
+### Importierte Termine gehören Google
+
+Das ist die Entscheidung, die das gesamte Konflikt-System einspart. Ändert sich ein Termin
+in Google, wird die Ralia-Kopie überschrieben — auch dann, wenn jemand sie in Ralia
+bearbeitet hat.
+
+Der Schaden ist eng begrenzt, und zwar durch die Zuordnungstabelle: **der Import fasst
+ausschließlich Termine an, die er selbst angelegt hat.** Ein von Hand erstellter Ralia-Termin
+hat keine Zuordnung und ist damit unerreichbar, egal was in Google passiert.
+
+Der Screen sagt das beim Einschalten in einem Satz. Eine Regel, die man erklären kann, ist
+besser als eine Konfliktoberfläche, die niemand bedienen will.
+
+### Gelöscht wird nie
+
+Verschwindet ein Termin in Google, bleibt die Ralia-Kopie stehen. Ein Knopf mit der
+Aufschrift „Importieren" darf keine Termine löschen — auch beim zehnten Lauf nicht.
+
+Das ist die eine Stelle, an der die Besitzregel oben nicht durchgezogen wird, und mit
+Absicht: ein Überschreiben ist wiederherstellbar, weil der Inhalt in Google steht. Eine
+Löschung ist es nicht.
+
+Das Protokoll meldet „in Google gelöscht, in Ralia behalten", damit die Abweichung sichtbar
+ist statt still.
+
+### Serien werden übersprungen, nicht verstümmelt
+
+Ralia kennt `FREQ` in vier Stufen, ein Intervall und ein Enddatum. Google kennt RRULE
+vollständig — `BYSETPOS`, mehrere `BYDAY`, `RDATE`, mehrere `RRULE`. Der überwiegende Teil
+davon lässt sich in Ralias Modell nicht darstellen.
+
+v1 importiert deshalb **keine** Serien. Erkennbar sind sie an Googles `recurrence`
+(der Master) beziehungsweise `recurringEventId` (eine Ausnahme). Beide werden übersprungen
+und je Termin als `skipped` mit Grund protokolliert; der Screen fasst zusammen: „4 Serien
+aus Google übersprungen."
+
+Nicht importiert wird auch nichts _stattdessen_ — keine plattgeklopften Einzeltermine, keine
+Teilserie. Ein fehlender Termin ist ein sichtbares Problem, ein falscher ein unsichtbares.
+
+---
+
+## 9. Änderungserkennung über den Inhalt, nicht über den ETag
+
+Naheliegend wäre, Googles `etag` zu speichern und bei Abweichung neu zu schreiben. Das wäre
+falsch, und zwar aus einem konkreten Grund: an `events` hängt der Trigger
+`trg_events_rebuild_reminder_jobs`. Jeder Schreibvorgang baut die Erinnerungs-Jobs des
+Termins neu. Googles ETag ändert sich auch bei Dingen, die Ralia gar nicht abbildet — einer
+geänderten Google-Erinnerung, einem Teilnehmerstatus. Der Import würde dann Zeilen
+umschreiben, die sich fachlich nicht geändert haben, und dabei Erinnerungs-Jobs neu bauen.
+
+Deshalb speichert jede Zuordnung einen **Fingerabdruck über genau die Felder, die v1
+abbildet** — Name, Ort, Notizen, Start, Ende, Ganztags-Kennung. Geschrieben wird nur, wenn
+dieser sich ändert.
+
+Der Fingerabdruck ist ein kanonischer String, kein Hash. Bei dieser Datenmenge kostet das
+nichts, ist ohne Krypto synchron testbar, und wenn ein Lauf sich einmal falsch verhält,
+steht lesbar im Feld, worauf verglichen wurde.
+
+### Feldabbildung
+
+| Google                                | Ralia                                                          |
+| ------------------------------------- | -------------------------------------------------------------- |
+| `summary`                             | `name` (leer → „Ohne Titel")                                   |
+| `location`                            | `location`                                                     |
+| `description`                         | `notes`                                                        |
+| `start.dateTime`                      | `start_date` + `start_time`, umgerechnet nach 5                |
+| `end.dateTime`                        | `end_date` + `end_time`                                        |
+| `start.date` / `end.date` (ganztägig) | `start_date`, `end_date` = `end.date` − 1 Tag, `00:00`–`23:59` |
+| —                                     | `belongs_to` = `both`                                          |
+| —                                     | `created_by` = der importierende Nutzer                        |
+| `attendees`, `reminders`, `colorId`   | **nicht übernommen**                                           |
+
+`belongs_to = 'both'` ist die Bedeutung, die ein von außen hereingereichter Termin in einem
+Paarkalender hat. Beim Überschreiben bleibt ein in Ralia geändertes `belongs_to` **erhalten**
+— es ist kein abgebildetes Feld, also fasst der Import es nach dem Anlegen nicht mehr an.
+
+---
+
+## 10. Betriebsarten
+
+Zwei, nicht sechs:
+
+|                     | Wirkung                                        |
+| ------------------- | ---------------------------------------------- |
+| **Jetzt laden**     | ein Lauf, beliebig oft wiederholbar            |
+| **Alle 10 Minuten** | getaktet, jederzeit pausierbar und fortsetzbar |
+
+_Jetzt laden_ ist auch während einer Pause bedienbar — Pausieren hält den Takt an, es
+schaltet nichts ab.
+
+Der Takt läuft über `pg_cron` und `pg_net` gegen `google-sync-api/run`, mit einem Shared
+Secret im Header. Dasselbe Muster, das `ralia-reminder-worker` seit Monaten fehlerfrei
+fährt.
+
+Je Quell-Kalender wird Googles `syncToken` mitgeführt. Antwortet Google mit `410 Gone`, ist
+er verfallen: Vollabgleich, neuer Token. Fehler zählen auf der Verbindung hoch und verzögern
+exponentiell (10 min → 20 → 40 → … → max 6 h); ein erfolgreicher Lauf setzt zurück.
+
+Zwei Läufe derselben Bindung dürfen sich nie überlappen. Ein Lock (`locked_at`) auf der
+Bindung reicht; der zweite Lauf verwirft sich selbst statt zu warten.
+
+---
+
+## 11. Datenmodell
+
+Alles im Schema `private` — von PostgREST nicht erreichbar, nur die Function kommt mit dem
+Service-Role-Key heran. Keine RLS-Policies, weil kein Client-Zugriff existiert.
 
 ```
 private.google_connections
@@ -428,283 +320,159 @@ private.google_connections
   refresh_token_encrypted, granted_scopes[],
   status ('active' | 'needs_reauth' | 'revoked'),
   failure_count, retry_after, last_run_at, created_at, updated_at
-  -- eine aktive Verbindung je Nutzer (partieller Unique-Index)
-
-private.google_calendar_bindings
-  id, connection_id, calendar_id (Ralia),
-  google_calendar_id (der von Ralia angelegte Kalender),
-  import_source_calendar_ids text[],   -- Quellen fuer den Import, Stufe 2
-  mode ('import' | 'export' | 'sync'),
-  schedule ('off' | 'active' | 'paused'),
-  first_real_run_allowed_at,           -- erst nach bestandenem Probelauf gesetzt
-  sync_token, locked_at, is_active, last_full_sync_at, last_run_at
-  -- eine aktive Bindung je (connection_id, calendar_id)
-  -- `mode` und `schedule` sind getrennt: einmalige Laeufe gehen in jeder
-  --   Betriebsart, auch waehrend `schedule = 'paused'`.
-  -- Kein `target_origin`: das Ziel ist immer der von Ralia angelegte Kalender (2.2).
-
-private.google_event_mappings
-  id, binding_id, ralia_event_id, google_event_id,
-  kind ('master' | 'exception' | 'single'),
-  ralia_exception_id, occurrence_date,
-  ralia_hash, google_hash, google_etag,
-  state ('synced' | 'conflicted' | 'deleted'),
-  last_synced_at
-  -- unique (binding_id, ralia_event_id, occurrence_date) NULLS NOT DISTINCT
-  --   Ohne NULLS NOT DISTINCT waere die Zusicherung wertlos: `occurrence_date`
-  --   ist bei Master und Einzeltermin NULL, und Postgres haelt NULLs im
-  --   Unique-Index standardmaessig fuer verschieden — zwei Mappings desselben
-  --   Events kaemen anstandslos durch, und genau das soll der Index verhindern.
-  -- unique (binding_id, google_event_id)
-
-private.google_sync_conflicts
-  id, mapping_id, detected_at, ralia_snapshot jsonb, google_snapshot jsonb,
-  resolution ('pending' | 'kept_ralia' | 'kept_google'), resolved_at, resolved_by
-
-private.google_sync_runs
-  id, connection_id, binding_id, started_at, finished_at,
-  trigger ('cron' | 'manual'),
-  mode ('import' | 'export' | 'sync'),
-  dry_run boolean,
-  imported, exported, skipped, conflicts, deletions_reported, error
-  -- trigger und mode sind zwei Fragen: WER hat ausgeloest und WAS lief.
-  --   In einer Spalte vermischt liesse sich „einmaliger Import" nicht von
-  --   „getakteter Import" unterscheiden, und genau das will das Protokoll zeigen.
-
-private.google_sync_changes
-  id, run_id, mapping_id, direction ('import' | 'export'),
-  action ('created' | 'updated' | 'deleted' | 'skipped'), reason, at
+  -- eine nicht widerrufene Verbindung je Nutzer
 
 private.google_oauth_states
-  state, user_id, code_verifier, nonce, redirect_to, expires_at
-  -- fünf Minuten Frist, nach Gebrauch gelöscht
+  state, user_id, code_verifier, nonce, redirect_to, expires_at, created_at
+  -- fuenf Minuten Frist, nach Gebrauch geloescht
+
+private.google_import_bindings
+  id, connection_id, calendar_id (Ralia),
+  schedule ('off' | 'active' | 'paused'),
+  first_real_run_allowed_at,       -- erst nach bestandenem Probelauf
+  locked_at, last_run_at, is_active, created_at
+  -- eine aktive Bindung je (connection_id, calendar_id)
+
+private.google_import_sources
+  id, binding_id, google_calendar_id, google_calendar_name,
+  sync_token, is_active, created_at
+  -- der syncToken haengt an der Quelle, nicht an der Bindung: Google
+  --   vergibt ihn je Kalender
+
+private.google_event_mappings
+  id, binding_id, source_id, google_event_id, ralia_event_id,
+  fingerprint, last_synced_at
+  -- unique (binding_id, google_event_id)
+  -- unique (ralia_event_id)  — ein Ralia-Termin gehoert hoechstens einem Import
+
+private.google_import_runs
+  id, connection_id, binding_id, trigger ('cron' | 'manual'), dry_run,
+  started_at, finished_at,
+  created, updated, unchanged, skipped, deletions_reported, error
+
+private.google_import_changes
+  id, run_id, mapping_id, action ('created' | 'updated' | 'skipped' | 'deleted_in_google'),
+  title, reason, at
 ```
 
 Was der Client sehen darf, kommt über `SECURITY DEFINER`-Funktionen in `public`, die auf
-`auth.uid()` prüfen und **nie** ein Token, einen `code_verifier` oder ein Secret
-zurückgeben:
+`auth.uid()` prüfen und nie ein Token zurückgeben:
 
 ```
-public.google_connection_status()   -> Zustand, E-Mail, Zeitzone, Scopes, letzter Lauf
-public.google_sync_conflicts_open() -> offene Konflikte mit beiden Fassungen
-public.google_sync_recent()         -> die letzten Läufe und Änderungen fürs Protokoll
+public.google_connection_status()   -> Zustand, E-Mail, Zeitzone, Takt, Probelauf-Freigabe
+public.google_import_recent()       -> die letzten 20 Laeufe fuers Protokoll
 ```
 
 ---
 
-## 4. Der Abgleich
+## 12. Der Lauf
 
-Ein Lauf je Bindung, in dieser Reihenfolge. Welche Schritte laufen, entscheidet `mode`:
+1. **Sperren.** `locked_at` setzen; ist es jünger als 15 Minuten, verwirft sich der Lauf.
+2. **Zugang.** Access-Token aus dem Refresh-Token. Bei `invalid_grant`: Verbindung auf
+   `needs_reauth`, Lauf beenden, Screen verlangt Neuanmeldung.
+3. **Je Quell-Kalender** `events.list` mit `syncToken`, sonst Vollabgleich ab heute minus
+   30 Tage.
+4. **Je Termin** entscheiden:
+   - Serie (hat `recurrence` oder `recurringEventId`) → `skipped`
+   - `status: "cancelled"` → `deleted_in_google`, nichts tun
+   - keine Zuordnung → Ralia-Termin anlegen, Zuordnung anlegen
+   - Zuordnung vorhanden, Fingerabdruck gleich → nichts
+   - Zuordnung vorhanden, Fingerabdruck verschieden → Ralia-Termin überschreiben
+5. **Abschließen.** `syncToken` je Quelle sichern, Lauf protokollieren, Fehlerzähler
+   zurücksetzen, Sperre lösen.
 
-1. **Sperren.** `locked_at` setzen. Ist die Bindung schon gesperrt, verwirft sich der Lauf.
-2. **Zugang herstellen.** Access-Token aus dem Refresh-Token. Bei `invalid_grant`:
-   Verbindung auf `needs_reauth`, Lauf beenden, im Screen zum Neuverbinden auffordern.
-3. **Ziel prüfen.** Existiert `google_calendar_id` nicht mehr — vom Nutzer in Google
-   gelöscht —, legt der Lauf einen neuen Kalender „Ralia" an, schreibt die Bindung um und
-   deaktiviert die Mappings der alten. Sonst zeigten sie auf Termine, die es nicht mehr
-   gibt.
-4. **Importieren** — nur bei `mode` in (`import`, `sync`). `events.list` mit `syncToken`,
-   sonst Vollabgleich. Je Google-Termin das Mapping suchen, Hashes vergleichen, nach 2.9
-   handeln. Löschungen nach 2.12.
-5. **Exportieren** — nur bei `mode` in (`export`, `sync`). Alle Ralia-Events der
-   `calendar_id`, die seit dem letzten Lauf berührt wurden, plus alle ohne Mapping. Hashes
-   vergleichen, nach 2.9 handeln.
-6. **Abschließen.** `syncToken` sichern, Lauf protokollieren, Fehlerzähler zurücksetzen,
-   Sperre lösen.
+**Probelauf.** Mit `dry_run` läuft alles bis Schritt 4 unverändert, aber statt zu schreiben
+entsteht nur die Protokollzeile mit der Handlung, die stattgefunden hätte. Weder `events`
+noch die Zuordnungen noch die `syncToken` werden angefasst.
 
-Import vor Export ist Absicht: so gewinnt bei gleichzeitiger Änderung nicht die Reihenfolge
-des Zufalls, sondern es entsteht ein sauberer Konflikt, den der Nutzer sieht.
+**Der erste Lauf einer Bindung ist zwingend ein Probelauf.** Erst ein fehlerfreier Probelauf
+setzt `first_real_run_allowed_at` und gibt _Jetzt laden_ frei.
 
-Der Lauf ist **idempotent**. Bricht er nach Schritt 4 ab, macht der nächste dort weiter,
-ohne etwas zu verdoppeln — dafür sorgen die beiden Unique-Indizes auf den Mappings. Genau
-das macht den einmaligen Import beliebig wiederholbar: der zweite Druck auf den Knopf legt
-nichts doppelt an, er holt nur, was seither dazugekommen ist.
-
-### Probelauf
-
-Jeder Lauf kann mit `dry_run = true` starten. Er tut dann alles bis auf den letzten Schritt:
-er liest beide Seiten, vergleicht, entscheidet — und schreibt statt der Änderung nur die
-Zeilen in `google_sync_changes`, die er geschrieben hätte. Weder Google noch Ralia werden
-angefasst, `syncToken` und Baselines bleiben stehen.
-
-**Der erste Lauf einer neuen Bindung ist zwingend ein Probelauf.** Erst wenn der Nutzer
-gesehen hat, was passieren würde, gibt der Screen den echten Lauf frei. Bei einem
-Kalender, in dem seit 2024 produktiv gearbeitet wird, ist das keine Bequemlichkeit.
-
-### Feldabbildung
-
-| Ralia                                  | Google                                   |
-| -------------------------------------- | ---------------------------------------- |
-| `name`                                 | `summary`                                |
-| `location`                             | `location`                               |
-| `notes`                                | `description`                            |
-| `start_date` + `start_time`            | `start.dateTime` (Zone aus 2.5)          |
-| `end_date` + `end_time`                | `end.dateTime`                           |
-| ganztägig (2.6)                        | `start.date` / `end.date`, Ende exklusiv |
-| `recurrence_*`                         | `recurrence: ["RRULE:…"]`                |
-| `belongs_to`, `category`, Erinnerungen | **nicht übertragen**                     |
-
-`belongs_to` bleibt bewusst draußen: Google kennt keine Paar-Zuordnung, und ein Import
-würde sie sonst auf einen Standardwert zurücksetzen. Beim Import bekommen neue Termine
-`belongs_to = 'both'` — das ist die Bedeutung, die ein von außen hereingereichter Termin in
-einem Paarkalender hat.
+Der Lauf ist **idempotent**: der zweite Druck auf den Knopf legt nichts doppelt an, dafür
+sorgen die Unique-Indizes auf den Zuordnungen.
 
 ---
 
-## 5. Der Screen
+## 13. Der Screen
 
 `SyncScreen.tsx` wird ersetzt. Die Fixtures `MOCK_SYNC_ACCOUNTS`, `MOCK_CALENDARS`,
 `MOCK_CONFLICT` und `MOCK_SYNC_LOG` verschwinden aus `mock/fixtures.ts`.
 
 Zustände:
 
-- **Nicht verbunden** — was passieren wird, welcher Zugriff erteilt wird, ein Knopf
-  _Mit Google verbinden_. Der Warnbildschirm aus 2.1 wird vorher erklärt, nicht
-  verschwiegen.
-- **Verbunden, noch keine Betriebsart** — die Auswahl aus 2.2.
-- **Verbunden, Betriebsart aktiv** — Konto, Zeitzone, Ziel, Betriebsart, letzter Lauf,
-  nächster Lauf.
-- **Konflikte** — je Konflikt beide Fassungen nebeneinander, _Ralia behalten_ /
-  _Google behalten_.
-- **Hinweise** — übersprungene Serien aus 2.11 und gemeldete, nicht ausgeführte Löschungen
-  aus 2.12, im Klartext.
-- **Protokoll** — die letzten Läufe mit Betriebsart, Auslöser, Zahlen und Fehlern.
-- **Neuanmeldung nötig** — wenn `needs_reauth`, mit Grund.
+- **Nicht verbunden** — was der Import tut, welcher Zugriff erteilt wird, Ankündigung des
+  Warnbildschirms aus 2, Knopf _Mit Google verbinden_.
+- **Verbunden, keine Quelle gewählt** — Liste der Google-Kalender mit Auswahl, dazu der
+  Hinweis aus 7 zum primären Kalender.
+- **Verbunden, Quellen gewählt** — Konto, Zeitzone, Quellen, letzter Lauf, _Probelauf
+  starten_, _Jetzt laden_ (gesperrt bis zum Probelauf), Schalter _Alle 10 Minuten_ mit
+  _Pausieren_ / _Fortsetzen_.
+- **Hinweise** — übersprungene Serien und in Google gelöschte Termine, im Klartext.
+- **Protokoll** — die letzten Läufe mit Zahlen und Fehlern; leer heißt `EmptyState`, nicht
+  erfundene Zeilen.
+- **Neuanmeldung nötig** — bei `needs_reauth`, mit Grund.
 
-### Die Betriebsart-Auswahl
+Beim Einschalten steht der Satz zur Besitzregel aus 8: „Termine aus Google werden bei jedem
+Lauf aktualisiert. Änderungen, die Du in Ralia daran machst, gehen dabei verloren. Deine
+eigenen Ralia-Termine bleiben unberührt."
 
-Zwei Entscheidungen, nicht sechs Knöpfe: erst **Richtung**, dann **Takt**.
-
-| Richtung                | zeigt zusätzlich                                                |
-| ----------------------- | --------------------------------------------------------------- |
-| Import — Google → Ralia | Auswahl der Quell-Kalender; fordert Stufe 2 an                  |
-| Sync — beidseitig       | den Ralia-Kalender als Ziel; Quellwahl wie beim Import; Stufe 2 |
-| Export — Ralia → Google | den Ralia-Kalender als Ziel; bleibt auf Stufe 1                 |
-
-Darunter der Takt: **Einmal jetzt** oder **Alle 10 Minuten**. Läuft ein Takt, steht an
-derselben Stelle _Pausieren_ beziehungsweise _Fortsetzen_; _Einmal jetzt_ bleibt daneben
-immer bedienbar, auch während der Pause.
-
-Jede Richtung nennt vor dem ersten Lauf im Klartext, was sie tut und was sie nicht tut —
-insbesondere die Löschregel aus 2.12, weil sie der überraschendste Unterschied zwischen den
-drei Richtungen ist.
-
-Die Richtungsauswahl der Attrappe (`both` / `toGoogle` / `fromGoogle`) hatte dieselben drei
-Werte und keine Wirkung. Sie wird nicht wiederverwendet, sondern ersetzt: die neue Auswahl
-schreibt `mode` und `schedule` auf die Bindung und ist damit das, was den Lauf tatsächlich
-steuert.
-
-Die Richtungsauswahl der Attrappe (`both` / `toGoogle` / `fromGoogle`) entfällt. v1 ist
-bidirektional; wer eine Richtung will, benutzt Import oder Export von Hand. Ein
-Dauerzustand „nur eine Richtung" verdoppelt die Zustandsmatrix des Abgleichs für einen
-Bedarf, den bei zwei Nutzern niemand geäußert hat.
+Die Richtungsauswahl der Attrappe (`both` / `toGoogle` / `fromGoogle`) entfällt ersatzlos —
+es gibt nur noch eine Richtung.
 
 ---
 
-## 6. Vorarbeiten
+## 14. Vorarbeiten
 
-In dieser Reihenfolge, jede für sich abgeschlossen und testbar:
-
-1. ~~**Neuer OAuth-Client**, alter gelöscht, Status _In Produktion_, drei Supabase-Secrets.~~
-   **Erledigt am 2026-08-12.** Client `1061137684494-2up1uu…` in `ralia-484108`, Redirect-URI
-   passt, alter Client gelöscht, `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` /
-   `GOOGLE_TOKEN_KEY` in den Supabase-Secrets hinterlegt.
-2. **`clearAuthData()` räumt `googleSyncState`.** Ein Legacy-Schlüssel, der die Abmeldung
-   überlebt. Muss weg, bevor neuer Zustand entsteht.
-3. **`isAllDay()` nach `@ralia/core`**, beide Konventionen lesend (2.6). Behebt nebenbei die
-   102 falsch dargestellten Altzeilen.
-4. **Zeit-Helfer** für die Umrechnung schwebender Ortszeit ↔ zonierter Google-Zeit,
-   framework-frei und rein testbar in `packages/core`.
-5. **Datenbank-Sicherung** unmittelbar vor dem ersten echten Lauf gegen den produktiven
-   Kalender. Der Probelauf ersetzt sie nicht — er beweist, was ein Lauf täte, nicht dass
-   der echte Lauf fehlerfrei ist.
+1. ~~Neuer OAuth-Client, alter gelöscht, Status _In Produktion_, drei Secrets.~~
+   **Erledigt am 2026-08-12.**
+2. `clearAuthData()` räumt `googleSyncState` — ein Legacy-Schlüssel, der die Abmeldung
+   überlebt.
+3. `isAllDay()` nach `@ralia/core`, beide Konventionen lesend (6).
+4. **Datenbank-Sicherung** unmittelbar vor dem ersten echten Lauf gegen den produktiven
+   Kalender. Der Probelauf ersetzt sie nicht.
 
 ---
 
-## 7. Teststrategie
+## 15. Teststrategie
 
-Der Abgleich ist die schwierige Stelle, und er ist rein. Deshalb liegt er als Funktionen in
-`packages/core/src/google/` — ohne Netz, ohne Supabase, ohne DOM:
+Rein, ohne Netz, in `packages/core/src/google/`:
 
-- **Entscheidungstabelle aus 2.9** — jeder der fünf Fälle ein Test, plus der Paar-Kreislauf
-  über drei Läufe mit dem Nachweis, dass der dritte Lauf nichts mehr schreibt.
-- **RRULE in beide Richtungen** — die Tabelle aus 2.11 Zeile für Zeile, inklusive der
-  abgelehnten Fälle mit ihrem Grund.
-- **Ganztägig** — beide Konventionen hinein, `date` mit exklusivem Ende hinaus, und zurück.
-- **Zeitzonen** — Sommer-/Winterzeit-Grenze, weil die Umrechnung dort schiefgeht oder nie.
-- **Ausnahmen** — Löschung und Änderung einer Instanz in beide Richtungen.
-- **Betriebsarten** — je Richtung, dass die nicht vorgesehene Seite unberührt bleibt; die
-  Löschmatrix aus 2.12 Zeile für Zeile; und der zweimal gedrückte einmalige Import, der
-  beim zweiten Mal nichts verdoppelt.
-- **Probelauf** — derselbe Fall einmal mit und einmal ohne `dry_run`; die Entscheidungen
-  müssen identisch sein, die Schreibvorgänge im ersten Fall null.
+- **Zeitumrechnung** — Sommer- und Winterzeit, die Umstellungsnacht, eine andere Zone als
+  die der Verbindung.
+- **Ganztägig** — Googles ausschließliches Ende zurück auf Ralias einschließliches, ein-
+  und mehrtägig.
+- **Fingerabdruck** — gleiche Felder gleicher Wert; ein geänderter Titel ändert ihn; ein
+  geänderter ETag ohne Feldänderung ändert ihn **nicht**.
+- **Serienerkennung** — Master, Ausnahme, Einzeltermin.
 
-Netzgebunden, gegen einen nachgebauten Google-Client:
+Gegen einen nachgebauten Google-Klienten:
 
 - `410 Gone` → Vollabgleich, `401` → Neuanmeldung, `403 rateLimitExceeded` → Backoff.
-- Abbruch nach dem Import → der nächste Lauf verdoppelt nichts.
-- Zwei gleichzeitige Läufe derselben Bindung → der zweite verwirft sich.
+- Zweimal derselbe Lauf → beim zweiten Mal `created = 0`.
+- Zwei gleichzeitige Läufe → der zweite verwirft sich.
 
-Live, mit den beiden freigegebenen Testkonten und ausschließlich `QA:`-Datensätzen: die
-Sequenz aus dem Handoff, Punkt 8.
-
-**Der produktive Kalender ist kein Testgelände.** Alles bis einschließlich des ersten echten
-Laufs läuft gegen die Testkonten. Erst wenn die Sequenz dort vollständig durch ist, wird
-gegen den produktiven Kalender verbunden — und dort beginnt es wieder mit dem Probelauf.
+Live nur mit den freigegebenen Testkonten und `QA:`-Datensätzen. **Der produktive Kalender
+ist kein Testgelände**: dort beginnt es mit Sicherung und Probelauf.
 
 ---
 
-## 8. Abnahmekriterien
+## 16. Abnahmekriterien
 
-1. Verbinden allein löst **nichts** aus. Ohne gewählte Betriebsart läuft kein Abgleich.
-2. Der erste Lauf einer Bindung ist ein Probelauf und schreibt nachweislich nichts —
-   weder in Google noch in Ralia, `syncToken` und Baselines unverändert.
-3. **Einmaliger Import** holt neue Google-Termine nach Ralia, exportiert nichts, löscht
-   nichts. Zweimal gedrückt legt er nichts doppelt an.
-4. **Regelmäßiger Import** läuft getaktet; _Pausieren_ stoppt ihn binnen eines Zyklus;
-   _Fortsetzen_ nimmt ihn ohne Dubletten wieder auf; _Einmal jetzt_ funktioniert auch
-   während der Pause.
-5. **Einmaliger und regelmäßiger Sync** gleichen beide Richtungen ab.
-6. **Export** legt beim ersten Lauf einen Google-Kalender „Ralia" an und schreibt
-   ausschließlich dorthin. Löscht der Nutzer ihn in Google, legt der nächste Lauf einen
-   neuen an, statt zu scheitern.
-7. Ein Wechsel der Betriebsart wirft keine Zuordnung weg — nach dem Wechsel entstehen keine
-   Dubletten.
-8. Eine Serie geht mit Regel und Enddatum hinüber; eine gelöschte Instanz bleibt gelöscht.
-9. Eine Google-Serie mit `BYSETPOS` wird nicht importiert und im Screen benannt.
-10. Änderung auf beiden Seiten erzeugt einen Konflikt; keine Seite wird überschrieben; beide
-    Knöpfe führen zum jeweils erwarteten Ergebnis. **Das gilt auch im Import-Modus.**
-11. Löschungen: im Sync-Modus in beide Richtungen; im Import- und Export-Modus wird eine
-    Google-Löschung nur gemeldet und nichts in Ralia gelöscht.
-12. Bei einem Paar erzeugt eine Google-Änderung von A keinen Schreibvorgang zurück nach
-    A-Google. Nachweisbar am Protokoll: nachdem die Änderung bei beiden Partnern angekommen
-    ist, schreiben die Folgeläufe nichts mehr.
-13. Trennen stoppt den Abgleich, ohne den Google-Kalender zu leeren. Wiederverbinden nimmt
-    den Abgleich ohne Dubletten wieder auf.
-14. Die 102 Altzeilen aus 2.6 werden durch einen vollen Hin- und Rückweg **nicht
-    umgeschrieben** — `start_time`/`end_time` sind hinterher unverändert.
-15. Kein Token verlässt je den Server — nachweisbar an den Antworten der drei
-    `public`-Funktionen.
-16. `npm run verify` grün.
-
----
-
-## 9. Offene Punkte
-
-1. **Regelmäßiger Export** — von mir ergänzt, um das Loch in der Matrix aus 2.2 zu
-   schließen. Gefordert waren fünf Betriebsarten, gebaut werden sechs. Kostet nichts extra;
-   sag Bescheid, wenn er raus soll.
-2. **Die freie Zielwahl ist gestrichen** (2.2). Ralia legt seinen Kalender selbst an und
-   bekommt nie Schreibzugriff auf einen fremden. Wer die Ralia-Termine in einem bestehenden
-   Kalender sehen will, blendet den Ralia-Kalender in Google ein — das kostet keinen
-   Zugriff.
-
-## 10. Erledigt
-
-- Neuer OAuth-Client, alter gelöscht, Status _In Produktion_, drei Secrets in Supabase —
-  2026-08-12.
-- Die 445 Alttermine (2.7) bleiben im primären Google-Kalender liegen — bestätigt.
-- Die Ganztags-Korrektur (2.6) darf die Anzeige der 102 Altzeilen ändern — freigegeben.
-- Der Kalender wird produktiv von mehreren Personen genutzt. Das ändert den Entwurf nicht,
-  aber es bestimmt die Vorsicht: Probelaufpflicht, Sicherung, und die Live-QA gegen die
-  Testkonten statt gegen den produktiven Kalender.
+1. Verbinden allein löst nichts aus; ohne gewählte Quelle läuft kein Import.
+2. Der erste Lauf ist ein Probelauf und schreibt nachweislich nichts — `events` unverändert,
+   keine Zuordnung, kein `syncToken`.
+3. _Jetzt laden_ holt neue Google-Termine nach Ralia. Zweimal gedrückt legt es nichts
+   doppelt an.
+4. Ein in Google geänderter Termin wird beim nächsten Lauf in Ralia aktualisiert.
+5. Ein in Google **unveränderter** Termin erzeugt keinen Schreibvorgang — nachweisbar an
+   `events.updated_at`, das gleich bleibt.
+6. Ein in Google gelöschter Termin bleibt in Ralia stehen und erscheint im Protokoll.
+7. Eine Google-Serie wird nicht importiert und im Screen benannt.
+8. Ein von Hand in Ralia erstellter Termin wird von keinem Lauf angefasst.
+9. Ganztägige Google-Termine kommen mit dem richtigen Enddatum an, ein- und mehrtägig.
+10. Ein Termin um 10:00 Berliner Zeit steht in Ralia als `10:00`, auch über die
+    Zeitumstellung hinweg.
+11. _Alle 10 Minuten_ läuft getaktet; _Pausieren_ stoppt binnen eines Zyklus; _Jetzt laden_
+    geht auch während der Pause.
+12. Kein Token verlässt je den Server.
+13. `npm run verify` grün.
