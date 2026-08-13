@@ -203,6 +203,32 @@ describe('usePushRegistration', () => {
     expect(result.current.state).toBe('off');
   });
 
+  it('bleibt bedienbar, wenn unsubscribe() nach erfolgreichem deactivate() wirft', async () => {
+    // Ein anderer Pfad als "subscribe() selbst wirft" oben: hier gelingt
+    // deactivate() (die Datenbank-Zeile ist bereits inaktiv), aber das
+    // Browser-Abo laesst sich nicht abmelden. Kein throw darf disable()
+    // trotzdem verlassen.
+    const subscription = fakeSubscription('https://push.example/stuck');
+    subscription.unsubscribe = vi.fn(async () => {
+      throw new Error('unsubscribe fehlgeschlagen');
+    });
+    stubServiceWorker({
+      pushManager: { getSubscription: vi.fn(async () => subscription), subscribe: vi.fn() },
+    });
+    stubPushManagerGlobal();
+
+    const deactivate = vi.fn(async () => undefined);
+    const { result } = renderPush(FAKE_VAPID_KEY, { deactivate });
+
+    await act(async () => {
+      await result.current.disable();
+    });
+
+    expect(deactivate).toHaveBeenCalledWith('https://push.example/stuck');
+    expect(subscription.unsubscribe).toHaveBeenCalled();
+    expect(result.current.state).toBe('on');
+  });
+
   it('bleibt bedienbar, wenn subscribe wirft', async () => {
     const subscribeMock = vi.fn(async () => {
       throw new Error('AbortError');
@@ -221,5 +247,48 @@ describe('usePushRegistration', () => {
 
     expect(result.current.state).toBe('off');
     expect(repo.save).not.toHaveBeenCalled();
+  });
+
+  it('legt bei einem fehlgeschlagenen save() kein zweites Abo an, sondern verwendet beim naechsten Versuch das vorhandene', async () => {
+    // Ein anderer Pfad als "subscribe() selbst wirft" oben: hier gelingt
+    // subscribe() im Browser, aber das Speichern in der Datenbank schlaegt
+    // fehl. Ein zweiter enable()-Versuch darf kein zweites Browser-Abo
+    // anlegen -- getSubscription() liefert ab jetzt das erste zurueck, genau
+    // wie ein echter Browser es taete.
+    const subscription = fakeSubscription('https://push.example/retry');
+    let subscribed = false;
+    const getSubscriptionMock = vi.fn(async () => (subscribed ? subscription : null));
+    const subscribeMock = vi.fn(async () => {
+      subscribed = true;
+      return subscription;
+    });
+    stubServiceWorker({
+      pushManager: { getSubscription: getSubscriptionMock, subscribe: subscribeMock },
+    });
+    stubPushManagerGlobal();
+    stubNotification('granted');
+
+    let saveShouldFail = true;
+    const save = vi.fn(async () => {
+      if (saveShouldFail) throw new Error('Netzwerkfehler');
+    });
+    const { result } = renderPush(FAKE_VAPID_KEY, { save });
+
+    await act(async () => {
+      await result.current.enable();
+    });
+    expect(result.current.state).toBe('off');
+    expect(subscribeMock).toHaveBeenCalledTimes(1);
+
+    saveShouldFail = false;
+    await act(async () => {
+      await result.current.enable();
+    });
+
+    // Immer noch nur ein Abo: das zweite enable() hat das vorhandene ueber
+    // getSubscription() wiederverwendet statt subscribe() erneut aufzurufen.
+    expect(subscribeMock).toHaveBeenCalledTimes(1);
+    expect(save).toHaveBeenCalledTimes(2);
+    expect(result.current.state).toBe('on');
   });
 });

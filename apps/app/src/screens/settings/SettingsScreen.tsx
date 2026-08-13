@@ -118,20 +118,36 @@ export function SettingsScreen(): React.JSX.Element {
    * frueheren Sitzung noch `true` ist. Ohne die Uebergangs-Pruefung wuerde
    * das blosse Oeffnen dieses Screens die Praeferenz still auf `false`
    * zuruecksetzen.
+   *
+   * `pending` haelt einen erkannten Uebergang fest, getrennt von `lastState`:
+   * faellt der Uebergang genau in ein Fenster, in dem `preferences` noch
+   * `null` ist (AppPreferencesProvider laedt noch), darf die Schreibchance
+   * nicht verloren gehen, nur weil `lastState` in der selben Runde schon auf
+   * den neuen Wert vorgerueckt ist. `pending` bleibt deshalb so lange
+   * `true`, bis tatsaechlich geprueft (und noetigenfalls geschrieben) wurde
+   * -- nicht nur, bis `state` sich das naechste Mal aendert.
    */
-  const previousPushStateRef = useRef(push.state);
+  const pushSyncRef = useRef({ lastState: push.state, pending: false });
   useEffect(() => {
-    const previousPushState = previousPushStateRef.current;
-    previousPushStateRef.current = push.state;
-    if (previousPushState !== 'working' || !preferences) return;
+    const sync = pushSyncRef.current;
+    const wasWorking = sync.lastState === 'working';
+    sync.lastState = push.state;
+    if (wasWorking && push.state !== 'working') sync.pending = true;
+    if (!sync.pending || !preferences) return;
     if (push.state === 'on' && preferences.notification_settings.pushEnabled !== true) {
+      sync.pending = false;
       void savePreferences({
         notification_settings: { ...preferences.notification_settings, pushEnabled: true },
       });
     } else if (push.state === 'off' && preferences.notification_settings.pushEnabled === true) {
+      sync.pending = false;
       void savePreferences({
         notification_settings: { ...preferences.notification_settings, pushEnabled: false },
       });
+    } else {
+      // state stimmt schon mit der Praeferenz ueberein (oder ist keins von
+      // beiden, z.B. 'denied') -- nichts abzugleichen, die Fahne ist erledigt.
+      sync.pending = false;
     }
   }, [push.state, preferences, savePreferences]);
 

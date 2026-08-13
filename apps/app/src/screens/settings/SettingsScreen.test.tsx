@@ -18,18 +18,19 @@ import {
 import { AppPreferencesContext, type AppPreferencesValue } from '../../preferences/AppPreferencesProvider.js';
 import { SettingsScreen } from './SettingsScreen.js';
 
-function renderScreen(
+/**
+ * Der Elementbaum allein, ohne `render()` -- fuer `rerender()`, das denselben
+ * Baum mit neuen Provider-Werten braucht (siehe der Race-Test fuer
+ * `pushEnabled`). Gleicher Komponentenbaum an gleicher Position: React
+ * behaelt die vorhandenen Instanzen (und damit deren State, z.B. `push.state`)
+ * bei einem `rerender()` bei, statt sie neu zu montieren.
+ */
+function screenTree(
   auth: Partial<AuthContextValue> = {},
   preferences: Partial<AppPreferencesValue> = {},
   data: Partial<DataServices> = {},
 ) {
-  vi.stubGlobal('matchMedia', () => ({
-    matches: false,
-    media: '',
-    addEventListener() {},
-    removeEventListener() {},
-  }));
-  return render(
+  return (
     <MemoryRouter>
       <ThemeProvider>
         <I18nProvider>
@@ -61,8 +62,22 @@ function renderScreen(
           </ToastProvider>
         </I18nProvider>
       </ThemeProvider>
-    </MemoryRouter>,
+    </MemoryRouter>
   );
+}
+
+function renderScreen(
+  auth: Partial<AuthContextValue> = {},
+  preferences: Partial<AppPreferencesValue> = {},
+  data: Partial<DataServices> = {},
+) {
+  vi.stubGlobal('matchMedia', () => ({
+    matches: false,
+    media: '',
+    addEventListener() {},
+    removeEventListener() {},
+  }));
+  return render(screenTree(auth, preferences, data));
 }
 
 /**
@@ -353,6 +368,40 @@ describe('SettingsScreen', () => {
 
     expect(screen.getByText(/Browser-Einstellungen/)).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Push-Erinnerungen' })).not.toBeChecked();
+  });
+
+  it('schreibt pushEnabled nach, wenn die Praeferenzen erst nach dem Abo eintreffen', async () => {
+    /*
+     * Regression: der Sync-Effekt hielt den Uebergang bisher in einem Ref
+     * fest, das er im selben Durchlauf vorschob -- auch dann, wenn
+     * `preferences` in genau diesem Durchlauf noch null war
+     * (AppPreferencesProvider laedt noch). Die Schreibchance war damit fuer
+     * diesen Zyklus verloren, nicht nur verzoegert: der Schalter zeigte
+     * „aus", obwohl ein Abo real registriert war, bis zum naechsten Klick.
+     */
+    stubPushSupport('granted');
+    const save = vi.fn(async () => undefined);
+    const push: PushRepo = { save, deactivate: vi.fn(async () => undefined), hasActive: vi.fn(async () => false) };
+    const update = vi.fn(async () => true);
+
+    // AppPreferencesProvider laedt noch: preferences ist null.
+    const { rerender } = renderScreen({}, { preferences: null, loading: true, update }, { push });
+
+    await userEvent.click(screen.getByRole('switch', { name: 'Push-Erinnerungen' }));
+
+    await waitFor(() => expect(save).toHaveBeenCalled());
+    // state ist jetzt 'on', aber preferences war beim Uebergang noch null --
+    // ohne die Korrektur waere die Schreibchance jetzt schon verbraucht.
+    expect(update).not.toHaveBeenCalled();
+
+    // Jetzt treffen die Praeferenzen ein.
+    rerender(screenTree({}, { update }, { push }));
+
+    await waitFor(() =>
+      expect(update).toHaveBeenCalledWith(
+        expect.objectContaining({ notification_settings: expect.objectContaining({ pushEnabled: true }) }),
+      ),
+    );
   });
 });
 
