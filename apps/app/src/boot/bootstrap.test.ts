@@ -202,7 +202,7 @@ describe('runBoot', () => {
 
   it('meldet den eigenen Service Worker nicht ab', async () => {
     const eigener = {
-      scriptURL: 'https://ralia.test/sw.js',
+      scriptURL: 'https://ralia.test/ralia-push-sw.js',
       unregister: vi.fn(async () => true),
     };
     const fremder = {
@@ -221,12 +221,36 @@ describe('runBoot', () => {
     expect(eigener.unregister).not.toHaveBeenCalled();
   });
 
+  it('meldet einen Service Worker unter dem alten Namen sw.js ab (Kollision mit Ralia 1.x, I3)', async () => {
+    // Ralia 1.x registrierte am selben Origin exakt
+    // navigator.serviceWorker.register('/sw.js') (Ralia_Opus/public/
+    // index.html). Vor der Umbenennung auf RALIA_SW_PATH =
+    // 'ralia-push-sw.js' waere dieser Registrierung mit unserer eigenen
+    // Ausnahme kollidiert, und der cachende Alt-SW waere dauerhaft
+    // verschont worden -- genau der Ausfall, gegen den
+    // clearLegacyServiceWorker() geschrieben wurde. Mit dem neuen,
+    // eindeutigen Namen ist das ausgeschlossen: '/sw.js' endet nicht mehr
+    // auf `/${RALIA_SW_PATH}`.
+    const legacyUnregister = vi.fn(async () => true);
+    await runBoot({
+      ...baseDeps(),
+      storage: memoryStorage(),
+      loadRuntimeConfig: async () => okConfig,
+      serviceWorker: {
+        getRegistrations: async () => [
+          { scriptURL: 'https://ralia.test/sw.js', unregister: legacyUnregister },
+        ],
+      },
+    });
+    expect(legacyUnregister).toHaveBeenCalled();
+  });
+
   it('verschont den eigenen SW auch ueber das echte navigator.serviceWorker, wenn er aktiv ist', async () => {
     const eigenerUnregister = vi.fn(async () => true);
     const fremderUnregister = vi.fn(async () => true);
     stubNativeServiceWorker([
       {
-        active: { scriptURL: 'https://ralia.test/sw.js' },
+        active: { scriptURL: 'https://ralia.test/ralia-push-sw.js' },
         waiting: null,
         installing: null,
         unregister: eigenerUnregister,
@@ -253,7 +277,7 @@ describe('runBoot', () => {
         // Noch nicht aktiv — z.B. kurz nach register(), bevor der SW
         // aktiviert hat. scriptURL sitzt in diesem Moment nur auf waiting.
         active: null,
-        waiting: { scriptURL: 'https://ralia.test/sw.js' },
+        waiting: { scriptURL: 'https://ralia.test/ralia-push-sw.js' },
         installing: null,
         unregister: eigenerUnregister,
       },
@@ -279,7 +303,7 @@ describe('runBoot', () => {
         // Noch frueher als waiting: der Installations-Schritt laeuft noch.
         active: null,
         waiting: null,
-        installing: { scriptURL: 'https://ralia.test/sw.js' },
+        installing: { scriptURL: 'https://ralia.test/ralia-push-sw.js' },
         unregister: eigenerUnregister,
       },
       {

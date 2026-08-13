@@ -77,8 +77,19 @@ function message(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/** Der eigene Service Worker. Nur fuer Push, ohne Cache. */
-export const RALIA_SW_PATH = 'sw.js';
+/**
+ * Der eigene Service Worker. Nur fuer Push, ohne Cache.
+ *
+ * Eindeutig benannt, nicht "sw.js": Ralia 1.x registrierte am selben Origin
+ * exakt `navigator.serviceWorker.register('/sw.js')` (Ralia_Opus/public/
+ * index.html). Mit dem Namen "sw.js" haette die Ausnahme unten (die den
+ * eigenen SW von der Abmeldung verschont) den cachenden Alt-SW dauerhaft
+ * mitverschont, sobald er einmal auf einem Geraet registriert war -- genau
+ * der Ausfall, gegen den clearLegacyServiceWorker() ueberhaupt geschrieben
+ * wurde. Ein Name, den kein Vorgaenger je benutzt hat, kann damit nicht
+ * kollidieren.
+ */
+export const RALIA_SW_PATH = 'ralia-push-sw.js';
 
 /**
  * Raeumt den Service Worker der Vorgaengerversion ab.
@@ -116,7 +127,10 @@ async function clearLegacyServiceWorker(deps: BootDeps, warnings: string[]): Pro
       for (const registration of await serviceWorker.getRegistrations()) {
         // Der eigene SW bleibt stehen. Ohne diese Ausnahme meldet der Boot ihn
         // bei jedem Start ab, und Push waere nach jedem Reload tot.
-        if (registration.scriptURL?.endsWith(`/${RALIA_SW_PATH}`)) continue;
+        // Kein optionales Verketten (`?.`) noetig: das Interface oben
+        // schreibt `scriptURL: string` vor, und der Adapter fuer den nativen
+        // Zweig liefert notfalls '' -- nie etwas Nullisches.
+        if (registration.scriptURL.endsWith(`/${RALIA_SW_PATH}`)) continue;
         await registration.unregister();
       }
     }

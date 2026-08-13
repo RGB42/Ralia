@@ -70,10 +70,11 @@ export default tseslint.config(
     },
   },
   {
-    // sw.js laeuft im Service-Worker-Kontext (self, keine DOM-/Node-Globals)
-    // und ist bewusst reines JavaScript, kein TypeScript — der ts/tsx-Block
-    // oben greift hier nicht, ohne diese Globals meldet no-undef `self`.
-    files: ['apps/app/public/sw.js'],
+    // ralia-push-sw.js laeuft im Service-Worker-Kontext (self, keine
+    // DOM-/Node-Globals) und ist bewusst reines JavaScript, kein TypeScript —
+    // der ts/tsx-Block oben greift hier nicht, ohne diese Globals meldet
+    // no-undef `self`.
+    files: ['apps/app/public/ralia-push-sw.js'],
     languageOptions: {
       globals: { ...globals.serviceworker },
     },
