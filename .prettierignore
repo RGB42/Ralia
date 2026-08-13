@@ -15,3 +15,9 @@ node_modules/
 dist/
 coverage/
 package-lock.json
+
+# Deployter Edge-Function-Stand, Wort-fuer-Wort aus `get_edge_function`
+# uebernommen. Ein Formatierungs-Diff wuerde die Unveraendertheit zerstoeren,
+# die der Zweck dieser Kopie ist.
+supabase/functions/reminder-worker/
+supabase/functions/_shared/
