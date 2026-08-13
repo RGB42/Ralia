@@ -22,15 +22,29 @@ export interface PushRegistration {
 }
 
 /**
+ * Reine Geraete-/Browserfaehigkeit, unabhaengig von Konfiguration oder
+ * Erlaubnis. Vorher stand diese Bedingung zweimal fast wortgleich im Modul
+ * (hier in `detectBlocker()` und nochmal inline in `enable()`), und
+ * `disable()` hatte ueberhaupt keine eigene Kopie -- genau das war die
+ * Ursache von I2 aus der Schluss-Review. Ein Abo abzumelden setzt weder
+ * einen VAPID-Schluessel noch eine erteilte Benachrichtigungs-Erlaubnis
+ * voraus (das prueft `detectBlocker()` zusaetzlich fuer `enable()`), ein
+ * fehlendes serviceWorker/PushManager/Notification aber schon -- ohne diese
+ * Pruefung wirft schon der Zugriff auf `navigator.serviceWorker` einen
+ * TypeError, bevor `disable()` ueberhaupt etwas abmelden koennte.
+ */
+function isPushCapable(): boolean {
+  return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+}
+
+/**
  * Faehigkeits- und Erlaubnispruefung, ohne Service Worker oder Netzwerk.
  *
  * `null` heisst: keiner der drei Gruende trifft zu, die eigentliche
  * Registrierung darf versucht werden.
  */
 function detectBlocker(vapidPublicKey: string | null): 'unsupported' | 'unconfigured' | 'denied' | null {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
-    return 'unsupported';
-  }
+  if (!isPushCapable()) return 'unsupported';
   if (!vapidPublicKey) return 'unconfigured';
   if (Notification.permission === 'denied') return 'denied';
   return null;
@@ -61,7 +75,15 @@ export function usePushRegistration(): PushRegistration {
     // Dieselben drei Pruefungen wie bei der Erstberechnung, hier erneut: die
     // Umgebung kann sich zwischen dem Rendern und diesem Klick geaendert
     // haben (z.B. die Erlaubnis wurde ausserhalb der App entzogen).
-    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+    //
+    // Die Faehigkeitspruefung kommt bewusst aus der gemeinsamen
+    // isPushCapable() (mit detectBlocker() und disable() geteilt), die
+    // beiden folgenden Pruefungen bleiben inline statt ueber detectBlocker()
+    // zu laufen: TypeScript kann `vapidPublicKey` (string | null) nur ueber
+    // ein direktes `if (!vapidPublicKey)` hier im Funktionskoerper auf
+    // `string` verengen, nicht durch einen Aufruf von detectBlocker()
+    // hindurch -- urlBase64ToUint8Array() unten braucht `string`.
+    if (!isPushCapable()) {
       setState('unsupported');
       return;
     }
@@ -122,9 +144,35 @@ export function usePushRegistration(): PushRegistration {
   }, [vapidPublicKey, pushRepo]);
 
   const disable = useCallback(async (): Promise<void> => {
+    // I2: ohne diese Pruefung wirft in einem Browser ohne Service-Worker-
+    // Faehigkeit schon der Zugriff auf navigator.serviceWorker einen
+    // TypeError. Der Catch-Zweig unten setzte daraufhin 'on' -- der
+    // pushUnsupported-Hinweis verschwand aus der Oberflaeche, obwohl der
+    // Browser Push gar nicht kann. `enable()` hatte diese Pruefung schon,
+    // `disable()` als einzige der beiden Funktionen nicht.
+    if (!isPushCapable()) {
+      setState('unsupported');
+      return;
+    }
+
     setState('working');
     try {
-      const registration = await navigator.serviceWorker.ready;
+      // I1: getRegistration() loest sofort zu `undefined` auf, wenn fuer
+      // diesen Scope nichts registriert ist. `.ready` dagegen loest laut
+      // Spezifikation NIE auf und lehnt NIE ab, wenn es nie eine aktive
+      // Registrierung fuer den Scope gab -- der Zustand bliebe fuer immer
+      // 'working' stehen, der Schalter waere bis zum Reload tot. Das ist
+      // erreichbar, nicht nur theoretisch: `pushEnabled` liegt kontoweit in
+      // den Praeferenzen, das Abo aber geraeteweit. Ein zweites Geraet (oder
+      // eines nach geloeschten Website-Daten) zeigt den Schalter an, ohne
+      // dass hier je enable() gelaufen waere -- es existiert keine
+      // Registrierung, und ohne Abo gibt es nichts abzumelden.
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (!registration) {
+        setState('off');
+        return;
+      }
+
       const subscription = await registration.pushManager.getSubscription();
       if (subscription) {
         const { endpoint } = subscription.toJSON();

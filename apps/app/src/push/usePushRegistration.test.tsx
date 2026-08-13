@@ -49,14 +49,20 @@ function defaultRegistration(): FakeRegistration {
  * deshalb ist das ein neues Property, kein Ueberschreiben -- `configurable:
  * true` macht es in `afterEach` wieder loeschbar. Muster aus
  * `apps/app/src/boot/bootstrap.test.ts` (dort fuer denselben Zweck benutzt).
+ *
+ * `getRegistration` loest per Default auf dieselbe Registrierung auf wie
+ * `ready` -- disable() nutzt seit I1 `getRegistration()` statt `ready`, weil
+ * `ready` laut Spezifikation nie aufloest, wenn es nie eine aktive
+ * Registrierung gab (siehe eigener Testfall unten, der genau das nachbildet).
  */
 function stubServiceWorker(
   registration: FakeRegistration = defaultRegistration(),
   register: ReturnType<typeof vi.fn> = vi.fn(async () => undefined),
+  getRegistration: ReturnType<typeof vi.fn> = vi.fn(async () => registration),
 ): void {
   Object.defineProperty(globalThis.navigator, 'serviceWorker', {
     configurable: true,
-    value: { register, ready: Promise.resolve(registration) },
+    value: { register, ready: Promise.resolve(registration), getRegistration },
   });
 }
 
@@ -185,6 +191,10 @@ describe('usePushRegistration', () => {
       pushManager: { getSubscription: vi.fn(async () => subscription), subscribe: vi.fn() },
     });
     stubPushManagerGlobal();
+    // Seit I2 prueft disable() dieselbe Faehigkeit wie enable() -- ein
+    // vollstaendig faehiges Geraet stubbt deshalb auch Notification, nicht
+    // nur serviceWorker und PushManager.
+    stubNotification('granted');
 
     const deactivate = vi.fn(async () => {
       order.push('deactivate');
@@ -216,6 +226,10 @@ describe('usePushRegistration', () => {
       pushManager: { getSubscription: vi.fn(async () => subscription), subscribe: vi.fn() },
     });
     stubPushManagerGlobal();
+    // Seit I2 prueft disable() dieselbe Faehigkeit wie enable() -- ein
+    // vollstaendig faehiges Geraet stubbt deshalb auch Notification, nicht
+    // nur serviceWorker und PushManager.
+    stubNotification('granted');
 
     const deactivate = vi.fn(async () => undefined);
     const { result } = renderPush(FAKE_VAPID_KEY, { deactivate });
@@ -227,6 +241,70 @@ describe('usePushRegistration', () => {
     expect(deactivate).toHaveBeenCalledWith('https://push.example/stuck');
     expect(subscription.unsubscribe).toHaveBeenCalled();
     expect(result.current.state).toBe('on');
+  });
+
+  it('bleibt nicht auf working stehen, wenn disable() aufgerufen wird, obwohl fuer dieses Geraet kein Service Worker registriert ist', async () => {
+    // I1 aus der Schluss-Review: pushEnabled liegt kontoweit in den
+    // Praeferenzen, das Abo aber geraeteweit. Auf einem zweiten Geraet (oder
+    // einem nach geloeschten Website-Daten) zeigt der Schalter "an", ohne
+    // dass hier je enable() gelaufen waere -- es existiert keine
+    // Registrierung fuer diesen Scope. `ready` bildet das nach: es loest laut
+    // Spezifikation NIE auf und lehnt NIE ab, wenn es nie eine aktive
+    // Registrierung gab.
+    Object.defineProperty(globalThis.navigator, 'serviceWorker', {
+      configurable: true,
+      value: {
+        register: vi.fn(async () => undefined),
+        ready: new Promise(() => {
+          /* loest absichtlich nie auf -- wie im echten Browser ohne Registrierung */
+        }),
+        getRegistration: vi.fn(async () => undefined),
+      },
+    });
+    stubPushManagerGlobal();
+    stubNotification('granted');
+
+    const { result } = renderPush(FAKE_VAPID_KEY);
+
+    // Bewusst NICHT `await act(async () => { await result.current.disable() })`:
+    // die alte Implementierung haengt hier dauerhaft an `.ready`, und ein
+    // Promise, das nie aufloest, darf nie innerhalb von act() awaited werden
+    // -- React haelt diesen act()-Aufruf sonst fuer "noch aktiv" und das
+    // bricht jeden Test danach in dieser Datei mit ab (beobachtet: erst
+    // dieser Test haengt bis zum Test-Timeout, danach schlagen unbeteiligte
+    // Tests mit "Cannot read properties of null" fehl). Der synchrone
+    // act()-Aufruf flusht nur das setState('working') vor dem haengenden
+    // await; disable() selbst laeuft unbeobachtet im Hintergrund weiter.
+    act(() => {
+      void result.current.disable();
+    });
+
+    // setState('working') passiert synchron vor dem haengenden await -- diese
+    // kurze, echte Pause gibt React genug Gelegenheit, das zu committen, ohne
+    // auf das haengende Promise zu warten.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+
+    expect(result.current.state).not.toBe('working');
+    expect(result.current.state).toBe('off');
+  });
+
+  it('meldet unsupported statt on, wenn disable() ohne Service-Worker-Faehigkeit aufgerufen wird', async () => {
+    // I2 aus der Schluss-Review: disable() war die einzige der beiden
+    // Funktionen ohne Faehigkeitspruefung. Fehlt navigator.serviceWorker (wie
+    // hier -- kein stubServiceWorker() gesetzt, jsdom kennt die API ohnehin
+    // nicht), wirft schon der Zugriff darauf einen TypeError; der Catch setzte
+    // daraufhin 'on', und der pushUnsupported-Hinweis verschwand aus der
+    // Oberflaeche, obwohl der Browser Push gar nicht kann.
+    const { result } = renderPush();
+    expect(result.current.state).toBe('unsupported');
+
+    await act(async () => {
+      await result.current.disable();
+    });
+
+    expect(result.current.state).toBe('unsupported');
   });
 
   it('bleibt bedienbar, wenn subscribe wirft', async () => {
