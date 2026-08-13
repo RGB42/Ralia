@@ -64,15 +64,9 @@ export default tseslint.config(
     // sw.js laeuft im Service-Worker-Kontext (self, keine DOM-/Node-Globals)
     // und ist bewusst reines JavaScript, kein TypeScript — der ts/tsx-Block
     // oben greift hier nicht, ohne diese Globals meldet no-undef `self`.
-    // Der catch-Block dort verwirft den Fehler absichtlich (siehe Kommentar
-    // im Code), daher caughtErrors: 'none' statt eines eslint-disable im
-    // ausgelieferten Service-Worker-Code selbst.
     files: ['apps/app/public/sw.js'],
     languageOptions: {
       globals: { ...globals.serviceworker },
-    },
-    rules: {
-      '@typescript-eslint/no-unused-vars': ['error', { caughtErrors: 'none' }],
     },
   },
   {

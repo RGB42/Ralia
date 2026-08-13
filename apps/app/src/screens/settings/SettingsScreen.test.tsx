@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { PushRepo } from '@ralia/data';
 import { AuthContext, type AuthContextValue } from '../../auth/AuthProvider.js';
 import { BootContext } from '../../boot/BootContext.js';
 import { DataContext, type DataServices } from '../../data/DataProvider.js';
@@ -41,7 +42,10 @@ function renderScreen(
                     supabaseAnonKey: 'publishable-key',
                     googleClientId: null,
                     googleRedirectUri: null,
-                    vapidPublicKey: null,
+                    // Ein gueltiger Platzhalter, kein `null`: sonst waere der
+                    // Push-Schalter in jedem Test dieser Datei 'unconfigured',
+                    // noch bevor eine Browser-Faehigkeit ueberhaupt geprueft wird.
+                    vapidPublicKey: 'UmFsaWE',
                     billingEnabled: false,
                   },
                   outbox: outboxDouble(),
@@ -61,12 +65,48 @@ function renderScreen(
   );
 }
 
+/**
+ * Stubbt die Browser-Push-APIs, die jsdom nicht kennt (`navigator.serviceWorker`,
+ * `PushManager`, `Notification`) -- Muster aus `usePushRegistration.test.tsx`.
+ * `configurable: true` macht die Properties in `afterEach` wieder loeschbar,
+ * sonst traegt ein Stub in Nachbartests dieser grossen Datei weiter.
+ */
+function stubPushSupport(permission: NotificationPermission = 'granted') {
+  const registration = {
+    pushManager: {
+      getSubscription: vi.fn(async () => null),
+      subscribe: vi.fn(async () => ({
+        toJSON: () => ({
+          endpoint: 'https://push.example/settings-screen',
+          keys: { p256dh: 'p256dh-value', auth: 'auth-value' },
+        }),
+        unsubscribe: vi.fn(async () => true),
+      })),
+    },
+  };
+  Object.defineProperty(globalThis.navigator, 'serviceWorker', {
+    configurable: true,
+    value: { register: vi.fn(async () => undefined), ready: Promise.resolve(registration) },
+  });
+  Object.defineProperty(globalThis, 'PushManager', { configurable: true, value: class {} });
+  Object.defineProperty(globalThis, 'Notification', {
+    configurable: true,
+    value: { permission, requestPermission: vi.fn(async () => permission) },
+  });
+  return registration;
+}
+
 beforeEach(() => {
   localStorage.clear();
   localStorage.setItem(LANG_STORAGE_KEY, 'de');
   document.documentElement.removeAttribute(THEME_ATTRIBUTE);
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  Reflect.deleteProperty(globalThis.navigator, 'serviceWorker');
+  Reflect.deleteProperty(globalThis, 'PushManager');
+  Reflect.deleteProperty(globalThis, 'Notification');
+});
 
 describe('SettingsScreen', () => {
   it('zeigt die echte Profilkarte ohne Demo-Kennzahlen', () => {
@@ -282,6 +322,37 @@ describe('SettingsScreen', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Abmelden' }));
 
     expect(signOut).toHaveBeenCalledTimes(1);
+  });
+
+  it('legt beim Einschalten ein Push-Abo an', async () => {
+    stubPushSupport('granted');
+    const save = vi.fn(async () => undefined);
+    const push: PushRepo = { save, deactivate: vi.fn(async () => undefined), hasActive: vi.fn(async () => false) };
+    const update = vi.fn(async () => true);
+    renderScreen({}, { update }, { push });
+
+    await userEvent.click(screen.getByRole('switch', { name: 'Push-Erinnerungen' }));
+
+    await waitFor(() =>
+      expect(save).toHaveBeenCalledWith(
+        expect.objectContaining({ endpoint: 'https://push.example/settings-screen' }),
+      ),
+    );
+    // Erst nach dem erfolgreichen Abo wird die Praeferenz geschrieben --
+    // sonst zeigte der Schalter „an", waehrend kein Abo existiert.
+    await waitFor(() =>
+      expect(update).toHaveBeenCalledWith(
+        expect.objectContaining({ notification_settings: expect.objectContaining({ pushEnabled: true }) }),
+      ),
+    );
+  });
+
+  it('nennt den Grund, wenn der Browser Benachrichtigungen blockiert', () => {
+    stubPushSupport('denied');
+    renderScreen();
+
+    expect(screen.getByText(/Browser-Einstellungen/)).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Push-Erinnerungen' })).not.toBeChecked();
   });
 });
 

@@ -273,7 +273,11 @@
     "enableReminder": "Erinnerung aktivieren",
     "repeatPattern": "Wiederholungsmuster",
     "resendVerification": "Verifizierungs-Email erneut senden",
-    "verificationEmailSent": "Verifizierungs-Email gesendet! Überprüfe deinen Posteingang."
+    "verificationEmailSent": "Verifizierungs-Email gesendet! Überprüfe deinen Posteingang.",
+    "pushUnsupported": "Dieser Browser kann keine Benachrichtigungen empfangen.",
+    "pushUnconfigured": "Benachrichtigungen sind gerade nicht verfügbar. Versuch es später noch einmal.",
+    "pushDenied": "Du hast Benachrichtigungen für Ralia blockiert. Das lässt sich nur in den Browser-Einstellungen ändern.",
+    "pushEnabling": "Wird eingerichtet…"
   },
   "en": {
     "bootFailed": "The app could not start.",
@@ -549,6 +553,10 @@
     "enableReminder": "Enable reminder",
     "repeatPattern": "Repeat Pattern",
     "resendVerification": "Resend Verification Email",
-    "verificationEmailSent": "Verification email sent! Check your inbox."
+    "verificationEmailSent": "Verification email sent! Check your inbox.",
+    "pushUnsupported": "This browser cannot receive notifications.",
+    "pushUnconfigured": "Notifications are unavailable right now. Try again later.",
+    "pushDenied": "You blocked notifications for Ralia. This can only be changed in your browser settings.",
+    "pushEnabling": "Setting up…"
   }
 }

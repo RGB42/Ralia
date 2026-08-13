@@ -19,7 +19,10 @@ self.addEventListener('push', (event) => {
   try {
     payload = event.data.json();
   } catch (error) {
-    // Ein unlesbarer Payload darf keine leere Benachrichtigung erzeugen.
+    // Ein unlesbarer Payload darf keine leere Benachrichtigung erzeugen --
+    // fuer die Fehlersuche waere das sonst ein Totalausfall: "die Erinnerung
+    // kam nicht an" liesse sich ohne diese Zeile nicht mehr aufklaeren.
+    console.error('Ralia SW: Push-Payload liess sich nicht lesen', error);
     return;
   }
 

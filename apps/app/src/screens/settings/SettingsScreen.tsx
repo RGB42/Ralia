@@ -13,7 +13,7 @@ import {
   useToast,
 } from '@ralia/ui';
 import { PrivacyApiError, type PrivacyExportRequests } from '@ralia/data';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../../auth/useAuth.js';
 import { useBoot } from '../../boot/BootContext.js';
@@ -21,6 +21,7 @@ import { useData } from '../../data/DataProvider.js';
 import { useAppPreferences } from '../../preferences/AppPreferencesProvider.js';
 import type { Lang } from '../../i18n/catalog.js';
 import { useT } from '../../i18n/useT.js';
+import { usePushRegistration } from '../../push/usePushRegistration.js';
 import screen from '../screen.module.css';
 import styles from './SettingsScreen.module.css';
 
@@ -44,6 +45,7 @@ export function SettingsScreen(): React.JSX.Element {
   const { privacy } = useData();
   const { outbox } = useBoot();
   const { preferences, update: updatePreferences } = useAppPreferences();
+  const push = usePushRegistration();
 
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [confirmAccountDeletion, setConfirmAccountDeletion] = useState(false);
@@ -58,6 +60,19 @@ export function SettingsScreen(): React.JSX.Element {
   const inviteCode = identity?.profile.invite_code ?? '';
   const [anniversary, setAnniversaryValue] = useState(identity?.profile.anniversary_date ?? '');
   const pushOn = preferences?.notification_settings.pushEnabled === true;
+  /* Ersetzt den statischen Hinweistext, solange der Schalter nicht einfach
+   * „an" oder „aus" ist -- ein Klick, der wirkungslos bleibt, ist schlimmer
+   * als eine Erklaerung, warum. */
+  const pushHint =
+    push.state === 'unsupported'
+      ? t('pushUnsupported')
+      : push.state === 'unconfigured'
+        ? t('pushUnconfigured')
+        : push.state === 'denied'
+          ? t('pushDenied')
+          : push.state === 'working'
+            ? t('pushEnabling')
+            : t('settingsPushHint');
   const weekStart = preferences?.week_start ?? 'mo';
   const incomingRequest = privacyRequests.incoming.find(
     (request) => request.status === 'pending',
@@ -83,10 +98,42 @@ export function SettingsScreen(): React.JSX.Element {
     };
   }, [identity?.partner, privacy, userId]);
 
-  const savePreferences = async (changes: Parameters<typeof updatePreferences>[0]) => {
-    const saved = await updatePreferences(changes);
-    if (!saved) show(t('settingsPreferencesError'), 'danger');
-  };
+  const savePreferences = useCallback(
+    async (changes: Parameters<typeof updatePreferences>[0]) => {
+      const saved = await updatePreferences(changes);
+      if (!saved) show(t('settingsPreferencesError'), 'danger');
+    },
+    [updatePreferences, show, t],
+  );
+
+  /*
+   * `notification_settings.pushEnabled` wird erst geschrieben, nachdem
+   * enable()/disable() tatsaechlich durchgelaufen sind -- sonst zeigte der
+   * Schalter „an", waehrend gar kein Abo existiert.
+   *
+   * Der Effekt reagiert bewusst nur auf den Uebergang AUS 'working' heraus,
+   * nicht auf jeden Abgleich von state und Praeferenz: usePushRegistration
+   * prueft beim Einhaengen kein vorhandenes Browser-Abo (siehe dort), der
+   * Anfangszustand ist also 'off', selbst wenn die Praeferenz aus einer
+   * frueheren Sitzung noch `true` ist. Ohne die Uebergangs-Pruefung wuerde
+   * das blosse Oeffnen dieses Screens die Praeferenz still auf `false`
+   * zuruecksetzen.
+   */
+  const previousPushStateRef = useRef(push.state);
+  useEffect(() => {
+    const previousPushState = previousPushStateRef.current;
+    previousPushStateRef.current = push.state;
+    if (previousPushState !== 'working' || !preferences) return;
+    if (push.state === 'on' && preferences.notification_settings.pushEnabled !== true) {
+      void savePreferences({
+        notification_settings: { ...preferences.notification_settings, pushEnabled: true },
+      });
+    } else if (push.state === 'off' && preferences.notification_settings.pushEnabled === true) {
+      void savePreferences({
+        notification_settings: { ...preferences.notification_settings, pushEnabled: false },
+      });
+    }
+  }, [push.state, preferences, savePreferences]);
 
   const copyCode = async () => {
     try {
@@ -318,18 +365,12 @@ export function SettingsScreen(): React.JSX.Element {
                 onChange={(next) => setChoice(next ? 'dark' : 'light')}
               />
             </ListRow>
-            <ListRow title={t('settingsPush')} hint={t('settingsPushHint')}>
+            <ListRow title={t('settingsPush')} hint={pushHint}>
               <Toggle
                 checked={pushOn}
                 label={t('settingsPush')}
-                onChange={(next) =>
-                  void savePreferences({
-                    notification_settings: {
-                      ...(preferences?.notification_settings ?? {}),
-                      pushEnabled: next,
-                    },
-                  })
-                }
+                disabled={push.state === 'working'}
+                onChange={(next) => void (next ? push.enable() : push.disable())}
               />
             </ListRow>
             <ListRow title={t('settingsLanguage')} last={false}>
