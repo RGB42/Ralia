@@ -1,0 +1,6 @@
+/* Gleiche Einbettung wie der Fehlschlag im BootGate: derselbe Anlass, dieselbe
+   Form — die App kann nicht weiter, hier ist der Weg zurueck. */
+
+.crashed {
+  padding: 40px 20px;
+}

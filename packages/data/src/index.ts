@@ -260,6 +260,12 @@ export {
 } from './repositories/recurring-series-repo.js';
 
 export {
+  createPushRepo,
+  type PushRepo,
+  type PushSubscriptionInput,
+} from './repositories/push-repo.js';
+
+export {
   createEventOutboxExecutor,
   type EventMutation,
   type EventOutboxExecutorDependencies,

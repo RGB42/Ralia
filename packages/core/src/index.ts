@@ -123,3 +123,5 @@ export {
   type OutboxExecutor,
   type OutboxRecord,
 } from './outbox/types.js';
+
+export { urlBase64ToUint8Array } from './push/index.js';

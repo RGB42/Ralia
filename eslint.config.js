@@ -26,7 +26,16 @@ export default tseslint.config(
     rules: {
       '@typescript-eslint/no-unused-vars': [
         'error',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          // Default fuer caughtErrors ist 'all' und wird von argsIgnorePattern
+          // nicht mitabgedeckt. supabase/functions/ (deployter Edge-Function-
+          // Code) nutzt durchgehend `catch (_error)` fuer bewusst verworfene
+          // Fehler -- das vervollstaendigt die bereits etablierte
+          // `^_`-Konvention auch fuer catch-Parameter.
+          caughtErrorsIgnorePattern: '^_',
+        },
       ],
       '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
       // The domain layer must stay honest about its types.
@@ -58,6 +67,16 @@ export default tseslint.config(
     languageOptions: {
       globals: { ...globals.node },
       sourceType: 'module',
+    },
+  },
+  {
+    // ralia-push-sw.js laeuft im Service-Worker-Kontext (self, keine
+    // DOM-/Node-Globals) und ist bewusst reines JavaScript, kein TypeScript —
+    // der ts/tsx-Block oben greift hier nicht, ohne diese Globals meldet
+    // no-undef `self`.
+    files: ['apps/app/public/ralia-push-sw.js'],
+    languageOptions: {
+      globals: { ...globals.serviceworker },
     },
   },
   {

@@ -176,6 +176,11 @@ export function dataDouble(overrides: Partial<DataServices> = {}): DataServices 
         updated_at: '2026-08-10T10:00:00Z',
       }),
     },
+    push: {
+      save: async () => undefined,
+      deactivate: async () => undefined,
+      hasActive: async () => false,
+    },
     privacy: {
       personalExport: async () => {
         throw new Error('Unexpected privacy export in test');

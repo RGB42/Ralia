@@ -3,6 +3,7 @@ import { RouterProvider, createBrowserRouter } from 'react-router';
 import { AuthProvider } from './auth/AuthProvider.js';
 import { BootGate } from './boot/BootGate.js';
 import { DataProvider } from './data/DataProvider.js';
+import { ErrorBoundary } from './ErrorBoundary.js';
 import { I18nProvider } from './i18n/I18nProvider.js';
 import { AppPreferencesProvider } from './preferences/AppPreferencesProvider.js';
 import { routes } from './routes/router.js';
@@ -20,6 +21,9 @@ const router = createBrowserRouter(routes, { basename });
  *
  *   ThemeProvider   setzt das Attribut am <html>, muss ganz aussen sein
  *   I18nProvider    weil alles darunter uebersetzte Texte zeigt
+ *   ErrorBoundary   unter I18nProvider, damit die Meldung uebersetzt ist, und
+ *                   ueber BootGate, damit auch ein Renderfehler in der
+ *                   Startsequenz noch aufgefangen wird
  *   ToastProvider   BootGate und AuthProvider melden ueber Toasts
  *   BootGate        liefert die Runtime-Konfiguration; erst danach steht der
  *                   Supabase-Schluessel fest
@@ -30,17 +34,19 @@ export function App(): React.JSX.Element {
   return (
     <ThemeProvider>
       <I18nProvider>
-        <ToastProvider>
-          <BootGate>
-            <AuthProvider>
-              <DataProvider>
-                <AppPreferencesProvider>
-                  <RouterProvider router={router} />
-                </AppPreferencesProvider>
-              </DataProvider>
-            </AuthProvider>
-          </BootGate>
-        </ToastProvider>
+        <ErrorBoundary>
+          <ToastProvider>
+            <BootGate>
+              <AuthProvider>
+                <DataProvider>
+                  <AppPreferencesProvider>
+                    <RouterProvider router={router} />
+                  </AppPreferencesProvider>
+                </DataProvider>
+              </AuthProvider>
+            </BootGate>
+          </ToastProvider>
+        </ErrorBoundary>
       </I18nProvider>
     </ThemeProvider>
   );
