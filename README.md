@@ -1,8 +1,33 @@
-# Ralia
+# Ralia (v2) — eingefroren
+
+> ## ⛔ Dieses Repository ist seit dem 2026-08-17 eingefroren
+>
+> **Weiterentwickelt wird `Ralia_Opus`.** Dort läuft die produktive App.
+>
+> ### Warum
+>
+> Es soll nur eine Ralia geben. Die Wahl fiel auf `Ralia_Opus`, weil dort der Google-Kalender-Sync produktiv läuft und echte Nutzerdaten liegen — beides Dinge, die hier fehlen. Das ist eine Entscheidung über den kürzeren Weg zum Ziel, kein Urteil über diese Codebasis: die Schichtentrennung, die 864 Tests und die Token-Paritätsprüfung sind hier besser als dort.
+>
+> ### Der konkrete Anlass
+>
+> Zwei Migrationen von hier haben Schreibpfade der produktiven App gebrochen:
+>
+> - `20260811111003_simplify_expense_tracker` verlangt per Constraint `for_user_id` bei `split_type='single'`
+> - `20260811112113_enforce_expense_category` macht `category` NOT NULL
+>
+> `Ralia_Opus` setzt beides nicht. Ausgaben „nur für den Zahler" und Ausgaben ohne Kategorie wurden ab dem 11. August von der Datenbank abgelehnt, ohne dass dort etwas geändert worden war. Ursache war nicht die Migration, sondern dass **eine Datenbank aus zwei Codebasen bespielt wurde, ohne Regel, wem das Schema gehört.**
+>
+> ### Was das für dieses Repository heißt
+>
+> **Keine Schemaänderungen mehr am Projekt `nyvripddydrzvfuateea`.** Die acht Migrationen unter [`supabase/migrations/`](supabase/migrations/) sind dort angewendet und liegen jetzt auch in `Ralia_Opus/supabase/migrations/`. Die MCP-Verbindung zum Produktivprojekt ist in [`.mcp.json`](.mcp.json) entfernt und in [`opencode.json`](opencode.json) auf `enabled: false` gesetzt. Bitte nicht reaktivieren.
+>
+> Gelöscht wird nichts. Kandidaten für eine spätere Übernahme: die Design-Tokens unter `packages/ui`, die centgenaue Ledger-Logik in `packages/core/src/money/ledger.ts`, und die Web-Push-Bausteine unter `packages/core/src/push/` und `packages/data/src/repositories/push-repo.ts`.
+>
+> Begründung und Vorgehen: [`Ralia_Opus/docs/superpowers/specs/2026-08-17-konsolidierung-design.md`](../Ralia_Opus/docs/superpowers/specs/2026-08-17-konsolidierung-design.md)
 
 Teile Deine Tage gemeinsam — Kalender, Organizer und Haushaltskasse für Paare.
 
-Programmziel ist eine Codebasis für **Android**, **iOS** und **Web** mit Marketing-Homepage. Gebaut und ausgeliefert ist bisher die **Web-App**.
+Programmziel war eine Codebasis für **Android**, **iOS** und **Web** mit Marketing-Homepage. Gebaut und ausgeliefert wurde die **Web-App**.
 
 > **Status: SP0 bis SP4 abgeschlossen.** `npm run dev` startet die App unter `/app/`. Anmeldung, Identität, Partner-Verbindung und Jahrestag kommen aus Supabase. Der Kalender besitzt CRUD, mehrtägige Wochenbalken, Serien und Exceptions, Realtime sowie eine kontogebundene Offline-Outbox. Todo-Gruppen und -Einträge arbeiten mit echten, kalendergebundenen Repositories. Der Wochenplaner speichert Mahlzeiten, Aufgaben, Zuständigkeiten und Abschlussstatus. Die Haushaltskasse speichert Ausgaben, Kategorien, Budgets, individuelle Anteile und Ausgleichstransaktionen; die Bilanz wird centgenau berechnet.
 >
